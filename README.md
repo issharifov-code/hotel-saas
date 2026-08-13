@@ -35,12 +35,18 @@ docker-compose.yml  — lokal Postgres + Redis
 - [x] Warehouse (Ombor) moduli: tovarlar katalogi, ta'minotchilar, xarid buyurtmasi
       (tasdiqlash workflow: pending_approval → approved/rejected, qisman/to'liq
       qabul qilish), FIFO baholash (StockLot/StockTransaction), chiqim va
-      inventarizatsiya tuzatishlari, reorder point hisoboti — backend to'liq,
-      frontend hali qo'shilmagan
+      inventarizatsiya tuzatishlari, reorder point hisoboti — backend to'liq.
+      **Frontend qo'shildi:** tabli interfeys (Zaxira / Tovarlar / Ta'minotchilar /
+      Xarid buyurtmalari), zaxira jadvali (reorder point'dan past qoldiqlar
+      belgilanadi), xarid buyurtmasi yaratish (ko'p bandli), tasdiqlash/rad
+      etish/bekor qilish/qabul qilish (qisman qabul qo'llab-quvvatlanadi),
+      tezkor chiqim va inventarizatsiya tuzatish oynasi
 - [x] POS (Restoran/Bar) moduli: menyu katalogi, savdo nuqtasi (auto-create),
       buyurtma (ochish → taom qo'shish → to'lash/bekor qilish), naqd/karta to'lovi
-      (xona hisobiga yozish keyingi bosqichda) — backend to'liq, frontend hali
-      qo'shilmagan
+      (xona hisobiga yozish keyingi bosqichda) — backend to'liq. **Frontend
+      qo'shildi:** menyu katalogi boshqaruvi, buyurtmalar kartochkalar
+      ko'rinishida (holat bo'yicha rangli belgi), buyurtma detali (taom
+      qo'shish, to'lash — naqd/karta, bekor qilish)
 - [ ] Front Desk (kengaytirilgan), Housekeeping, Invoicing, Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)

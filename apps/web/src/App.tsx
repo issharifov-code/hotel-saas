@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
+import { WarehousePage } from './pages/WarehousePage';
+import { PosPage } from './pages/PosPage';
 
 function App() {
   return (
@@ -44,6 +46,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <GuestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/warehouse"
+            element={
+              <ProtectedRoute>
+                <WarehousePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pos"
+            element={
+              <ProtectedRoute>
+                <PosPage />
               </ProtectedRoute>
             }
           />

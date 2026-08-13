@@ -13,6 +13,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/bookings', label: 'Bronlar taqvimi', moduleKey: 'booking' },
   { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
   { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
+  { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
+  { to: '/pos', label: 'POS', moduleKey: 'pos' },
 ];
 
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
