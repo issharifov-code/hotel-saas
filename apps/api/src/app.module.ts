@@ -22,6 +22,10 @@ import { StockLot } from './modules/warehouse/entities/stock-lot.entity';
 import { StockTransaction } from './modules/warehouse/entities/stock-transaction.entity';
 import { PurchaseOrder } from './modules/warehouse/entities/purchase-order.entity';
 import { PurchaseOrderItem } from './modules/warehouse/entities/purchase-order-item.entity';
+import { PosOutlet } from './modules/pos/entities/pos-outlet.entity';
+import { MenuItem } from './modules/pos/entities/menu-item.entity';
+import { PosOrder } from './modules/pos/entities/pos-order.entity';
+import { PosOrderItem } from './modules/pos/entities/pos-order-item.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -31,6 +35,7 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { PosModule } from './modules/pos/pos.module';
 
 @Module({
   imports: [
@@ -63,6 +68,10 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
           StockTransaction,
           PurchaseOrder,
           PurchaseOrderItem,
+          PosOutlet,
+          MenuItem,
+          PosOrder,
+          PosOrderItem,
         ],
         // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
         // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
@@ -78,6 +87,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
     RoomsModule,
     BookingsModule,
     WarehouseModule,
+    PosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

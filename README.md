@@ -31,7 +31,11 @@ docker-compose.yml  — lokal Postgres + Redis
       qabul qilish), FIFO baholash (StockLot/StockTransaction), chiqim va
       inventarizatsiya tuzatishlari, reorder point hisoboti — backend to'liq,
       frontend hali qo'shilmagan
-- [ ] Front Desk (kengaytirilgan), Housekeeping, POS, Invoicing, Accounting (USALI COA)
+- [x] POS (Restoran/Bar) moduli: menyu katalogi, savdo nuqtasi (auto-create),
+      buyurtma (ochish → taom qo'shish → to'lash/bekor qilish), naqd/karta to'lovi
+      (xona hisobiga yozish keyingi bosqichda) — backend to'liq, frontend hali
+      qo'shilmagan
+- [ ] Front Desk (kengaytirilgan), Housekeeping, Invoicing, Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
 
@@ -98,6 +102,12 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/purchase-orders/:id/reject` | PO rad etish |
 | POST | `/api/properties/:propertyId/purchase-orders/:id/receive` | Tovarni qabul qilish (qisman/to'liq) |
 | POST | `/api/properties/:propertyId/purchase-orders/:id/cancel` | PO bekor qilish |
+| GET/POST | `/api/menu-items` | POS menyu katalogi |
+| GET | `/api/properties/:propertyId/pos-outlets` | Savdo nuqtalari (avtomatik yaratiladi) |
+| GET/POST | `/api/properties/:propertyId/pos-orders` | Buyurtmalar ro'yxati / yangi buyurtma ochish |
+| POST | `/api/properties/:propertyId/pos-orders/:id/items` | Ochiq buyurtmaga taom qo'shish |
+| POST | `/api/properties/:propertyId/pos-orders/:id/pay` | To'lash (naqd/karta) |
+| POST | `/api/properties/:propertyId/pos-orders/:id/cancel` | Buyurtmani bekor qilish |
 
 ## Texnik qarorlar
 
