@@ -14,7 +14,7 @@ interface Role {
 const MODULES = [
   { key: 'booking', label: 'Bron / Xona boshqaruvi', link: '/bookings' },
   { key: 'front_desk', label: 'Front Desk' },
-  { key: 'housekeeping', label: 'Housekeeping' },
+  { key: 'housekeeping', label: 'Housekeeping', link: '/housekeeping' },
   { key: 'warehouse', label: 'Warehouse (Ombor)', link: '/warehouse' },
   { key: 'pos', label: 'POS', link: '/pos' },
   { key: 'guest_crm', label: 'Guest CRM / Loyalty', link: '/guests' },

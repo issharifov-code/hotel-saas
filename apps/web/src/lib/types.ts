@@ -10,6 +10,7 @@ export interface RoomTypeDto {
 }
 
 export type RoomStatus = 'available' | 'occupied' | 'maintenance' | 'out_of_order';
+export type HousekeepingStatus = 'clean' | 'dirty' | 'in_progress' | 'inspected';
 
 export interface RoomDto {
   id: string;
@@ -20,6 +21,7 @@ export interface RoomDto {
   roomNumber: string;
   floor: number | null;
   status: RoomStatus;
+  housekeepingStatus: HousekeepingStatus;
   createdAt: string;
 }
 
@@ -182,4 +184,24 @@ export interface PosOrderDto {
   items: PosOrderItemDto[];
   createdAt: string;
   updatedAt: string;
+}
+
+// --- Housekeeping ---
+
+export type HousekeepingTaskStatus = 'pending' | 'in_progress' | 'done' | 'inspected' | 'cancelled';
+
+export interface HousekeepingTaskDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  roomId: string;
+  room?: RoomDto;
+  status: HousekeepingTaskStatus;
+  assignedToUserId: string | null;
+  notes: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  inspectedAt: string | null;
+  inspectedByUserId: string | null;
+  createdAt: string;
 }

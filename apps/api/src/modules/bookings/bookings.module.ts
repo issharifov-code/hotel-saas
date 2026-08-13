@@ -8,6 +8,7 @@ import { BookingsController } from './bookings.controller';
 import { RoomsModule } from '../rooms/rooms.module';
 import { GuestsModule } from '../guests/guests.module';
 import { RolesModule } from '../roles/roles.module';
+import { HousekeepingModule } from '../housekeeping/housekeeping.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RolesModule } from '../roles/roles.module';
     RoomsModule,
     GuestsModule,
     RolesModule,
+    HousekeepingModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController],

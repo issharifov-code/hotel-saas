@@ -47,7 +47,15 @@ docker-compose.yml  — lokal Postgres + Redis
       qo'shildi:** menyu katalogi boshqaruvi, buyurtmalar kartochkalar
       ko'rinishida (holat bo'yicha rangli belgi), buyurtma detali (taom
       qo'shish, to'lash — naqd/karta, bekor qilish)
-- [ ] Front Desk (kengaytirilgan), Housekeeping, Invoicing, Accounting (USALI COA)
+- [x] Housekeeping (Tozalash) moduli: xonaning band-bandlik holatidan (RoomStatus)
+      mustaqil tozalik holati (`HousekeepingStatus`: clean/dirty/in_progress/
+      inspected). Check-out'dan keyin xona avtomatik "dirty" bo'ladi va tozalash
+      vazifasi (`HousekeepingTask`) navbatga avtomatik qo'shiladi; xona
+      "clean"/"inspected" bo'lmaguncha o'sha xonaga **check-in bloklanadi**
+      (biznes qoida — tasdiqlangan). Vazifa oqimi: pending → in_progress →
+      done → inspected (yoki cancelled), qo'lda vazifa yaratish ham mumkin.
+      Frontend: Xonalar holati (rangli belgilar) va Vazifalar bo'limlari.
+- [ ] Front Desk (kengaytirilgan), Invoicing, Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
 
@@ -121,6 +129,12 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/pos-orders/:id/items` | Ochiq buyurtmaga taom qo'shish |
 | POST | `/api/properties/:propertyId/pos-orders/:id/pay` | To'lash (naqd/karta) |
 | POST | `/api/properties/:propertyId/pos-orders/:id/cancel` | Buyurtmani bekor qilish |
+| GET | `/api/properties/:propertyId/housekeeping/rooms` | Xonalar va ularning tozalik holati |
+| GET/POST | `/api/properties/:propertyId/housekeeping/tasks` | Tozalash vazifalari ro'yxati / yaratish |
+| POST | `/api/properties/:propertyId/housekeeping/tasks/:id/start` | Tozalashni boshlash |
+| POST | `/api/properties/:propertyId/housekeeping/tasks/:id/complete` | Tozalashni yakunlash |
+| POST | `/api/properties/:propertyId/housekeeping/tasks/:id/inspect` | Tozalikni tekshirish (nazoratchi) |
+| POST | `/api/properties/:propertyId/housekeeping/tasks/:id/cancel` | Vazifani bekor qilish |
 
 ## Texnik qarorlar
 

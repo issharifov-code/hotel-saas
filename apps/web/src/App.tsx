@@ -9,6 +9,7 @@ import { GuestsPage } from './pages/GuestsPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
+import { HousekeepingPage } from './pages/HousekeepingPage';
 
 function App() {
   return (
@@ -62,6 +63,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <PosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/housekeeping"
+            element={
+              <ProtectedRoute>
+                <HousekeepingPage />
               </ProtectedRoute>
             }
           />

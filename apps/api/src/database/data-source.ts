@@ -21,6 +21,7 @@ import { PosOutlet } from '../modules/pos/entities/pos-outlet.entity';
 import { MenuItem } from '../modules/pos/entities/menu-item.entity';
 import { PosOrder } from '../modules/pos/entities/pos-order.entity';
 import { PosOrderItem } from '../modules/pos/entities/pos-order-item.entity';
+import { HousekeepingTask } from '../modules/housekeeping/entities/housekeeping-task.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -53,6 +54,7 @@ export const AppDataSource = new DataSource({
     MenuItem,
     PosOrder,
     PosOrderItem,
+    HousekeepingTask,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,

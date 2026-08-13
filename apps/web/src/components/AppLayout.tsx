@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/bookings', label: 'Bronlar taqvimi', moduleKey: 'booking' },
   { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
   { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
+  { to: '/housekeeping', label: 'Housekeeping', moduleKey: 'housekeeping' },
   { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
   { to: '/pos', label: 'POS', moduleKey: 'pos' },
 ];

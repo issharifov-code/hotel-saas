@@ -26,6 +26,7 @@ import { PosOutlet } from './modules/pos/entities/pos-outlet.entity';
 import { MenuItem } from './modules/pos/entities/menu-item.entity';
 import { PosOrder } from './modules/pos/entities/pos-order.entity';
 import { PosOrderItem } from './modules/pos/entities/pos-order-item.entity';
+import { HousekeepingTask } from './modules/housekeeping/entities/housekeeping-task.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -37,6 +38,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { PosModule } from './modules/pos/pos.module';
 import { PropertiesModule } from './modules/properties/properties.module';
+import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 
 @Module({
   imports: [
@@ -73,6 +75,7 @@ import { PropertiesModule } from './modules/properties/properties.module';
           MenuItem,
           PosOrder,
           PosOrderItem,
+          HousekeepingTask,
         ],
         // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
         // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
@@ -90,6 +93,7 @@ import { PropertiesModule } from './modules/properties/properties.module';
     WarehouseModule,
     PosModule,
     PropertiesModule,
+    HousekeepingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

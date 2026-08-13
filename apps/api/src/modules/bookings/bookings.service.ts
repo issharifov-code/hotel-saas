@@ -7,6 +7,7 @@ import { RoomsService } from '../rooms/rooms.service';
 import { RoomType } from '../rooms/entities/room-type.entity';
 import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
+import { HousekeepingService } from '../housekeeping/housekeeping.service';
 
 // Booking'ni "band" deb hisoblaydigan holatlar — bekor qilingan yoki checkout
 // bo'lgan bronlar yangi bron bilan taqvim to'qnashuvi hisoblanmaydi.
@@ -20,6 +21,7 @@ export class BookingsService {
     @InjectRepository(RoomType) private readonly roomTypeRepo: Repository<RoomType>,
     private readonly roomsService: RoomsService,
     private readonly guestsService: GuestsService,
+    private readonly housekeepingService: HousekeepingService,
   ) {}
 
   async create(tenantId: string, propertyId: string, dto: CreateBookingDto): Promise<Booking> {
@@ -89,6 +91,10 @@ export class BookingsService {
         `Faqat "confirmed" holatidagi bronni check-in qilish mumkin (joriy holat: ${booking.status})`,
       );
     }
+    // Xona hali tozalanmagan bo'lsa (oxirgi mehmondan keyin) check-in bloklanadi —
+    // avval Housekeeping bo'limida "Tozalandi" deb belgilanishi kerak.
+    await this.housekeepingService.assertRoomCleanForCheckIn(tenantId, propertyId, booking.roomId);
+
     booking.status = BookingStatus.CHECKED_IN;
     await this.roomRepo.update({ id: booking.roomId }, { status: RoomStatus.OCCUPIED });
     return this.bookingRepo.save(booking);
@@ -103,6 +109,8 @@ export class BookingsService {
     }
     booking.status = BookingStatus.CHECKED_OUT;
     await this.roomRepo.update({ id: booking.roomId }, { status: RoomStatus.AVAILABLE });
+    // Xonani "iflos" deb belgilaydi va tozalash navbatiga avtomatik qo'shadi.
+    await this.housekeepingService.markDirtyAndQueueTask(tenantId, propertyId, booking.roomId);
     return this.bookingRepo.save(booking);
   }
 

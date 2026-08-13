@@ -14,8 +14,18 @@ import { RoomType } from './room-type.entity';
 export enum RoomStatus {
   AVAILABLE = 'available',
   OCCUPIED = 'occupied',
-  MAINTENANCE = 'maintenance', // texnik xizmat — Housekeeping moduli bilan bog'lanadi (keyingi bosqich)
+  MAINTENANCE = 'maintenance',
   OUT_OF_ORDER = 'out_of_order',
+}
+
+// Bandlik holatidan (RoomStatus) mustaqil o'lchov: xona tozami yoki yo'qmi.
+// Check-out'dan keyin avtomatik DIRTY bo'ladi va Housekeeping xodimi CLEAN
+// (yoki INSPECTED) deb belgilamaguncha o'sha xonaga check-in qilib bo'lmaydi.
+export enum HousekeepingStatus {
+  CLEAN = 'clean',
+  DIRTY = 'dirty',
+  IN_PROGRESS = 'in_progress',
+  INSPECTED = 'inspected',
 }
 
 @Entity('rooms')
@@ -50,6 +60,14 @@ export class Room {
 
   @Column({ type: 'enum', enum: RoomStatus, default: RoomStatus.AVAILABLE })
   status: RoomStatus;
+
+  @Column({
+    name: 'housekeeping_status',
+    type: 'enum',
+    enum: HousekeepingStatus,
+    default: HousekeepingStatus.CLEAN,
+  })
+  housekeepingStatus: HousekeepingStatus;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
