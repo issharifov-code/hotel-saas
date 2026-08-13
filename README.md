@@ -26,7 +26,12 @@ docker-compose.yml  — lokal Postgres + Redis
       maintenance/out_of_order), Guest (mehmon CRUD), Booking (yaratish, avtomatik
       narx hisoblash, sana to'qnashuvi tekshiruvi, check-in/check-out, cancel) —
       backend to'liq, frontend hali qo'shilmagan
-- [ ] Front Desk (kengaytirilgan), Housekeeping, Warehouse, POS, Invoicing, Accounting (USALI COA)
+- [x] Warehouse (Ombor) moduli: tovarlar katalogi, ta'minotchilar, xarid buyurtmasi
+      (tasdiqlash workflow: pending_approval → approved/rejected, qisman/to'liq
+      qabul qilish), FIFO baholash (StockLot/StockTransaction), chiqim va
+      inventarizatsiya tuzatishlari, reorder point hisoboti — backend to'liq,
+      frontend hali qo'shilmagan
+- [ ] Front Desk (kengaytirilgan), Housekeeping, POS, Invoicing, Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
 
@@ -81,6 +86,18 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/bookings/:id/check-in` | Mehmonni joylashtirish |
 | POST | `/api/properties/:propertyId/bookings/:id/check-out` | Mehmonni chiqarish |
 | POST | `/api/properties/:propertyId/bookings/:id/cancel` | Bronni bekor qilish |
+| GET/POST | `/api/suppliers` | Ta'minotchilar |
+| GET/POST | `/api/stock-items` | Ombor tovarlar katalogi |
+| GET | `/api/properties/:propertyId/warehouses` | Omborlar ro'yxati (avtomatik yaratiladi) |
+| GET | `/api/properties/:propertyId/warehouses/:warehouseId/stock-levels` | Joriy qoldiqlar (reorder point bilan) |
+| GET | `/api/properties/:propertyId/warehouses/:warehouseId/transactions` | Ombor harakatlari audit-trail |
+| POST | `/api/properties/:propertyId/warehouses/:warehouseId/issue` | Tovar chiqimi (FIFO) |
+| POST | `/api/properties/:propertyId/warehouses/:warehouseId/adjust` | Inventarizatsiya tuzatishi |
+| GET/POST | `/api/properties/:propertyId/purchase-orders` | Xarid buyurtmalari |
+| POST | `/api/properties/:propertyId/purchase-orders/:id/approve` | PO tasdiqlash |
+| POST | `/api/properties/:propertyId/purchase-orders/:id/reject` | PO rad etish |
+| POST | `/api/properties/:propertyId/purchase-orders/:id/receive` | Tovarni qabul qilish (qisman/to'liq) |
+| POST | `/api/properties/:propertyId/purchase-orders/:id/cancel` | PO bekor qilish |
 
 ## Texnik qarorlar
 

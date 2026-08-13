@@ -15,6 +15,13 @@ import { Guest } from './modules/guests/entities/guest.entity';
 import { RoomType } from './modules/rooms/entities/room-type.entity';
 import { Room } from './modules/rooms/entities/room.entity';
 import { Booking } from './modules/bookings/entities/booking.entity';
+import { Warehouse } from './modules/warehouse/entities/warehouse.entity';
+import { Supplier } from './modules/warehouse/entities/supplier.entity';
+import { StockItem } from './modules/warehouse/entities/stock-item.entity';
+import { StockLot } from './modules/warehouse/entities/stock-lot.entity';
+import { StockTransaction } from './modules/warehouse/entities/stock-transaction.entity';
+import { PurchaseOrder } from './modules/warehouse/entities/purchase-order.entity';
+import { PurchaseOrderItem } from './modules/warehouse/entities/purchase-order-item.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -23,6 +30,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -48,6 +56,13 @@ import { BookingsModule } from './modules/bookings/bookings.module';
           RoomType,
           Room,
           Booking,
+          Warehouse,
+          Supplier,
+          StockItem,
+          StockLot,
+          StockTransaction,
+          PurchaseOrder,
+          PurchaseOrderItem,
         ],
         // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
         // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
@@ -62,6 +77,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
     GuestsModule,
     RoomsModule,
     BookingsModule,
+    WarehouseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

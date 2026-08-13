@@ -10,6 +10,13 @@ import { Guest } from '../modules/guests/entities/guest.entity';
 import { RoomType } from '../modules/rooms/entities/room-type.entity';
 import { Room } from '../modules/rooms/entities/room.entity';
 import { Booking } from '../modules/bookings/entities/booking.entity';
+import { Warehouse } from '../modules/warehouse/entities/warehouse.entity';
+import { Supplier } from '../modules/warehouse/entities/supplier.entity';
+import { StockItem } from '../modules/warehouse/entities/stock-item.entity';
+import { StockLot } from '../modules/warehouse/entities/stock-lot.entity';
+import { StockTransaction } from '../modules/warehouse/entities/stock-transaction.entity';
+import { PurchaseOrder } from '../modules/warehouse/entities/purchase-order.entity';
+import { PurchaseOrderItem } from '../modules/warehouse/entities/purchase-order-item.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -31,6 +38,13 @@ export const AppDataSource = new DataSource({
     RoomType,
     Room,
     Booking,
+    Warehouse,
+    Supplier,
+    StockItem,
+    StockLot,
+    StockTransaction,
+    PurchaseOrder,
+    PurchaseOrderItem,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
