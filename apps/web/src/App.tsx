@@ -4,6 +4,9 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterTenantPage } from './pages/RegisterTenantPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { RoomsPage } from './pages/RoomsPage';
+import { GuestsPage } from './pages/GuestsPage';
+import { BookingCalendarPage } from './pages/BookingCalendarPage';
 
 function App() {
   return (
@@ -17,6 +20,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookings"
+            element={
+              <ProtectedRoute>
+                <BookingCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rooms"
+            element={
+              <ProtectedRoute>
+                <RoomsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/guests"
+            element={
+              <ProtectedRoute>
+                <GuestsPage />
               </ProtectedRoute>
             }
           />

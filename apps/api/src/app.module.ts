@@ -36,6 +36,7 @@ import { RoomsModule } from './modules/rooms/rooms.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { PosModule } from './modules/pos/pos.module';
+import { PropertiesModule } from './modules/properties/properties.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { PosModule } from './modules/pos/pos.module';
     BookingsModule,
     WarehouseModule,
     PosModule,
+    PropertiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

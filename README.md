@@ -21,11 +21,17 @@ docker-compose.yml  — lokal Postgres + Redis
       Ombor mudiri, POS), custom rol yaratish, modul+amal darajasidagi ruxsatlar,
       property-scoped rol biriktirish
 - [x] Tenant Management: platforma super-admin uchun asosiy API
-- [x] Frontend: login, ro'yxatdan o'tish, dashboard (rollar/ruxsatlar ko'rinishi)
+- [x] Frontend: login, ro'yxatdan o'tish, dashboard (rollar/ruxsatlar ko'rinishi,
+      ruxsatga qarab modul kartalari), umumiy `AppLayout` (sidebar navigatsiya)
 - [x] Bron / Xona boshqaruvi moduli: Room Type, Room (holat: available/occupied/
       maintenance/out_of_order), Guest (mehmon CRUD), Booking (yaratish, avtomatik
       narx hisoblash, sana to'qnashuvi tekshiruvi, check-in/check-out, cancel) —
-      backend to'liq, frontend hali qo'shilmagan
+      backend to'liq. **Frontend qo'shildi:** "tape chart" uslubidagi bron
+      kalendari (xonalar × 14 kunlik oyna, ko'p kunlik bronlar bitta yaxlit
+      panel sifatida chiziladi, bo'sh katak bosilganda xona+sana oldindan
+      to'ldirilgan holda bron yaratish oynasi ochiladi), mehmon qidiruv/tanlash
+      (`GuestPicker` — debounce'langan qidiruv), Xonalar bo'limi (xona turlari +
+      xonalar ro'yxati, holat belgilari), Mehmonlar bo'limi (qidiruv + yaratish)
 - [x] Warehouse (Ombor) moduli: tovarlar katalogi, ta'minotchilar, xarid buyurtmasi
       (tasdiqlash workflow: pending_approval → approved/rejected, qisman/to'liq
       qabul qilish), FIFO baholash (StockLot/StockTransaction), chiqim va
@@ -82,6 +88,7 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/roles` | Custom rol yaratish |
 | POST | `/api/user-roles` | Foydalanuvchiga rol biriktirish |
 | GET | `/api/me/permissions` | Joriy foydalanuvchining barcha ruxsatlari |
+| GET | `/api/properties` | Joriy tenant'ning mehmonxona property'lari ro'yxati |
 | GET | `/api/admin/tenants` | (super-admin) Barcha tenant'lar |
 | GET/POST | `/api/guests` | Mehmonlar ro'yxati / yaratish |
 | GET/POST | `/api/properties/:propertyId/room-types` | Xona turlari |

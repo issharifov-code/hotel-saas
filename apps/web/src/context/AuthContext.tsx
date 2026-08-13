@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { apiFetch, clearToken, getToken, setToken } from '../lib/api';
+import type { PropertyDto } from '../lib/types';
 
 interface CurrentUser {
   id: string;
@@ -11,27 +12,51 @@ interface CurrentUser {
 
 interface AuthContextValue {
   user: CurrentUser | null;
+  property: PropertyDto | null;
+  permissions: string[];
   loading: boolean;
   login: (params: { subdomain?: string; email: string; password: string }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  can: (moduleKey: string, action: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [property, setProperty] = useState<PropertyDto | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadTenantContext = async () => {
+    try {
+      const [properties, perms] = await Promise.all([
+        apiFetch<PropertyDto[]>('/properties').catch(() => []),
+        apiFetch<string[]>('/me/permissions').catch(() => []),
+      ]);
+      setProperty(properties[0] ?? null);
+      setPermissions(perms);
+    } catch {
+      setProperty(null);
+      setPermissions([]);
+    }
+  };
 
   const refresh = async () => {
     if (!getToken()) {
       setUser(null);
+      setProperty(null);
+      setPermissions([]);
       setLoading(false);
       return;
     }
     try {
       const me = await apiFetch<CurrentUser>('/auth/me');
       setUser(me);
+      if (me.tenantId) {
+        await loadTenantContext();
+      }
     } catch {
       clearToken();
       setUser(null);
@@ -53,15 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setToken(res.accessToken);
     setUser(res.user);
+    if (res.user.tenantId) {
+      await loadTenantContext();
+    }
   };
 
   const logout = () => {
     clearToken();
     setUser(null);
+    setProperty(null);
+    setPermissions([]);
   };
 
+  const can = (moduleKey: string, action: string) => permissions.includes(`${moduleKey}:${action}`);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, property, permissions, loading, login, logout, refresh, can }}>
       {children}
     </AuthContext.Provider>
   );
