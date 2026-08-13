@@ -1,0 +1,33 @@
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { GuestsService } from './guests.service';
+import { CreateGuestDto } from './dto/create-guest.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/interfaces/jwt-payload.interface';
+import { PermissionAction, PermissionModule } from '../../common/enums/permission.enum';
+
+@Controller('guests')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+export class GuestsController {
+  constructor(private readonly guestsService: GuestsService) {}
+
+  @Get()
+  @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.VIEW)
+  list(@CurrentUser() user: AuthenticatedUser, @Query('search') search?: string) {
+    return this.guestsService.list(user.tenantId!, search);
+  }
+
+  @Get(':id')
+  @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.VIEW)
+  get(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.guestsService.findById(user.tenantId!, id);
+  }
+
+  @Post()
+  @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.CREATE)
+  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateGuestDto) {
+    return this.guestsService.create(user.tenantId!, dto);
+  }
+}

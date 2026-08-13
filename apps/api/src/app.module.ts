@@ -1,0 +1,69 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import configuration from './config/configuration';
+
+import { Tenant } from './modules/tenants/entities/tenant.entity';
+import { Property } from './modules/properties/entities/property.entity';
+import { User } from './modules/users/entities/user.entity';
+import { Role } from './modules/roles/entities/role.entity';
+import { Permission } from './modules/roles/entities/permission.entity';
+import { UserRole } from './modules/roles/entities/user-role.entity';
+import { Guest } from './modules/guests/entities/guest.entity';
+import { RoomType } from './modules/rooms/entities/room-type.entity';
+import { Room } from './modules/rooms/entities/room.entity';
+import { Booking } from './modules/bookings/entities/booking.entity';
+
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { GuestsModule } from './modules/guests/guests.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres' as const,
+        host: config.get<string>('database.host'),
+        port: config.get<number>('database.port'),
+        username: config.get<string>('database.username'),
+        password: config.get<string>('database.password'),
+        database: config.get<string>('database.name'),
+        entities: [
+          Tenant,
+          Property,
+          User,
+          Role,
+          Permission,
+          UserRole,
+          Guest,
+          RoomType,
+          Room,
+          Booking,
+        ],
+        // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
+        // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
+        synchronize: config.get<string>('nodeEnv') !== 'production',
+        logging: config.get<string>('nodeEnv') === 'development',
+      }),
+    }),
+    AuthModule,
+    UsersModule,
+    TenantsModule,
+    RolesModule,
+    GuestsModule,
+    RoomsModule,
+    BookingsModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
