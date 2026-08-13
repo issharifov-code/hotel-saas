@@ -10,6 +10,7 @@ import { BookingCalendarPage } from './pages/BookingCalendarPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
+import { InvoicingPage } from './pages/InvoicingPage';
 
 function App() {
   return (
@@ -71,6 +72,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HousekeepingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/invoicing"
+            element={
+              <ProtectedRoute>
+                <InvoicingPage />
               </ProtectedRoute>
             }
           />

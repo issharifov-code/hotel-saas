@@ -18,7 +18,7 @@ const MODULES = [
   { key: 'warehouse', label: 'Warehouse (Ombor)', link: '/warehouse' },
   { key: 'pos', label: 'POS', link: '/pos' },
   { key: 'guest_crm', label: 'Guest CRM / Loyalty', link: '/guests' },
-  { key: 'invoicing', label: 'Invoicing' },
+  { key: 'invoicing', label: 'Invoicing', link: '/invoicing' },
   { key: 'accounting', label: 'Moliyaviy hisob (USALI)' },
   { key: 'reports', label: 'Hisobot / Dashboard' },
   { key: 'billing', label: 'SaaS Billing' },

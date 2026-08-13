@@ -3,7 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { MenuItemDto, PosOrderDto, PosOrderStatus, PosPaymentMethod } from '../lib/types';
+import type { BookingDto, MenuItemDto, PosOrderDto, PosOrderStatus, PosPaymentMethod } from '../lib/types';
 
 type Tab = 'orders' | 'menu';
 
@@ -360,8 +360,22 @@ function PosOrderDetailModal({
   const [addMenuItemId, setAddMenuItemId] = useState(menuItems[0]?.id ?? '');
   const [addQuantity, setAddQuantity] = useState('1');
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>('cash');
+  const [checkedInBookings, setCheckedInBookings] = useState<BookingDto[]>([]);
+  const [roomAccountBookingId, setRoomAccountBookingId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (paymentMethod !== 'room_account' || checkedInBookings.length > 0) return;
+    apiFetch<BookingDto[]>(`/properties/${propertyId}/bookings`)
+      .then((all) => {
+        const active = all.filter((b) => b.status === 'checked_in');
+        setCheckedInBookings(active);
+        setRoomAccountBookingId(active[0]?.id ?? '');
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMethod]);
 
   const addItem = async () => {
     if (!addMenuItemId || Number(addQuantity) <= 0) return;
@@ -382,12 +396,19 @@ function PosOrderDetailModal({
   };
 
   const pay = async () => {
+    if (paymentMethod === 'room_account' && !roomAccountBookingId) {
+      setError("Xona hisobiga yozish uchun avval mehmon joylashgan bronni tanlang");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       await apiFetch(`/properties/${propertyId}/pos-orders/${order.id}/pay`, {
         method: 'POST',
-        body: JSON.stringify({ paymentMethod }),
+        body: JSON.stringify({
+          paymentMethod,
+          bookingId: paymentMethod === 'room_account' ? roomAccountBookingId : undefined,
+        }),
       });
       onChanged();
       onClose();
@@ -457,18 +478,35 @@ function PosOrderDetailModal({
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         {isOpen && canEdit && (
-          <div className="border-t border-slate-100 pt-3 flex items-center gap-2">
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PosPaymentMethod)}
-              className="input flex-1"
-            >
-              <option value="cash">Naqd</option>
-              <option value="card">Karta</option>
-            </select>
-            <button type="button" disabled={busy} onClick={pay} className="btn-primary shrink-0">
-              To'lash
-            </button>
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PosPaymentMethod)}
+                className="input flex-1"
+              >
+                <option value="cash">Naqd</option>
+                <option value="card">Karta</option>
+                <option value="room_account">Xona hisobiga</option>
+              </select>
+              <button type="button" disabled={busy} onClick={pay} className="btn-primary shrink-0">
+                To'lash
+              </button>
+            </div>
+            {paymentMethod === 'room_account' && (
+              <select
+                value={roomAccountBookingId}
+                onChange={(e) => setRoomAccountBookingId(e.target.value)}
+                className="input"
+              >
+                {checkedInBookings.length === 0 && <option value="">Joylashgan mehmon topilmadi</option>}
+                {checkedInBookings.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    № {b.room?.roomNumber ?? b.roomId} — {b.guest?.fullName ?? b.guestId}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 

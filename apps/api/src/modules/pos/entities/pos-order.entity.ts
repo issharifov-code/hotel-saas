@@ -18,9 +18,12 @@ export enum PosOrderStatus {
 export enum PosPaymentMethod {
   CASH = 'cash',
   CARD = 'card',
+  ROOM_ACCOUNT = 'room_account', // mehmonning ochiq folio'siga (Invoicing) yoziladi
 }
 
-// MVP: faqat naqd/karta to'lovi. Xona hisobiga (folio) yozish keyingi bosqichda.
+// Naqd/karta — darhol to'langan hisoblanadi. "room_account" — pul olinmaydi,
+// buyurtma summasi mehmonning ochiq hisob-fakturasiga (Invoicing moduli) qo'shiladi
+// va u yerda keyinroq to'lanadi (booking check-in qilingan bo'lishi shart).
 @Entity('pos_orders')
 @Index(['tenantId', 'propertyId'])
 export class PosOrder {
@@ -45,6 +48,10 @@ export class PosOrder {
   // Ixtiyoriy: kim uchun buyurtma (billing emas, faqat izoh/kuzatuv uchun)
   @Column({ name: 'guest_id', type: 'uuid', nullable: true })
   guestId: string | null;
+
+  // "room_account" to'lovida qaysi bron folio'siga yozilganini bildiradi.
+  @Column({ name: 'booking_id', type: 'uuid', nullable: true })
+  bookingId: string | null;
 
   @Column({ name: 'payment_method', type: 'enum', enum: PosPaymentMethod, nullable: true })
   paymentMethod: PosPaymentMethod | null;

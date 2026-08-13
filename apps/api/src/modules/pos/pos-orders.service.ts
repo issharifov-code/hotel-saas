@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PosOrder, PosOrderStatus } from './entities/pos-order.entity';
+import { PosOrder, PosOrderStatus, PosPaymentMethod } from './entities/pos-order.entity';
 import { PosOrderItem } from './entities/pos-order-item.entity';
 import { MenuItem } from './entities/menu-item.entity';
 import { CreatePosOrderDto, CreatePosOrderItemDto } from './dto/create-pos-order.dto';
 import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
+import { InvoicingService } from '../invoicing/invoicing.service';
 
 @Injectable()
 export class PosOrdersService {
@@ -14,6 +15,7 @@ export class PosOrdersService {
     @InjectRepository(PosOrder) private readonly orderRepo: Repository<PosOrder>,
     @InjectRepository(PosOrderItem) private readonly orderItemRepo: Repository<PosOrderItem>,
     @InjectRepository(MenuItem) private readonly menuItemRepo: Repository<MenuItem>,
+    private readonly invoicingService: InvoicingService,
   ) {}
 
   async create(
@@ -86,6 +88,22 @@ export class PosOrdersService {
     if (!order.items || order.items.length === 0) {
       throw new BadRequestException("Bo'sh buyurtmani to'lab bo'lmaydi");
     }
+
+    if (dto.paymentMethod === PosPaymentMethod.ROOM_ACCOUNT) {
+      if (!dto.bookingId) {
+        throw new BadRequestException("Xona hisobiga yozish uchun bron tanlanishi shart");
+      }
+      await this.invoicingService.chargeToFolioByBooking(
+        tenantId,
+        propertyId,
+        dto.bookingId,
+        `POS buyurtma (${order.tableNumber ? `stol ${order.tableNumber}` : order.id.slice(0, 8)})`,
+        order.totalAmount,
+        order.id,
+      );
+      order.bookingId = dto.bookingId;
+    }
+
     order.status = PosOrderStatus.PAID;
     order.paymentMethod = dto.paymentMethod;
     order.paidAt = new Date();

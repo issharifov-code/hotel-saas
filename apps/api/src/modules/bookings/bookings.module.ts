@@ -9,6 +9,7 @@ import { RoomsModule } from '../rooms/rooms.module';
 import { GuestsModule } from '../guests/guests.module';
 import { RolesModule } from '../roles/roles.module';
 import { HousekeepingModule } from '../housekeeping/housekeeping.module';
+import { InvoicingModule } from '../invoicing/invoicing.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { HousekeepingModule } from '../housekeeping/housekeeping.module';
     GuestsModule,
     RolesModule,
     HousekeepingModule,
+    InvoicingModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController],

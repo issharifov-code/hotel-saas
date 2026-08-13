@@ -155,7 +155,7 @@ export interface MenuItemDto {
 }
 
 export type PosOrderStatus = 'open' | 'paid' | 'cancelled';
-export type PosPaymentMethod = 'cash' | 'card';
+export type PosPaymentMethod = 'cash' | 'card' | 'room_account';
 
 export interface PosOrderItemDto {
   id: string;
@@ -175,6 +175,7 @@ export interface PosOrderDto {
   status: PosOrderStatus;
   tableNumber: string | null;
   guestId: string | null;
+  bookingId: string | null;
   paymentMethod: PosPaymentMethod | null;
   totalAmount: string;
   currency: string;
@@ -204,4 +205,51 @@ export interface HousekeepingTaskDto {
   inspectedAt: string | null;
   inspectedByUserId: string | null;
   createdAt: string;
+}
+
+// --- Invoicing (Hisob-faktura) ---
+
+export type InvoiceStatus = 'open' | 'issued' | 'paid' | 'cancelled';
+export type InvoiceLineSource = 'room_charge' | 'pos_order' | 'manual';
+export type InvoicePaymentMethod = 'cash' | 'card' | 'bank_transfer';
+
+export interface InvoiceLineDto {
+  id: string;
+  invoiceId: string;
+  description: string;
+  source: InvoiceLineSource;
+  sourceId: string | null;
+  quantity: string;
+  unitPrice: string;
+  amount: string;
+  createdAt: string;
+}
+
+export interface InvoicePaymentDto {
+  id: string;
+  invoiceId: string;
+  amount: string;
+  method: InvoicePaymentMethod;
+  receivedByUserId: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface InvoiceDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  bookingId: string;
+  booking?: BookingDto;
+  guestId: string;
+  guest?: GuestDto;
+  status: InvoiceStatus;
+  totalAmount: string;
+  paidAmount: string;
+  currency: string;
+  issuedAt: string | null;
+  lines?: InvoiceLineDto[];
+  payments?: InvoicePaymentDto[];
+  createdAt: string;
+  updatedAt: string;
 }

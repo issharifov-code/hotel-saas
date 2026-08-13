@@ -42,11 +42,12 @@ docker-compose.yml  — lokal Postgres + Redis
       etish/bekor qilish/qabul qilish (qisman qabul qo'llab-quvvatlanadi),
       tezkor chiqim va inventarizatsiya tuzatish oynasi
 - [x] POS (Restoran/Bar) moduli: menyu katalogi, savdo nuqtasi (auto-create),
-      buyurtma (ochish → taom qo'shish → to'lash/bekor qilish), naqd/karta to'lovi
-      (xona hisobiga yozish keyingi bosqichda) — backend to'liq. **Frontend
-      qo'shildi:** menyu katalogi boshqaruvi, buyurtmalar kartochkalar
-      ko'rinishida (holat bo'yicha rangli belgi), buyurtma detali (taom
-      qo'shish, to'lash — naqd/karta, bekor qilish)
+      buyurtma (ochish → taom qo'shish → to'lash/bekor qilish), naqd/karta/
+      **xona hisobiga** (room account — Invoicing moduliga yoziladi) to'lovi —
+      backend to'liq. **Frontend qo'shildi:** menyu katalogi boshqaruvi,
+      buyurtmalar kartochkalar ko'rinishida (holat bo'yicha rangli belgi),
+      buyurtma detali (taom qo'shish, to'lash — naqd/karta/xona hisobiga,
+      bekor qilish)
 - [x] Housekeeping (Tozalash) moduli: xonaning band-bandlik holatidan (RoomStatus)
       mustaqil tozalik holati (`HousekeepingStatus`: clean/dirty/in_progress/
       inspected). Check-out'dan keyin xona avtomatik "dirty" bo'ladi va tozalash
@@ -55,7 +56,19 @@ docker-compose.yml  — lokal Postgres + Redis
       (biznes qoida — tasdiqlangan). Vazifa oqimi: pending → in_progress →
       done → inspected (yoki cancelled), qo'lda vazifa yaratish ham mumkin.
       Frontend: Xonalar holati (rangli belgilar) va Vazifalar bo'limlari.
-- [ ] Front Desk (kengaytirilgan), Invoicing, Accounting (USALI COA)
+- [x] Invoicing (Hisob-faktura) moduli: har bir bron uchun mehmon "folio"si
+      (`Invoice`) check-in paytida avtomatik ochiladi (xona narxi birinchi
+      qator sifatida qo'shiladi). Turish davomida POS'dan "xona hisobiga"
+      to'lovlari va xodim qo'lda qo'shgan qo'shimcha xarajatlar (minibar,
+      xizmatlar) shu folio'ga yoziladi. Check-out paytida folio "issued"
+      holatiga o'tib qat'iylashadi — **check-out to'lov holatidan mustaqil**
+      (biznes qoida — tasdiqlangan): to'lanmagan qoldiq check-out'ni
+      bloklamaydi, keyin alohida to'lov qabul qilinadi (naqd/karta/bank
+      o'tkazmasi). To'liq to'langanda holat avtomatik "paid"ga o'tadi.
+      Frontend: hisob-fakturalar ro'yxati (holat, jami/to'langan/qoldiq),
+      detal oynasi (qatorlar, qo'shimcha xarajat qo'shish, to'lov qabul
+      qilish, bekor qilish).
+- [ ] Front Desk (kengaytirilgan), Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
 
@@ -127,7 +140,7 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | GET | `/api/properties/:propertyId/pos-outlets` | Savdo nuqtalari (avtomatik yaratiladi) |
 | GET/POST | `/api/properties/:propertyId/pos-orders` | Buyurtmalar ro'yxati / yangi buyurtma ochish |
 | POST | `/api/properties/:propertyId/pos-orders/:id/items` | Ochiq buyurtmaga taom qo'shish |
-| POST | `/api/properties/:propertyId/pos-orders/:id/pay` | To'lash (naqd/karta) |
+| POST | `/api/properties/:propertyId/pos-orders/:id/pay` | To'lash (naqd/karta/xona hisobiga) |
 | POST | `/api/properties/:propertyId/pos-orders/:id/cancel` | Buyurtmani bekor qilish |
 | GET | `/api/properties/:propertyId/housekeeping/rooms` | Xonalar va ularning tozalik holati |
 | GET/POST | `/api/properties/:propertyId/housekeeping/tasks` | Tozalash vazifalari ro'yxati / yaratish |
@@ -135,6 +148,12 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/housekeeping/tasks/:id/complete` | Tozalashni yakunlash |
 | POST | `/api/properties/:propertyId/housekeeping/tasks/:id/inspect` | Tozalikni tekshirish (nazoratchi) |
 | POST | `/api/properties/:propertyId/housekeeping/tasks/:id/cancel` | Vazifani bekor qilish |
+| GET | `/api/properties/:propertyId/invoices` | Hisob-fakturalar ro'yxati (status filtri bilan) |
+| GET | `/api/properties/:propertyId/invoices/:id` | Hisob-faktura detali (qatorlar + to'lovlar) |
+| GET | `/api/properties/:propertyId/bookings/:bookingId/invoice` | Bron bo'yicha folio'ni topish |
+| POST | `/api/properties/:propertyId/invoices/:id/lines` | Qo'shimcha xarajat qatori qo'shish |
+| POST | `/api/properties/:propertyId/invoices/:id/payments` | To'lov qabul qilish (naqd/karta/bank o'tkazmasi) |
+| POST | `/api/properties/:propertyId/invoices/:id/cancel` | Hisob-fakturani bekor qilish |
 
 ## Texnik qarorlar
 

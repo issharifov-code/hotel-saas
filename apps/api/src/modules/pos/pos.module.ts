@@ -11,9 +11,10 @@ import { PosOutletsController } from './pos-outlets.controller';
 import { MenuItemsController } from './menu-items.controller';
 import { PosOrdersController } from './pos-orders.controller';
 import { RolesModule } from '../roles/roles.module';
+import { InvoicingModule } from '../invoicing/invoicing.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]), RolesModule],
+  imports: [TypeOrmModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]), RolesModule, InvoicingModule],
   providers: [PosOutletsService, MenuItemsService, PosOrdersService],
   controllers: [PosOutletsController, MenuItemsController, PosOrdersController],
   exports: [PosOutletsService],

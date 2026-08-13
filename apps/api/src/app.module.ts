@@ -27,6 +27,9 @@ import { MenuItem } from './modules/pos/entities/menu-item.entity';
 import { PosOrder } from './modules/pos/entities/pos-order.entity';
 import { PosOrderItem } from './modules/pos/entities/pos-order-item.entity';
 import { HousekeepingTask } from './modules/housekeeping/entities/housekeeping-task.entity';
+import { Invoice } from './modules/invoicing/entities/invoice.entity';
+import { InvoiceLine } from './modules/invoicing/entities/invoice-line.entity';
+import { InvoicePayment } from './modules/invoicing/entities/invoice-payment.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -39,6 +42,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { PosModule } from './modules/pos/pos.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
+import { InvoicingModule } from './modules/invoicing/invoicing.module';
 
 @Module({
   imports: [
@@ -76,6 +80,9 @@ import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
           PosOrder,
           PosOrderItem,
           HousekeepingTask,
+          Invoice,
+          InvoiceLine,
+          InvoicePayment,
         ],
         // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
         // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
@@ -94,6 +101,7 @@ import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
     PosModule,
     PropertiesModule,
     HousekeepingModule,
+    InvoicingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

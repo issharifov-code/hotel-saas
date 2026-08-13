@@ -8,6 +8,7 @@ import { RoomType } from '../rooms/entities/room-type.entity';
 import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
+import { InvoicingService } from '../invoicing/invoicing.service';
 
 // Booking'ni "band" deb hisoblaydigan holatlar — bekor qilingan yoki checkout
 // bo'lgan bronlar yangi bron bilan taqvim to'qnashuvi hisoblanmaydi.
@@ -22,6 +23,7 @@ export class BookingsService {
     private readonly roomsService: RoomsService,
     private readonly guestsService: GuestsService,
     private readonly housekeepingService: HousekeepingService,
+    private readonly invoicingService: InvoicingService,
   ) {}
 
   async create(tenantId: string, propertyId: string, dto: CreateBookingDto): Promise<Booking> {
@@ -97,7 +99,10 @@ export class BookingsService {
 
     booking.status = BookingStatus.CHECKED_IN;
     await this.roomRepo.update({ id: booking.roomId }, { status: RoomStatus.OCCUPIED });
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    // Mehmon folio'sini ochadi (xona narxi birinchi qator sifatida qo'shiladi).
+    await this.invoicingService.openFolio(tenantId, propertyId, saved);
+    return saved;
   }
 
   async checkOut(tenantId: string, propertyId: string, id: string): Promise<Booking> {
@@ -111,7 +116,11 @@ export class BookingsService {
     await this.roomRepo.update({ id: booking.roomId }, { status: RoomStatus.AVAILABLE });
     // Xonani "iflos" deb belgilaydi va tozalash navbatiga avtomatik qo'shadi.
     await this.housekeepingService.markDirtyAndQueueTask(tenantId, propertyId, booking.roomId);
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    // Folio'ni qat'iylashtiradi ("issued") — to'lov holatidan qat'i nazar
+    // (biznes qoida — tasdiqlangan), to'lanmagan qoldiq keyin kuzatiladi.
+    await this.invoicingService.issueFolio(tenantId, propertyId, saved.id);
+    return saved;
   }
 
   async cancel(tenantId: string, propertyId: string, id: string): Promise<Booking> {
