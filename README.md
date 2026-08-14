@@ -68,7 +68,18 @@ docker-compose.yml  — lokal Postgres + Redis
       Frontend: hisob-fakturalar ro'yxati (holat, jami/to'langan/qoldiq),
       detal oynasi (qatorlar, qo'shimcha xarajat qo'shish, to'lov qabul
       qilish, bekor qilish).
-- [ ] Front Desk (kengaytirilgan), Accounting (USALI COA)
+- [x] Front Desk (kengaytirilgan): mavjud bronni **xona almashtirish** yoki
+      **sanani uzaytirish/qisqartirish** orqali tahrirlash (faqat "tasdiqlangan"
+      yoki "joylashtirilgan" holatlarda mumkin). Narx farqi yangi xona/tunlar
+      soni asosida avtomatik qayta hisoblanadi; agar mehmon hozir joylashgan
+      bo'lsa (folio ochiq), farq hisob-fakturaga tuzatish qatori sifatida
+      avtomatik yoziladi (biznes qoida — tasdiqlangan). Xona almashtirishda
+      yangi xona "toza"/"tekshirilgan" bo'lishi shart (check-in bilan bir xil
+      qoida); eski xona avtomatik "iflos" deb belgilanib tozalash navbatiga
+      qo'shiladi. Xona/sana to'qnashuvi (band bo'lgan xona/sana) 409 xato
+      bilan bloklanadi. Frontend: Bron kalendaridagi bron detali oynasida
+      "Xona almashtirish" va "Sanani o'zgartirish" tugmalari.
+- [ ] Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
 - [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
 
@@ -124,6 +135,8 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/bookings/:id/check-in` | Mehmonni joylashtirish |
 | POST | `/api/properties/:propertyId/bookings/:id/check-out` | Mehmonni chiqarish |
 | POST | `/api/properties/:propertyId/bookings/:id/cancel` | Bronni bekor qilish |
+| POST | `/api/properties/:propertyId/bookings/:id/change-room` | Xona almashtirish (Front Desk) |
+| POST | `/api/properties/:propertyId/bookings/:id/update-dates` | Sanani uzaytirish/qisqartirish (Front Desk) |
 | GET/POST | `/api/suppliers` | Ta'minotchilar |
 | GET/POST | `/api/stock-items` | Ombor tovarlar katalogi |
 | GET | `/api/properties/:propertyId/warehouses` | Omborlar ro'yxati (avtomatik yaratiladi) |

@@ -5,6 +5,7 @@ export enum InvoiceLineSource {
   ROOM_CHARGE = 'room_charge', // check-in paytida avtomatik qo'shiladigan xona narxi
   POS_ORDER = 'pos_order', // POS'dan "xona hisobiga" yozilgan buyurtma
   MANUAL = 'manual', // xodim qo'lda qo'shgan qo'shimcha xarajat (minibar, zarar va h.k.)
+  ADJUSTMENT = 'adjustment', // Front Desk: xona almashtirish yoki sana o'zgartirish natijasida narx farqi (musbat/manfiy)
 }
 
 @Entity('invoice_lines')

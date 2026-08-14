@@ -135,6 +135,38 @@ export class InvoicingService {
     return this.recomputeAndSave(invoice.id);
   }
 
+  // Front Desk: xona almashtirish yoki sana o'zgartirish paytida narx farqini
+  // (musbat yoki manfiy) folio'ga avtomatik qo'shadi. Faqat folio OCHIQ bo'lsa
+  // (mehmon hozir joylashgan) ishlaydi — booking hali check-in qilinmagan bo'lsa,
+  // shunchaki booking.totalAmount yangilanadi va bu keyin check-in'da hisobga olinadi.
+  async addAdjustmentLine(
+    tenantId: string,
+    propertyId: string,
+    bookingId: string,
+    description: string,
+    amount: string,
+  ): Promise<Invoice> {
+    const invoice = await this.invoiceRepo.findOne({ where: { tenantId, propertyId, bookingId } });
+    if (!invoice || invoice.status !== InvoiceStatus.OPEN) {
+      throw new ConflictException(
+        "Narx farqini hisob-fakturaga yozib bo'lmadi — folio ochiq emas (kutilmagan holat)",
+      );
+    }
+
+    await this.lineRepo.save(
+      this.lineRepo.create({
+        invoiceId: invoice.id,
+        description,
+        source: InvoiceLineSource.ADJUSTMENT,
+        quantity: '1',
+        unitPrice: amount,
+        amount,
+      }),
+    );
+
+    return this.recomputeAndSave(invoice.id);
+  }
+
   async addPayment(tenantId: string, propertyId: string, id: string, dto: AddPaymentDto, userId: string): Promise<Invoice> {
     const invoice = await this.findById(tenantId, propertyId, id);
     if (invoice.status === InvoiceStatus.CANCELLED) {

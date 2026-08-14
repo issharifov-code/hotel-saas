@@ -204,6 +204,7 @@ export function BookingCalendarPage() {
         <BookingDetailModal
           propertyId={property.id}
           booking={detailBooking}
+          rooms={rooms}
           onClose={() => setDetailBooking(null)}
           onChanged={() => {
             setDetailBooking(null);
