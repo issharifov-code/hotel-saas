@@ -79,12 +79,27 @@ docker-compose.yml  — lokal Postgres + Redis
       qo'shiladi. Xona/sana to'qnashuvi (band bo'lgan xona/sana) 409 xato
       bilan bloklanadi. Frontend: Bron kalendaridagi bron detali oynasida
       "Xona almashtirish" va "Sanani o'zgartirish" tugmalari.
-- [x] Accounting (USALI COA): soddalashtirilgan USALI (Uniform System of
-      Accounts for the Lodging Industry) hisoblar rejasi — har bir yangi
-      tenant ro'yxatdan o'tganda 34 ta standart hisob (`Account`) avtomatik
-      "seed" qilinadi (Aktiv/Passiv/Kapital/Daromad/Xarajat, USALI
-      departamentlari bo'yicha: Rooms, Food & Beverage, Other Operated,
-      Undistributed Expenses, Fixed Charges). Ikki tomonlama yozuv
+- [x] Accounting (USALI COA): rasmiy **USALI 12th Revised Edition** (HFTP/STR/
+      CoStar, 2024) nashriga to'liq mos hisoblar rejasi — har bir yangi tenant
+      ro'yxatdan o'tganda **368 ta** standart hisob (`Account`) avtomatik "seed"
+      qilinadi (Aktiv/Passiv/Kapital + 12 ta USALI departamenti: Rooms, Food &
+      Beverage, Other Operated, Miscellaneous Income, Administrative & General,
+      Information & Telecom Systems, Sales & Marketing, Property Operation &
+      Maintenance, Energy/Water/Waste, Payroll-Related Expenses, Management
+      Fees, Nonoperating Income & Expenses). Manba: rasmiy 12th Edition "Part I
+      — Operating Statements" va "Part VI — Revenue and Expense Guide"
+      jadvallari (Schedule 1,2,4,5,6,7,8,9,10,11,14). Qamrovdan ataylab
+      soddalashtirilgan/chiqarilgan qismlar (operatsion modul yo'qligi yoki
+      niche xususiyati sababli): Schedule 3 (Other Operated Departments —
+      Golf/Spa/Parking) faqat bitta umumiy hisob bilan cheklangan; Schedule
+      1-1 (Executive Lounge) va 12-13 (House Laundry, Staff Dining) kiritilmagan
+      (allocation/net-recovery mexanizmiga asoslangan); Schedule 6 "System
+      Expenses" (IT xarajatlarini departament bo'yicha taqsimlash)
+      soddalashtirilgan; Compensation rol bo'yicha ajratilgan lekin
+      Mgmt/Nonmgmt darajasiga bo'linmagan (payroll moduli yo'qligi sababli);
+      Payroll-Related Expenses (Schedule 14) tafsiloti departamentlar bo'yicha
+      TAKRORLANMAGAN — rasmiy manbaning o'zida ham bu alohida, property
+      darajasidagi umumiy schedule sifatida beriladi. Ikki tomonlama yozuv
       (double-entry) — har bir `JournalEntry` bir nechta `JournalEntryLine`
       (debet YOKI kredit, ikkalasi emas) dan iborat, debet jami = kredit
       jami tekshiriladi. Yozuvlar **o'zgarmas** (immutable) — tuzatish faqat
