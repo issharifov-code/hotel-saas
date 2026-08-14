@@ -84,9 +84,11 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
           InvoiceLine,
           InvoicePayment,
         ],
-        // MVP bosqichida synchronize=true tez ishlab chiqish uchun ishlatiladi.
-        // Production'ga chiqishdan oldin migration-based flow'ga o'tkaziladi (typeorm migration:generate).
-        synchronize: config.get<string>('nodeEnv') !== 'production',
+        // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
+        // (src/database/data-source.ts + src/database/migrations/). `synchronize`
+        // har doim o'chirilgan — dev muhitida ham, chunki noto'g'ri/kutilmagan
+        // sxema o'zgarishlarining oldini olish uchun migratsiya yagona yo'l bo'lishi kerak.
+        synchronize: false,
         logging: config.get<string>('nodeEnv') === 'development',
       }),
     }),

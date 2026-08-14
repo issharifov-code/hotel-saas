@@ -62,7 +62,9 @@ export const AppDataSource = new DataSource({
     InvoiceLine,
     InvoicePayment,
   ],
-  migrations: ['src/database/migrations/*.ts'],
+  // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
+  // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
+  migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
 });

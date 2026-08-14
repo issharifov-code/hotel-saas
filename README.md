@@ -81,7 +81,16 @@ docker-compose.yml  — lokal Postgres + Redis
       "Xona almashtirish" va "Sanani o'zgartirish" tugmalari.
 - [ ] Accounting (USALI COA)
 - [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
-- [ ] Migration-based DB flow (hozircha `synchronize: true`, faqat dev uchun)
+- [x] Migration-based DB flow: `synchronize` butunlay o'chirildi (dev'da ham) —
+      sxema endi faqat `typeorm migration:generate`/`migration:run` orqali
+      boshqariladi (`apps/api/src/database/data-source.ts` +
+      `src/database/migrations/`). Hozirgi to'liq sxemani qamrab oluvchi
+      `Baseline` migratsiyasi yaratildi va bo'sh bazada sinovdan o'tkazildi
+      (barcha jadval/enum/FK to'g'ri yaratiladi). Mavjud (synchronize orqali
+      qurilgan) dev bazasi uchun `Baseline` "allaqachon qo'llanilgan" deb
+      qo'lda belgilandi — ma'lumotlar yo'qolmadi. Yangi sxema o'zgarishi kerak
+      bo'lganda: entity'ni o'zgartirish → `pnpm migration:generate
+      src/database/migrations/<Nomi>` → `pnpm migration:run`.
 
 ## Ishga tushirish (lokal)
 
@@ -103,8 +112,10 @@ ma'lumotlar bilan mos keladigan `hotel_saas` foydalanuvchisi va
 cd apps/api
 cp .env.example .env
 pnpm install
-pnpm start:dev          # http://localhost:3000/api
-pnpm seed                # platforma super-admin yaratadi (bir marta)
+pnpm run build            # migratsiya fayllarini ham kompilyatsiya qiladi
+pnpm migration:run         # sxemani yaratadi (bir marta, yangi migratsiyalar chiqqanda ham)
+pnpm start:dev            # http://localhost:3000/api
+pnpm seed                  # platforma super-admin yaratadi (bir marta)
 ```
 
 ### 3. Frontend
