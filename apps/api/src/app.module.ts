@@ -33,6 +33,9 @@ import { HousekeepingTask } from './modules/housekeeping/entities/housekeeping-t
 import { Invoice } from './modules/invoicing/entities/invoice.entity';
 import { InvoiceLine } from './modules/invoicing/entities/invoice-line.entity';
 import { InvoicePayment } from './modules/invoicing/entities/invoice-payment.entity';
+import { Account } from './modules/accounting/entities/account.entity';
+import { JournalEntry } from './modules/accounting/entities/journal-entry.entity';
+import { JournalEntryLine } from './modules/accounting/entities/journal-entry-line.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -46,6 +49,7 @@ import { PosModule } from './modules/pos/pos.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { InvoicingModule } from './modules/invoicing/invoicing.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
 
 @Module({
   imports: [
@@ -90,6 +94,9 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
           Invoice,
           InvoiceLine,
           InvoicePayment,
+          Account,
+          JournalEntry,
+          JournalEntryLine,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -112,6 +119,7 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
     PropertiesModule,
     HousekeepingModule,
     InvoicingModule,
+    AccountingModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: RlsTransactionInterceptor }],

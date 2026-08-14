@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant, TenantPlan, TenantStatus } from './entities/tenant.entity';
 import { Property } from '../properties/entities/property.entity';
+import { AccountingService } from '../accounting/accounting.service';
 
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -11,6 +12,7 @@ export class TenantsService {
   constructor(
     @InjectRepository(Tenant) private readonly tenantRepo: Repository<Tenant>,
     @InjectRepository(Property) private readonly propertyRepo: Repository<Property>,
+    private readonly accountingService: AccountingService,
   ) {}
 
   async createTenantWithDefaultProperty(params: {
@@ -50,6 +52,11 @@ export class TenantsService {
       );
 
       await manager.query('SELECT set_config($1, $2, true)', ['app.tenant_id', tenant.id]);
+
+      // Standart (soddalashtirilgan USALI) hisoblar rejasi — buxgalteriya moduli
+      // ishlashi uchun har bir tenant kamida shu hisoblarga ega bo'lishi shart
+      // (avtomatik provodka `systemKey` orqali ularni topadi).
+      await this.accountingService.seedDefaultChartOfAccounts(tenant.id, manager);
 
       const property = await manager.save(
         manager.create(Property, {

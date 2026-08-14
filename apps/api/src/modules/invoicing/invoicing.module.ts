@@ -6,9 +6,10 @@ import { InvoicingService } from './invoicing.service';
 import { InvoicingController } from './invoicing.controller';
 import { RolesModule } from '../roles/roles.module';
 import { RlsModule } from '../../common/rls/rls.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
-  imports: [RlsModule.forFeature([Invoice, InvoiceLine, InvoicePayment]), RolesModule],
+  imports: [RlsModule.forFeature([Invoice, InvoiceLine, InvoicePayment]), RolesModule, AccountingModule],
   providers: [InvoicingService],
   controllers: [InvoicingController],
   exports: [InvoicingService],

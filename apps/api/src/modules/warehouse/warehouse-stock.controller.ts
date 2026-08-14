@@ -56,7 +56,7 @@ export class WarehouseStockController {
     @Body() dto: IssueStockDto,
   ) {
     await this.warehousesService.findById(user.tenantId!, propertyId, warehouseId);
-    return this.stockService.issue(user.tenantId!, warehouseId, dto, user.userId);
+    return this.stockService.issue(user.tenantId!, warehouseId, dto, user.userId, { propertyId });
   }
 
   @Post('warehouses/:warehouseId/adjust')
@@ -68,6 +68,6 @@ export class WarehouseStockController {
     @Body() dto: AdjustStockDto,
   ) {
     await this.warehousesService.findById(user.tenantId!, propertyId, warehouseId);
-    return this.stockService.adjust(user.tenantId!, warehouseId, dto, user.userId);
+    return this.stockService.adjust(user.tenantId!, warehouseId, dto, user.userId, propertyId);
   }
 }

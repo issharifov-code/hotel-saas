@@ -17,6 +17,7 @@ import { WarehouseStockController } from './warehouse-stock.controller';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { RolesModule } from '../roles/roles.module';
 import { RlsModule } from '../../common/rls/rls.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { RlsModule } from '../../common/rls/rls.module';
       PurchaseOrderItem,
     ]),
     RolesModule,
+    AccountingModule,
   ],
   providers: [WarehousesService, SuppliersService, StockItemsService, StockService, PurchaseOrdersService],
   controllers: [SuppliersController, StockItemsController, WarehouseStockController, PurchaseOrdersController],

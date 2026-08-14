@@ -25,6 +25,9 @@ import { HousekeepingTask } from '../modules/housekeeping/entities/housekeeping-
 import { Invoice } from '../modules/invoicing/entities/invoice.entity';
 import { InvoiceLine } from '../modules/invoicing/entities/invoice-line.entity';
 import { InvoicePayment } from '../modules/invoicing/entities/invoice-payment.entity';
+import { Account } from '../modules/accounting/entities/account.entity';
+import { JournalEntry } from '../modules/accounting/entities/journal-entry.entity';
+import { JournalEntryLine } from '../modules/accounting/entities/journal-entry-line.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -61,6 +64,9 @@ export const AppDataSource = new DataSource({
     Invoice,
     InvoiceLine,
     InvoicePayment,
+    Account,
+    JournalEntry,
+    JournalEntryLine,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.

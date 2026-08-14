@@ -12,9 +12,15 @@ import { PosOrdersController } from './pos-orders.controller';
 import { RolesModule } from '../roles/roles.module';
 import { InvoicingModule } from '../invoicing/invoicing.module';
 import { RlsModule } from '../../common/rls/rls.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
-  imports: [RlsModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]), RolesModule, InvoicingModule],
+  imports: [
+    RlsModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]),
+    RolesModule,
+    InvoicingModule,
+    AccountingModule,
+  ],
   providers: [PosOutletsService, MenuItemsService, PosOrdersService],
   controllers: [PosOutletsController, MenuItemsController, PosOrdersController],
   exports: [PosOutletsService],

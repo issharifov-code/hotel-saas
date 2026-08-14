@@ -79,13 +79,50 @@ docker-compose.yml  — lokal Postgres + Redis
       qo'shiladi. Xona/sana to'qnashuvi (band bo'lgan xona/sana) 409 xato
       bilan bloklanadi. Frontend: Bron kalendaridagi bron detali oynasida
       "Xona almashtirish" va "Sanani o'zgartirish" tugmalari.
-- [ ] Accounting (USALI COA)
-- [x] PostgreSQL Row-Level Security (RLS): 20 ta operatsion/biznes jadval
+- [x] Accounting (USALI COA): soddalashtirilgan USALI (Uniform System of
+      Accounts for the Lodging Industry) hisoblar rejasi — har bir yangi
+      tenant ro'yxatdan o'tganda 34 ta standart hisob (`Account`) avtomatik
+      "seed" qilinadi (Aktiv/Passiv/Kapital/Daromad/Xarajat, USALI
+      departamentlari bo'yicha: Rooms, Food & Beverage, Other Operated,
+      Undistributed Expenses, Fixed Charges). Ikki tomonlama yozuv
+      (double-entry) — har bir `JournalEntry` bir nechta `JournalEntryLine`
+      (debet YOKI kredit, ikkalasi emas) dan iborat, debet jami = kredit
+      jami tekshiriladi. Yozuvlar **o'zgarmas** (immutable) — tuzatish faqat
+      yangi teskari (reversing) yozuv orqali. **Avtomatik provodka**
+      (auto-posting) mavjud modullardan: check-in/qo'shimcha xarajat/tuzatish
+      → Debitorlik (Guest Ledger) / Daromad; to'lov → Kassa yoki Karta
+      kliringi / Debitorlik; POS to'g'ridan-to'g'ri naqd/karta savdosi →
+      Kassa yoki Karta kliringi / F&B daromadi (xona hisobiga yozilgan POS
+      buyurtmalari Invoicing orqali allaqachon provodka qilingani uchun
+      qo'shimcha yozilmaydi — ikki marta hisoblanmaslik uchun); Ombor: xarid
+      buyurtmasi qabul qilinganda → Ombor zaxirasi / Kreditorlik qarz; chiqim
+      → F&B tannarxi yoki umumiy xarajat (tovar kategoriyasiga qarab) /
+      Ombor zaxirasi; manfiy inventarizatsiya tuzatishi → Ombor tanqisligi
+      xarajati / Ombor zaxirasi. Hisob-faktura bekor qilinganda (agar hali
+      to'lov qilinmagan bo'lsa) tegishli yozuvlar avtomatik teskari
+      qaytariladi. Hisobotlar: Hisoblar rejasi ro'yxati, Jurnal yozuvlari
+      (filtr bilan), Aylanma-saldo (Trial Balance), Daromadlar to'g'risida
+      hisobot (Income Statement, departament bo'yicha). Ruxsatlar:
+      `PermissionModule.ACCOUNTING` — Buxgalter (Accountant) rolida to'liq,
+      Ombor menejerida faqat ko'rish huquqi.
+      **Muhim texnik tuzatish (shu bosqichda topildi):** `StockService`va
+      `PurchaseOrdersService`da avval `@InjectDataSource().transaction()`
+      orqali YANGI, alohida DB ulanishi ochilar edi — bu ulanishda RLS
+      tenant konteksti (`app.tenant_id`) o'rnatilmagani uchun yozuvlar RLS
+      siyosati tomonidan bloklanardi (yoki xato tashlardi). Tuzatildi: bu
+      metodlar endi so'rovning o'zining REQUEST-scoped (`RlsModule.forFeature`
+      orqali in'ektsiya qilingan) repository'laridan foydalanadi — bularning
+      barchasi allaqachon bitta so'rov-tranzaksiyasi ichida ishlaydi, shuning
+      uchun qo'shimcha tranzaksiya ochish shart emas (aksincha xato edi). Xuddi
+      shu naqsh `AccountingService.postJournalEntry()`da ham topilib
+      tuzatildi.
+- [x] PostgreSQL Row-Level Security (RLS): 23 ta operatsion/biznes jadval
       (properties, guests, room_types, rooms, bookings, warehouses,
       suppliers, stock_items, stock_lots, stock_transactions,
       purchase_orders, purchase_order_items, pos_outlets, menu_items,
       pos_orders, pos_order_items, housekeeping_tasks, invoices,
-      invoice_lines, invoice_payments) endi PostgreSQL darajasida
+      invoice_lines, invoice_payments, accounts, journal_entries,
+      journal_entry_lines) endi PostgreSQL darajasida
       `tenant_id` bo'yicha izolyatsiya qilingan — hatto ilova kodida xatolik
       bo'lsa ham (masalan `tenantId` filtri unutilsa), boshqa tenant
       ma'lumotlari ko'rinmaydi/yozilmaydi. `tenants`, `users`, `roles`,
@@ -205,6 +242,11 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 | POST | `/api/properties/:propertyId/invoices/:id/lines` | Qo'shimcha xarajat qatori qo'shish |
 | POST | `/api/properties/:propertyId/invoices/:id/payments` | To'lov qabul qilish (naqd/karta/bank o'tkazmasi) |
 | POST | `/api/properties/:propertyId/invoices/:id/cancel` | Hisob-fakturani bekor qilish |
+| GET | `/api/properties/:propertyId/accounting/accounts` | Hisoblar rejasi (Chart of Accounts) ro'yxati |
+| GET | `/api/properties/:propertyId/accounting/journal-entries` | Jurnal yozuvlari ro'yxati (from/to/sourceModule filtri) |
+| POST | `/api/properties/:propertyId/accounting/journal-entries` | Qo'lda jurnal yozuvi yaratish |
+| GET | `/api/properties/:propertyId/accounting/trial-balance` | Aylanma-saldo hisoboti (asOfDate ixtiyoriy) |
+| GET | `/api/properties/:propertyId/accounting/income-statement` | Daromadlar to'g'risida hisobot (from/to majburiy) |
 
 ## Texnik qarorlar
 

@@ -8,6 +8,15 @@ import { CreatePosOrderDto, CreatePosOrderItemDto } from './dto/create-pos-order
 import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
 import { InvoicingService } from '../invoicing/invoicing.service';
+import { AccountingService } from '../accounting/accounting.service';
+
+// PosPaymentMethod (naqd/karta, to'g'ridan-to'g'ri to'lov) -> Accounting hisob
+// system key. ROOM_ACCOUNT bu yerda yo'q — u InvoicingService.chargeToFolioByBooking
+// orqali allaqachon provodka qilinadi (Debitorlik/F&B daromadi).
+const DIRECT_PAYMENT_SYSTEM_KEY: Partial<Record<PosPaymentMethod, string>> = {
+  [PosPaymentMethod.CASH]: 'cash',
+  [PosPaymentMethod.CARD]: 'card_clearing',
+};
 
 @Injectable()
 export class PosOrdersService {
@@ -16,6 +25,7 @@ export class PosOrdersService {
     @InjectRepository(PosOrderItem) private readonly orderItemRepo: Repository<PosOrderItem>,
     @InjectRepository(MenuItem) private readonly menuItemRepo: Repository<MenuItem>,
     private readonly invoicingService: InvoicingService,
+    private readonly accountingService: AccountingService,
   ) {}
 
   async create(
@@ -102,6 +112,20 @@ export class PosOrdersService {
         order.id,
       );
       order.bookingId = dto.bookingId;
+    } else {
+      const debitSystemKey = DIRECT_PAYMENT_SYSTEM_KEY[dto.paymentMethod];
+      if (debitSystemKey) {
+        await this.accountingService.postSimpleEntry({
+          tenantId,
+          propertyId,
+          description: `POS to'lovi (${order.tableNumber ? `stol ${order.tableNumber}` : order.id.slice(0, 8)})`,
+          sourceModule: 'pos',
+          sourceId: order.id,
+          debitSystemKey,
+          creditSystemKey: 'fb_revenue',
+          amount: order.totalAmount,
+        });
+      }
     }
 
     order.status = PosOrderStatus.PAID;

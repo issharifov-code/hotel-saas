@@ -3,10 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceLine, InvoiceLineSource } from './entities/invoice-line.entity';
-import { InvoicePayment } from './entities/invoice-payment.entity';
+import { InvoicePayment, InvoicePaymentMethod } from './entities/invoice-payment.entity';
 import { AddInvoiceLineDto } from './dto/add-invoice-line.dto';
 import { AddPaymentDto } from './dto/add-payment.dto';
 import { Booking } from '../bookings/entities/booking.entity';
+import { AccountingService } from '../accounting/accounting.service';
+
+// InvoicePaymentMethod -> Accounting hisob-kitobi system key (Kassa/Bank/Karta kliringi).
+const PAYMENT_METHOD_SYSTEM_KEY: Record<InvoicePaymentMethod, string> = {
+  [InvoicePaymentMethod.CASH]: 'cash',
+  [InvoicePaymentMethod.CARD]: 'card_clearing',
+  [InvoicePaymentMethod.BANK_TRANSFER]: 'bank_transfer',
+};
 
 @Injectable()
 export class InvoicingService {
@@ -14,6 +22,7 @@ export class InvoicingService {
     @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
     @InjectRepository(InvoiceLine) private readonly lineRepo: Repository<InvoiceLine>,
     @InjectRepository(InvoicePayment) private readonly paymentRepo: Repository<InvoicePayment>,
+    private readonly accountingService: AccountingService,
   ) {}
 
   // Check-in paytida BookingsService tomonidan chaqiriladi — folio ochiladi va
@@ -42,7 +51,20 @@ export class InvoicingService {
       currency: booking.currency,
       lines: [roomChargeLine],
     });
-    return this.invoiceRepo.save(invoice);
+    const saved = await this.invoiceRepo.save(invoice);
+
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description: `Xona narxi — bron ${booking.id.slice(0, 8)}`,
+      sourceModule: 'invoicing',
+      sourceId: saved.id,
+      debitSystemKey: 'guest_ledger_ar',
+      creditSystemKey: 'room_revenue',
+      amount: booking.totalAmount,
+    });
+
+    return saved;
   }
 
   // Check-out paytida BookingsService tomonidan chaqiriladi — folio qat'iylashadi
@@ -86,7 +108,7 @@ export class InvoicingService {
     this.assertChargeable(invoice);
 
     const amount = (dto.quantity * dto.unitPrice).toFixed(2);
-    await this.lineRepo.save(
+    const savedLine = await this.lineRepo.save(
       this.lineRepo.create({
         invoiceId: invoice.id,
         description: dto.description,
@@ -96,6 +118,17 @@ export class InvoicingService {
         amount,
       }),
     );
+
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description: `Qo'shimcha xarajat — ${dto.description}`,
+      sourceModule: 'invoicing',
+      sourceId: savedLine.id,
+      debitSystemKey: 'guest_ledger_ar',
+      creditSystemKey: 'other_operated_revenue',
+      amount,
+    });
 
     return this.recomputeAndSave(invoice.id);
   }
@@ -132,6 +165,17 @@ export class InvoicingService {
       }),
     );
 
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description: `Xona hisobiga yozildi — ${description}`,
+      sourceModule: 'invoicing',
+      sourceId,
+      debitSystemKey: 'guest_ledger_ar',
+      creditSystemKey: 'fb_revenue',
+      amount,
+    });
+
     return this.recomputeAndSave(invoice.id);
   }
 
@@ -164,6 +208,17 @@ export class InvoicingService {
       }),
     );
 
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description: `Narx tuzatishi — ${description}`,
+      sourceModule: 'invoicing',
+      sourceId: invoice.id,
+      debitSystemKey: 'guest_ledger_ar',
+      creditSystemKey: 'room_revenue',
+      amount,
+    });
+
     return this.recomputeAndSave(invoice.id);
   }
 
@@ -173,7 +228,7 @@ export class InvoicingService {
       throw new ConflictException("Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi");
     }
 
-    await this.paymentRepo.save(
+    const savedPayment = await this.paymentRepo.save(
       this.paymentRepo.create({
         invoiceId: invoice.id,
         amount: dto.amount.toFixed(2),
@@ -183,16 +238,77 @@ export class InvoicingService {
       }),
     );
 
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description: `To'lov qabul qilindi — hisob-faktura ${invoice.id.slice(0, 8)}`,
+      sourceModule: 'invoicing',
+      sourceId: savedPayment.id,
+      debitSystemKey: PAYMENT_METHOD_SYSTEM_KEY[dto.method],
+      creditSystemKey: 'guest_ledger_ar',
+      amount: dto.amount,
+    });
+
     return this.recomputeAndSave(invoice.id);
   }
 
+  // Bekor qilish faqat hali TO'LOV OLINMAGAN hisob-fakturalar uchun avtomatik
+  // hisobot yozuvlarini teskari qiladi (Debitorlik/Daromad qatorlarini nolga
+  // tushiradi). Agar hisob-fakturaga qisman to'lov qilingan bo'lsa (paidAmount > 0),
+  // avtomatik teskari yozuv QILINMAYDI — bu holat qaytarish (refund) jarayonini
+  // talab qiladi, bu hozircha alohida (keyingi bosqich) funksionallik. Buxgalter
+  // bunday holatlarda qo'lda tuzatish yozuvi kiritishi kerak.
   async cancel(tenantId: string, propertyId: string, id: string): Promise<Invoice> {
     const invoice = await this.findById(tenantId, propertyId, id);
     if (invoice.status === InvoiceStatus.PAID) {
       throw new ConflictException("To'liq to'langan hisob-fakturani bekor qilib bo'lmaydi");
     }
+
+    if (Number(invoice.paidAmount) === 0) {
+      const roomAmount = this.sumLines(invoice.lines, [InvoiceLineSource.ROOM_CHARGE, InvoiceLineSource.ADJUSTMENT]);
+      const fbAmount = this.sumLines(invoice.lines, [InvoiceLineSource.POS_ORDER]);
+      const otherAmount = this.sumLines(invoice.lines, [InvoiceLineSource.MANUAL]);
+
+      // Teskari yozuv — asl provodkadagi debet/kredit hisoblari almashtirilgan
+      // holda, xuddi shu (ishorali) miqdor bilan.
+      await this.accountingService.postSimpleEntry({
+        tenantId,
+        propertyId,
+        description: `Hisob-faktura bekor qilindi (xona daromadi) — ${invoice.id.slice(0, 8)}`,
+        sourceModule: 'invoicing',
+        sourceId: invoice.id,
+        debitSystemKey: 'room_revenue',
+        creditSystemKey: 'guest_ledger_ar',
+        amount: roomAmount,
+      });
+      await this.accountingService.postSimpleEntry({
+        tenantId,
+        propertyId,
+        description: `Hisob-faktura bekor qilindi (F&B daromadi) — ${invoice.id.slice(0, 8)}`,
+        sourceModule: 'invoicing',
+        sourceId: invoice.id,
+        debitSystemKey: 'fb_revenue',
+        creditSystemKey: 'guest_ledger_ar',
+        amount: fbAmount,
+      });
+      await this.accountingService.postSimpleEntry({
+        tenantId,
+        propertyId,
+        description: `Hisob-faktura bekor qilindi (boshqa daromad) — ${invoice.id.slice(0, 8)}`,
+        sourceModule: 'invoicing',
+        sourceId: invoice.id,
+        debitSystemKey: 'other_operated_revenue',
+        creditSystemKey: 'guest_ledger_ar',
+        amount: otherAmount,
+      });
+    }
+
     invoice.status = InvoiceStatus.CANCELLED;
     return this.invoiceRepo.save(invoice);
+  }
+
+  private sumLines(lines: InvoiceLine[], sources: InvoiceLineSource[]): number {
+    return lines.filter((l) => sources.includes(l.source)).reduce((sum, l) => sum + Number(l.amount), 0);
   }
 
   private assertChargeable(invoice: Invoice): void {

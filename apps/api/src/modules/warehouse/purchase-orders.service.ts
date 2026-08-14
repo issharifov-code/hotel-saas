@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { PurchaseOrder, PurchaseOrderStatus } from './entities/purchase-order.entity';
 import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
 import { StockItem } from './entities/stock-item.entity';
@@ -23,7 +23,6 @@ export class PurchaseOrdersService {
     @InjectRepository(PurchaseOrderItem) private readonly poItemRepo: Repository<PurchaseOrderItem>,
     @InjectRepository(StockItem) private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(Supplier) private readonly supplierRepo: Repository<Supplier>,
-    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly stockService: StockService,
   ) {}
 
@@ -158,31 +157,37 @@ export class PurchaseOrdersService {
       }
     }
 
-    return this.dataSource.transaction(async (manager) => {
-      for (const line of dto.lines) {
-        const item = itemsById.get(line.purchaseOrderItemId)!;
-        await this.stockService.receiveLot({
-          tenantId,
-          warehouseId: po.warehouseId,
-          stockItemId: item.stockItemId,
-          quantity: line.quantityReceived,
-          unitCost: item.unitCost,
-          purchaseOrderId: po.id,
-          createdByUserId: userId,
-          manager,
-        });
-        item.quantityReceived = (Number(item.quantityReceived) + Number(line.quantityReceived)).toFixed(3);
-        await manager.save(PurchaseOrderItem, item);
-      }
-
-      const refreshedItems = await manager.getRepository(PurchaseOrderItem).find({
-        where: { purchaseOrderId: po.id },
+    // Izoh: bu yerda avval alohida `dataSource.transaction()` ochilar edi — bu xato edi,
+    // chunki u so'rovning RLS-skopli tranzaksiyasidan (RlsContextService orqali ochilgan,
+    // `app.tenant_id` o'rnatilgan) mustaqil, yangi ulanish ochadi va shu ulanishda tenant
+    // konteksti o'rnatilmagani uchun RLS siyosati yozishlarni bloklaydi. To'g'ri yechim —
+    // shu servisning REQUEST-scoped repository'laridan (`poItemRepo`, `poRepo`) va
+    // `stockService.receiveLot()`ning `manager` argumentisiz (ya'ni o'zining REQUEST-scoped
+    // repolaridan) foydalanishidan foydalanish — bularning barchasi allaqachon BITTA so'rov
+    // tranzaksiyasi ichida ishlaydi.
+    for (const line of dto.lines) {
+      const item = itemsById.get(line.purchaseOrderItemId)!;
+      await this.stockService.receiveLot({
+        tenantId,
+        propertyId,
+        warehouseId: po.warehouseId,
+        stockItemId: item.stockItemId,
+        quantity: line.quantityReceived,
+        unitCost: item.unitCost,
+        purchaseOrderId: po.id,
+        createdByUserId: userId,
       });
-      const fullyReceived = refreshedItems.every(
-        (item) => Number(item.quantityReceived) >= Number(item.quantityOrdered) - 1e-9,
-      );
-      po.status = fullyReceived ? PurchaseOrderStatus.RECEIVED : PurchaseOrderStatus.PARTIALLY_RECEIVED;
-      return manager.save(PurchaseOrder, po);
+      item.quantityReceived = (Number(item.quantityReceived) + Number(line.quantityReceived)).toFixed(3);
+      await this.poItemRepo.save(item);
+    }
+
+    const refreshedItems = await this.poItemRepo.find({
+      where: { purchaseOrderId: po.id },
     });
+    const fullyReceived = refreshedItems.every(
+      (item) => Number(item.quantityReceived) >= Number(item.quantityOrdered) - 1e-9,
+    );
+    po.status = fullyReceived ? PurchaseOrderStatus.RECEIVED : PurchaseOrderStatus.PARTIALLY_RECEIVED;
+    return this.poRepo.save(po);
   }
 }
