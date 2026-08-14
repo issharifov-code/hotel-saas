@@ -80,7 +80,31 @@ docker-compose.yml  — lokal Postgres + Redis
       bilan bloklanadi. Frontend: Bron kalendaridagi bron detali oynasida
       "Xona almashtirish" va "Sanani o'zgartirish" tugmalari.
 - [ ] Accounting (USALI COA)
-- [ ] PostgreSQL Row-Level Security (hozircha tenant_id application-level filtrlanadi)
+- [x] PostgreSQL Row-Level Security (RLS): 20 ta operatsion/biznes jadval
+      (properties, guests, room_types, rooms, bookings, warehouses,
+      suppliers, stock_items, stock_lots, stock_transactions,
+      purchase_orders, purchase_order_items, pos_outlets, menu_items,
+      pos_orders, pos_order_items, housekeeping_tasks, invoices,
+      invoice_lines, invoice_payments) endi PostgreSQL darajasida
+      `tenant_id` bo'yicha izolyatsiya qilingan — hatto ilova kodida xatolik
+      bo'lsa ham (masalan `tenantId` filtri unutilsa), boshqa tenant
+      ma'lumotlari ko'rinmaydi/yozilmaydi. `tenants`, `users`, `roles`,
+      `user_roles`, `permissions` jadvallari QASDDAN chetlab o'tilgan —
+      login/ro'yxatdan o'tish oqimlari tenant kontekstidan OLDIN shu
+      jadvallarga kirishi kerak (masalan subdomain bo'yicha tenant qidirish).
+      Amalga oshirish: ilova endi ega (owner) bo'lmagan alohida
+      `hotel_saas_app` roli orqali ulanadi (`FORCE ROW LEVEL SECURITY`ga
+      hojat yo'q); har bir HTTP so'rov boshida `RlsTransactionInterceptor`
+      (`APP_INTERCEPTOR`) joriy foydalanuvchining `tenantId`sini PostgreSQL
+      sessiyasiga (`SELECT set_config('app.tenant_id', ..., true)`) yozadi,
+      shu orqali siyosatlar (`USING tenant_id = current_setting(...)::uuid`)
+      ishlaydi. Migratsiya/seed skriptlari hamon jadval egasi (`hotel_saas`)
+      orqali ishlaydi. Ro'yxatdan o'tish oqimi (`register-tenant`) hali
+      autentifikatsiyasiz bo'lgani uchun standart property yozuvi alohida
+      tranzaksiyada, tenant ID'ni qo'lda `set_config` qilib yaratiladi.
+      To'liq tenant-o'zaro (cross-tenant) salbiy test HTTP darajasida
+      o'tkazildi: boshqa tenant ma'lumotlarini ro'yxatlash, ID bo'yicha
+      to'g'ridan-to'g'ri o'qish va yozishga urinish — barchasi bloklandi.
 - [x] Migration-based DB flow: `synchronize` butunlay o'chirildi (dev'da ham) —
       sxema endi faqat `typeorm migration:generate`/`migration:run` orqali
       boshqariladi (`apps/api/src/database/data-source.ts` +
@@ -104,7 +128,10 @@ docker compose up -d postgres redis
 
 Yoki lokal PostgreSQL 16 xizmatidan foydalaning — `apps/api/.env.example`dagi
 ma'lumotlar bilan mos keladigan `hotel_saas` foydalanuvchisi va
-`hotel_saas_dev` bazasini yarating.
+`hotel_saas_dev` bazasini yarating. `hotel_saas` roliga `CREATEROLE`
+huquqini bering (`ALTER ROLE hotel_saas CREATEROLE;`) — Row-Level Security
+migratsiyasi ilova uchun alohida, kamroq huquqli `hotel_saas_app` rolini
+o'zi yaratadi (parol `.env`dagi `DB_APP_PASSWORD` bilan mos bo'lishi kerak).
 
 ### 2. Backend
 
@@ -183,9 +210,13 @@ pnpm dev                 # http://localhost:5173 (backend'ga proxy qiladi)
 
 - **Backend**: NestJS + TypeORM 1.x + PostgreSQL. Prisma emas — bu muhitda
   Prisma binary engine yuklab olish tarmoq cheklovi tufayli ishlamadi.
-- **Multi-tenancy**: hozircha application-level `tenant_id` filtrlash (har bir
-  service metodi `tenantId`ni aniq talab qiladi). PostgreSQL RLS keyingi
-  bosqichda qo'shiladi (texnik arxitektura hujjatidagi 3-bo'lim).
+- **Multi-tenancy**: application-level `tenant_id` filtrlash (har bir service
+  metodi `tenantId`ni aniq talab qiladi) + PostgreSQL Row-Level Security
+  ikkinchi qatlam sifatida (yuqoridagi roadmap bo'limiga qarang).
+- **Production eslatma**: `DB_APP_PASSWORD` (RLS'siz ishlaydigan
+  `hotel_saas_app` roli paroli) hozircha `.env`da oddiy matn — production'da
+  bu sirni maxsus sir-menejer (masalan Vault, AWS Secrets Manager) orqali
+  boshqarish kerak.
 - **Auth**: JWT (`@nestjs/passport` + `passport-jwt`). Tenant xodimlari uchun
   login'da `subdomain` talab qilinadi (bir xil email turli tenant'larda
   bo'lishi mumkin).

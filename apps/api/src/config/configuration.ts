@@ -4,9 +4,15 @@ export default () => ({
   database: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
+    // Migratsiya/seed operatsiyalari uchun (jadval egasi, RLS'dan ta'sirlanmaydi).
     username: process.env.DB_USERNAME || 'hotel_saas',
     password: process.env.DB_PASSWORD || 'hotel_saas_dev',
     name: process.env.DB_NAME || 'hotel_saas_dev',
+    // Runtime ilova ulanishi uchun — jadval egasi EMAS, shuning uchun
+    // Row-Level Security siyosatlari unga ham qo'llaniladi (himoya qatlami).
+    // Rol EnableRowLevelSecurity migratsiyasi orqali yaratiladi.
+    appUsername: process.env.DB_APP_USERNAME || 'hotel_saas_app',
+    appPassword: process.env.DB_APP_PASSWORD || 'hotel_saas_app_dev',
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'change-me-in-production',

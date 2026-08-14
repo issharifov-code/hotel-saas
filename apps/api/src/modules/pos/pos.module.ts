@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { PosOutlet } from './entities/pos-outlet.entity';
 import { MenuItem } from './entities/menu-item.entity';
 import { PosOrder } from './entities/pos-order.entity';
@@ -12,9 +11,10 @@ import { MenuItemsController } from './menu-items.controller';
 import { PosOrdersController } from './pos-orders.controller';
 import { RolesModule } from '../roles/roles.module';
 import { InvoicingModule } from '../invoicing/invoicing.module';
+import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]), RolesModule, InvoicingModule],
+  imports: [RlsModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]), RolesModule, InvoicingModule],
   providers: [PosOutletsService, MenuItemsService, PosOrdersService],
   controllers: [PosOutletsController, MenuItemsController, PosOrdersController],
   exports: [PosOutletsService],

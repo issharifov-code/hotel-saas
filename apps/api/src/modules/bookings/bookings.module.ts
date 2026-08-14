@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from './entities/booking.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { RoomType } from '../rooms/entities/room-type.entity';
@@ -10,10 +9,11 @@ import { GuestsModule } from '../guests/guests.module';
 import { RolesModule } from '../roles/roles.module';
 import { HousekeepingModule } from '../housekeeping/housekeeping.module';
 import { InvoicingModule } from '../invoicing/invoicing.module';
+import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Booking, Room, RoomType]),
+    RlsModule.forFeature([Booking, Room, RoomType]),
     RoomsModule,
     GuestsModule,
     RolesModule,

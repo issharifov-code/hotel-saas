@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Warehouse } from './entities/warehouse.entity';
 import { Supplier } from './entities/supplier.entity';
 import { StockItem } from './entities/stock-item.entity';
@@ -17,10 +16,11 @@ import { StockItemsController } from './stock-items.controller';
 import { WarehouseStockController } from './warehouse-stock.controller';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { RolesModule } from '../roles/roles.module';
+import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
+    RlsModule.forFeature([
       Warehouse,
       Supplier,
       StockItem,

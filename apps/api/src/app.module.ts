@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from './config/configuration';
+import { RlsContextModule } from './common/rls/rls-context.module';
+import { RlsTransactionInterceptor } from './common/rls/rls-transaction.interceptor';
 
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { Property } from './modules/properties/entities/property.entity';
@@ -54,8 +57,12 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
         type: 'postgres' as const,
         host: config.get<string>('database.host'),
         port: config.get<number>('database.port'),
-        username: config.get<string>('database.username'),
-        password: config.get<string>('database.password'),
+        // Runtime ulanish jadval egasi bo'lmagan `hotel_saas_app` roli orqali
+        // ishlaydi — shu bilan Row-Level Security siyosatlari (RLS migratsiyasi
+        // qarang) ilovaning o'ziga ham qo'llaniladi. Migratsiya/seed skriptlari
+        // esa hamon `database.username` (jadval egasi) orqali ishlaydi.
+        username: config.get<string>('database.appUsername'),
+        password: config.get<string>('database.appPassword'),
         database: config.get<string>('database.name'),
         entities: [
           Tenant,
@@ -92,6 +99,7 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
         logging: config.get<string>('nodeEnv') === 'development',
       }),
     }),
+    RlsContextModule,
     AuthModule,
     UsersModule,
     TenantsModule,
@@ -106,6 +114,6 @@ import { InvoicingModule } from './modules/invoicing/invoicing.module';
     InvoicingModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_INTERCEPTOR, useClass: RlsTransactionInterceptor }],
 })
 export class AppModule {}
