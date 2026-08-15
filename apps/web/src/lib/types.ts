@@ -25,6 +25,9 @@ export interface RoomDto {
   createdAt: string;
 }
 
+export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjust';
+
 export interface GuestDto {
   id: string;
   tenantId: string;
@@ -34,8 +37,24 @@ export interface GuestDto {
   nationality: string | null;
   documentType: string | null;
   documentNumber: string | null;
+  dateOfBirth: string | null;
+  notes: string | null;
+  loyaltyTier: LoyaltyTier;
+  loyaltyPoints: number;
+  lifetimePoints: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LoyaltyTransactionDto {
+  id: string;
+  guestId: string;
+  type: LoyaltyTransactionType;
+  points: number;
+  reason: string;
+  relatedInvoiceId: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
@@ -45,6 +64,7 @@ export interface BookingDto {
   id: string;
   tenantId: string;
   propertyId: string;
+  property?: PropertyDto;
   roomId: string;
   room?: RoomDto;
   guestId: string;
