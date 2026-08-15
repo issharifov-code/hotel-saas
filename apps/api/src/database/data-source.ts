@@ -7,6 +7,7 @@ import { Role } from '../modules/roles/entities/role.entity';
 import { Permission } from '../modules/roles/entities/permission.entity';
 import { UserRole } from '../modules/roles/entities/user-role.entity';
 import { Guest } from '../modules/guests/entities/guest.entity';
+import { LoyaltyTransaction } from '../modules/guests/entities/loyalty-transaction.entity';
 import { RoomType } from '../modules/rooms/entities/room-type.entity';
 import { Room } from '../modules/rooms/entities/room.entity';
 import { Booking } from '../modules/bookings/entities/booking.entity';
@@ -46,6 +47,7 @@ export const AppDataSource = new DataSource({
     Permission,
     UserRole,
     Guest,
+    LoyaltyTransaction,
     RoomType,
     Room,
     Booking,
