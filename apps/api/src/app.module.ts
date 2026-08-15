@@ -51,6 +51,7 @@ import { PropertiesModule } from './modules/properties/properties.module';
 import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { InvoicingModule } from './modules/invoicing/invoicing.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -122,6 +123,7 @@ import { AccountingModule } from './modules/accounting/accounting.module';
     HousekeepingModule,
     InvoicingModule,
     AccountingModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
