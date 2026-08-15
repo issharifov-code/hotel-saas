@@ -375,3 +375,24 @@ export interface IncomeStatementDto {
   revenue: IncomeStatementRow[];
   expense: IncomeStatementRow[];
 }
+
+// --- Reports / Dashboard ---
+
+export interface ReportsOverviewDto {
+  asOfDate: string;
+  periodDays: number;
+  occupancy: {
+    totalRooms: number;
+    occupiedRooms: number;
+    occupancyRatePct: number;
+  };
+  todayArrivals: number;
+  todayDepartures: number;
+  inHouseBookings: number;
+  adr: number;
+  revPar: number;
+  revenueTrend: { date: string; amount: number }[];
+  outstandingInvoices: { count: number; totalBalance: number };
+  housekeepingPending: number;
+  loyaltyDistribution: { tier: LoyaltyTier; count: number }[];
+}
