@@ -7,9 +7,15 @@ import { InvoicingController } from './invoicing.controller';
 import { RolesModule } from '../roles/roles.module';
 import { RlsModule } from '../../common/rls/rls.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { GuestsModule } from '../guests/guests.module';
 
 @Module({
-  imports: [RlsModule.forFeature([Invoice, InvoiceLine, InvoicePayment]), RolesModule, AccountingModule],
+  imports: [
+    RlsModule.forFeature([Invoice, InvoiceLine, InvoicePayment]),
+    RolesModule,
+    AccountingModule,
+    GuestsModule,
+  ],
   providers: [InvoicingService],
   controllers: [InvoicingController],
   exports: [InvoicingService],
