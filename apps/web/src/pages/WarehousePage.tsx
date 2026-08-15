@@ -9,6 +9,7 @@ import type {
   StockItemDto,
   StockLevelDto,
   SupplierDto,
+  WarehouseDto,
 } from '../lib/types';
 
 type Tab = 'stock' | 'items' | 'suppliers' | 'orders';
@@ -38,6 +39,7 @@ const OPEN_PO_STATUSES: PurchaseOrderStatus[] = ['draft', 'pending_approval', 'a
 export function WarehousePage() {
   const { property, can } = useAuth();
   const [tab, setTab] = useState<Tab>('stock');
+  const [warehouses, setWarehouses] = useState<WarehouseDto[]>([]);
   const [warehouseId, setWarehouseId] = useState<string | null>(null);
   const [stockLevels, setStockLevels] = useState<StockLevelDto[]>([]);
   const [stockItems, setStockItems] = useState<StockItemDto[]>([]);
@@ -49,16 +51,24 @@ export function WarehousePage() {
   const [showCreateItem, setShowCreateItem] = useState(false);
   const [showCreateSupplier, setShowCreateSupplier] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [showCreateWarehouse, setShowCreateWarehouse] = useState(false);
   const [receiveOrder, setReceiveOrder] = useState<PurchaseOrderDto | null>(null);
   const [actionItem, setActionItem] = useState<StockLevelDto | null>(null);
+
+  const loadStockLevels = async (whId: string) => {
+    if (!property) return;
+    const levels = await apiFetch<StockLevelDto[]>(`/properties/${property.id}/warehouses/${whId}/stock-levels`);
+    setStockLevels(levels);
+  };
 
   const load = async () => {
     if (!property) return;
     setLoading(true);
     setError(null);
     try {
-      const warehouses = await apiFetch<{ id: string }[]>(`/properties/${property.id}/warehouses`);
-      const whId = warehouses[0]?.id ?? null;
+      const whs = await apiFetch<WarehouseDto[]>(`/properties/${property.id}/warehouses`);
+      setWarehouses(whs);
+      const whId = warehouseId && whs.some((w) => w.id === warehouseId) ? warehouseId : (whs[0]?.id ?? null);
       setWarehouseId(whId);
       const [items, sups, ords] = await Promise.all([
         apiFetch<StockItemDto[]>('/stock-items'),
@@ -69,10 +79,7 @@ export function WarehousePage() {
       setSuppliers(sups);
       setOrders(ords);
       if (whId) {
-        const levels = await apiFetch<StockLevelDto[]>(
-          `/properties/${property.id}/warehouses/${whId}/stock-levels`,
-        );
-        setStockLevels(levels);
+        await loadStockLevels(whId);
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
@@ -85,6 +92,16 @@ export function WarehousePage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property?.id]);
+
+  const selectWarehouse = async (whId: string) => {
+    setWarehouseId(whId);
+    setError(null);
+    try {
+      await loadStockLevels(whId);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
+    }
+  };
 
   const supplierMap = useMemo(() => new Map(suppliers.map((s) => [s.id, s])), [suppliers]);
 
@@ -118,11 +135,32 @@ export function WarehousePage() {
       ) : (
         <>
           {tab === 'stock' && (
-            <StockLevelsSection
-              levels={stockLevels}
-              canEdit={can('warehouse', 'edit') || can('warehouse', 'create')}
-              onAction={(row) => setActionItem(row)}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <select
+                  value={warehouseId ?? ''}
+                  onChange={(e) => selectWarehouse(e.target.value)}
+                  className="input max-w-xs"
+                >
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                      {w.isDefault ? ' (asosiy)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {can('warehouse', 'create') && (
+                  <button onClick={() => setShowCreateWarehouse(true)} className="btn-secondary shrink-0">
+                    + Ombor qo'shish
+                  </button>
+                )}
+              </div>
+              <StockLevelsSection
+                levels={stockLevels}
+                canEdit={can('warehouse', 'edit') || can('warehouse', 'create')}
+                onAction={(row) => setActionItem(row)}
+              />
+            </div>
           )}
           {tab === 'items' && (
             <StockItemsSection
@@ -160,6 +198,17 @@ export function WarehousePage() {
           onClose={() => setShowCreateItem(false)}
           onCreated={() => {
             setShowCreateItem(false);
+            load();
+          }}
+        />
+      )}
+
+      {showCreateWarehouse && property && (
+        <CreateWarehouseModal
+          propertyId={property.id}
+          onClose={() => setShowCreateWarehouse(false)}
+          onCreated={() => {
+            setShowCreateWarehouse(false);
             load();
           }}
         />
@@ -213,6 +262,58 @@ export function WarehousePage() {
         />
       )}
     </AppLayout>
+  );
+}
+
+function CreateWarehouseModal({
+  propertyId,
+  onClose,
+  onCreated,
+}: {
+  propertyId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/properties/${propertyId}/warehouses`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal title="Yangi ombor" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+            placeholder="masalan: Oshxona ombori"
+          />
+        </label>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
+        </button>
+      </form>
+    </Modal>
   );
 }
 

@@ -3,7 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { BookingDto, MenuItemDto, PosOrderDto, PosOrderStatus, PosPaymentMethod } from '../lib/types';
+import type { BookingDto, MenuItemDto, PosOrderDto, PosOrderStatus, PosOutletDto, PosPaymentMethod } from '../lib/types';
 
 type Tab = 'orders' | 'menu';
 
@@ -24,11 +24,13 @@ export function PosPage() {
   const [tab, setTab] = useState<Tab>('orders');
   const [orders, setOrders] = useState<PosOrderDto[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
+  const [outlets, setOutlets] = useState<PosOutletDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showCreateMenuItem, setShowCreateMenuItem] = useState(false);
+  const [showCreateOutlet, setShowCreateOutlet] = useState(false);
   const [detailOrder, setDetailOrder] = useState<PosOrderDto | null>(null);
 
   const load = async () => {
@@ -36,12 +38,14 @@ export function PosPage() {
     setLoading(true);
     setError(null);
     try {
-      const [ords, items] = await Promise.all([
+      const [ords, items, outs] = await Promise.all([
         apiFetch<PosOrderDto[]>(`/properties/${property.id}/pos-orders`),
         apiFetch<MenuItemDto[]>('/menu-items'),
+        apiFetch<PosOutletDto[]>(`/properties/${property.id}/pos-outlets`),
       ]);
       setOrders(ords);
       setMenuItems(items);
+      setOutlets(outs);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
     } finally {
@@ -91,7 +95,12 @@ export function PosPage() {
         <p className="text-sm text-slate-500">Yuklanmoqda...</p>
       ) : tab === 'orders' ? (
         <div>
-          <div className="flex justify-end mb-3">
+          <div className="flex justify-end gap-2 mb-3">
+            {can('pos', 'create') && (
+              <button onClick={() => setShowCreateOutlet(true)} className="btn-secondary">
+                + Savdo nuqtasi
+              </button>
+            )}
             {can('pos', 'create') && (
               <button onClick={() => setShowCreateOrder(true)} className="btn-primary">
                 + Yangi buyurtma
@@ -114,6 +123,7 @@ export function PosPage() {
                 </div>
                 <p className="text-xs text-slate-500">
                   {o.items.length} taom · {o.totalAmount} {o.currency}
+                  {outlets.length > 1 && <> · {outlets.find((out) => out.id === o.outletId)?.name ?? ''}</>}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">{new Date(o.createdAt).toLocaleString('uz-UZ')}</p>
               </button>
@@ -151,6 +161,7 @@ export function PosPage() {
         <CreatePosOrderModal
           propertyId={property.id}
           menuItems={activeMenuItems}
+          outlets={outlets}
           onClose={() => setShowCreateOrder(false)}
           onCreated={() => {
             setShowCreateOrder(false);
@@ -164,6 +175,17 @@ export function PosPage() {
           onClose={() => setShowCreateMenuItem(false)}
           onCreated={() => {
             setShowCreateMenuItem(false);
+            load();
+          }}
+        />
+      )}
+
+      {showCreateOutlet && property && (
+        <CreateOutletModal
+          propertyId={property.id}
+          onClose={() => setShowCreateOutlet(false)}
+          onCreated={() => {
+            setShowCreateOutlet(false);
             load();
           }}
         />
@@ -186,15 +208,18 @@ export function PosPage() {
 function CreatePosOrderModal({
   propertyId,
   menuItems,
+  outlets,
   onClose,
   onCreated,
 }: {
   propertyId: string;
   menuItems: MenuItemDto[];
+  outlets: PosOutletDto[];
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [tableNumber, setTableNumber] = useState('');
+  const [outletId, setOutletId] = useState(outlets.find((o) => o.isDefault)?.id ?? outlets[0]?.id ?? '');
   const [lines, setLines] = useState<{ menuItemId: string; quantity: string }[]>([
     { menuItemId: menuItems[0]?.id ?? '', quantity: '1' },
   ]);
@@ -214,6 +239,7 @@ function CreatePosOrderModal({
         method: 'POST',
         body: JSON.stringify({
           tableNumber: tableNumber || undefined,
+          outletId: outletId || undefined,
           items: lines
             .filter((l) => l.menuItemId && Number(l.quantity) > 0)
             .map((l) => ({ menuItemId: l.menuItemId, quantity: Number(l.quantity) })),
@@ -238,6 +264,18 @@ function CreatePosOrderModal({
   return (
     <Modal title="Yangi buyurtma" onClose={onClose} width="max-w-lg">
       <form onSubmit={submit} className="space-y-3">
+        {outlets.length > 1 && (
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Savdo nuqtasi</span>
+            <select value={outletId} onChange={(e) => setOutletId(e.target.value)} className="input">
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Stol raqami (ixtiyoriy)</span>
           <input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} className="input" />
@@ -333,6 +371,58 @@ function CreateMenuItemModal({ onClose, onCreated }: { onClose: () => void; onCr
             <input required value={price} onChange={(e) => setPrice(e.target.value)} className="input" />
           </label>
         </div>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+function CreateOutletModal({
+  propertyId,
+  onClose,
+  onCreated,
+}: {
+  propertyId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/properties/${propertyId}/pos-outlets`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal title="Yangi savdo nuqtasi" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+            placeholder="masalan: Bar"
+          />
+        </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">
           {submitting ? 'Saqlanmoqda...' : 'Saqlash'}

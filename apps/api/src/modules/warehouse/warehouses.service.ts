@@ -29,6 +29,20 @@ export class WarehousesService {
     return this.warehouseRepo.find({ where: { tenantId, propertyId }, order: { createdAt: 'ASC' } });
   }
 
+  // Qo'shimcha ombor nuqtasi qo'lda yaratish uchun (masalan oshxona ombori, bar ombori
+  // — asosiy "Asosiy ombor"dan tashqari). Har doim isDefault=false bilan yaratiladi,
+  // birinchi (default) ombor faqat getOrCreateDefault orqali beriladi.
+  async create(tenantId: string, propertyId: string, name: string): Promise<Warehouse> {
+    return this.warehouseRepo.save(
+      this.warehouseRepo.create({
+        tenantId,
+        propertyId,
+        name,
+        isDefault: false,
+      }),
+    );
+  }
+
   async findById(tenantId: string, propertyId: string, id: string): Promise<Warehouse> {
     const warehouse = await this.warehouseRepo.findOneBy({ id, tenantId, propertyId });
     if (!warehouse) throw new NotFoundException('Ombor topilmadi');

@@ -72,6 +72,15 @@ export interface PropertyDto {
 
 // --- Warehouse (Ombor) ---
 
+export interface WarehouseDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
 export interface StockItemDto {
   id: string;
   tenantId: string;
@@ -143,6 +152,15 @@ export interface PurchaseOrderDto {
 }
 
 // --- POS (Restoran/Bar) ---
+
+export interface PosOutletDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+}
 
 export interface MenuItemDto {
   id: string;
@@ -252,4 +270,88 @@ export interface InvoiceDto {
   payments?: InvoicePaymentDto[];
   createdAt: string;
   updatedAt: string;
+}
+
+// --- Accounting (Moliyaviy hisob / USALI) ---
+
+export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+
+export type AccountDepartment =
+  | 'rooms'
+  | 'food_beverage'
+  | 'other_operated'
+  | 'miscellaneous_income'
+  | 'admin_general'
+  | 'info_telecom'
+  | 'sales_marketing'
+  | 'property_maintenance'
+  | 'energy_water_waste'
+  | 'payroll_related'
+  | 'management_fees'
+  | 'nonoperating'
+  | 'undistributed_expenses'
+  | 'fixed_charges';
+
+export type NormalBalance = 'debit' | 'credit';
+
+export interface AccountDto {
+  id: string;
+  tenantId: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  department: AccountDepartment | null;
+  normalBalance: NormalBalance;
+  systemKey: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type JournalEntrySourceModule = 'invoicing' | 'pos' | 'warehouse' | 'manual';
+
+export interface JournalEntryLineDto {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  account?: AccountDto;
+  debit: string;
+  credit: string;
+  description: string | null;
+}
+
+export interface JournalEntryDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  entryDate: string;
+  description: string;
+  sourceModule: JournalEntrySourceModule;
+  sourceId: string | null;
+  createdByUserId: string | null;
+  lines: JournalEntryLineDto[];
+  createdAt: string;
+}
+
+export interface TrialBalanceRow {
+  accountId: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  normalBalance: string;
+  debit: string;
+  credit: string;
+  balance: string;
+}
+
+export interface IncomeStatementRow {
+  accountId: string;
+  code: string;
+  name: string;
+  department: AccountDepartment | null;
+  amount: string;
+}
+
+export interface IncomeStatementDto {
+  revenue: IncomeStatementRow[];
+  expense: IncomeStatementRow[];
 }

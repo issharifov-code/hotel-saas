@@ -32,6 +32,12 @@ export class CreatePosOrderDto {
   @Type(() => CreatePosOrderItemDto)
   items: CreatePosOrderItemDto[];
 
+  // Ixtiyoriy: buyurtma qaysi savdo nuqtasida ochilishini aniq ko'rsatish uchun
+  // (bir nechta outlet bo'lgan mulklarda). Ko'rsatilmasa, default outlet ishlatiladi.
+  @IsOptional()
+  @IsUUID()
+  outletId?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(20)

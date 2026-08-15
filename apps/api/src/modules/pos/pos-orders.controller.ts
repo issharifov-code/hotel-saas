@@ -43,7 +43,12 @@ export class PosOrdersController {
     @Param('propertyId') propertyId: string,
     @Body() dto: CreatePosOrderDto,
   ) {
-    const outlet = await this.posOutletsService.getOrCreateDefault(user.tenantId!, propertyId);
+    // outletId ko'rsatilgan bo'lsa (bir nechta savdo nuqtasi mavjud mulklarda) — o'sha
+    // outlet tanlanadi (mavjudligi va shu tenant/mulkka tegishliligi tekshiriladi).
+    // Ko'rsatilmasa — avvalgidek default outlet (lazy-create) ishlatiladi.
+    const outlet = dto.outletId
+      ? await this.posOutletsService.findById(user.tenantId!, propertyId, dto.outletId)
+      : await this.posOutletsService.getOrCreateDefault(user.tenantId!, propertyId);
     return this.posOrdersService.create(user.tenantId!, propertyId, outlet.id, user.userId, dto);
   }
 

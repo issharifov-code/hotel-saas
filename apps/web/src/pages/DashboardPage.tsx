@@ -19,7 +19,7 @@ const MODULES = [
   { key: 'pos', label: 'POS', link: '/pos' },
   { key: 'guest_crm', label: 'Guest CRM / Loyalty', link: '/guests' },
   { key: 'invoicing', label: 'Invoicing', link: '/invoicing' },
-  { key: 'accounting', label: 'Moliyaviy hisob (USALI)' },
+  { key: 'accounting', label: 'Moliyaviy hisob (USALI)', link: '/accounting' },
   { key: 'reports', label: 'Hisobot / Dashboard' },
   { key: 'billing', label: 'SaaS Billing' },
 ];

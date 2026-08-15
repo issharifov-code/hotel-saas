@@ -11,6 +11,7 @@ import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
 import { InvoicingPage } from './pages/InvoicingPage';
+import { AccountingPage } from './pages/AccountingPage';
 
 function App() {
   return (
@@ -80,6 +81,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <InvoicingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accounting"
+            element={
+              <ProtectedRoute>
+                <AccountingPage />
               </ProtectedRoute>
             }
           />

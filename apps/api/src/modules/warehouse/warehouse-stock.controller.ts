@@ -3,6 +3,7 @@ import { WarehousesService } from './warehouses.service';
 import { StockService } from './stock.service';
 import { IssueStockDto } from './dto/issue-stock.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -22,6 +23,16 @@ export class WarehouseStockController {
   @RequirePermission(PermissionModule.WAREHOUSE, PermissionAction.VIEW)
   listWarehouses(@CurrentUser() user: AuthenticatedUser, @Param('propertyId') propertyId: string) {
     return this.warehousesService.listByProperty(user.tenantId!, propertyId);
+  }
+
+  @Post('warehouses')
+  @RequirePermission(PermissionModule.WAREHOUSE, PermissionAction.CREATE)
+  createWarehouse(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Body() dto: CreateWarehouseDto,
+  ) {
+    return this.warehousesService.create(user.tenantId!, propertyId, dto.name);
   }
 
   @Get('warehouses/:warehouseId/stock-levels')

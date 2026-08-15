@@ -1,5 +1,6 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { PosOutletsService } from './pos-outlets.service';
+import { CreatePosOutletDto } from './dto/create-pos-outlet.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -16,5 +17,15 @@ export class PosOutletsController {
   @RequirePermission(PermissionModule.POS, PermissionAction.VIEW)
   list(@CurrentUser() user: AuthenticatedUser, @Param('propertyId') propertyId: string) {
     return this.posOutletsService.listByProperty(user.tenantId!, propertyId);
+  }
+
+  @Post()
+  @RequirePermission(PermissionModule.POS, PermissionAction.CREATE)
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Body() dto: CreatePosOutletDto,
+  ) {
+    return this.posOutletsService.create(user.tenantId!, propertyId, dto.name);
   }
 }
