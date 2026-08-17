@@ -265,7 +265,7 @@ export interface HousekeepingTaskDto {
 
 export type InvoiceStatus = 'open' | 'issued' | 'paid' | 'cancelled';
 export type InvoiceLineSource = 'room_charge' | 'pos_order' | 'manual';
-export type InvoicePaymentMethod = 'cash' | 'card' | 'bank_transfer';
+export type InvoicePaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'online';
 
 export interface InvoiceLineDto {
   id: string;
@@ -286,7 +286,13 @@ export interface InvoicePaymentDto {
   method: InvoicePaymentMethod;
   receivedByUserId: string;
   notes: string | null;
+  provider: string | null;
+  providerRef: string | null;
   createdAt: string;
+}
+
+export interface PaymentProviderDto {
+  provider: string;
 }
 
 export interface InvoiceDto {
