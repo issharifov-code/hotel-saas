@@ -3,7 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { InvoiceDto, InvoicePaymentMethod, InvoiceStatus } from '../lib/types';
+import type { InvoiceDto, InvoicePaymentMethod, InvoiceStatus, PaymentProviderDto } from '../lib/types';
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   open: 'Ochiq',
@@ -23,6 +23,19 @@ const SOURCE_LABELS: Record<string, string> = {
   room_charge: 'Xona narxi',
   pos_order: 'POS buyurtma',
   manual: "Qo'lda qo'shilgan",
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Naqd',
+  card: 'Karta',
+  bank_transfer: "Bank o'tkazmasi",
+  online: 'Onlayn (shlyuz)',
+};
+
+// To'lov shlyuzi provider kodi -> foydalanuvchiga ko'rinadigan nom. Ro'yxatdan
+// o'tmagan (kelajakda qo'shiladigan) provayderlar uchun kod o'zi ko'rsatiladi.
+const PROVIDER_LABELS: Record<string, string> = {
+  mock: "Mock to'lov shlyuzi (demo)",
 };
 
 export function InvoicingPage() {
@@ -137,6 +150,8 @@ function InvoiceDetailModal({
 
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<InvoicePaymentMethod>('cash');
+  const [providers, setProviders] = useState<PaymentProviderDto[]>([]);
+  const [chargingProvider, setChargingProvider] = useState<string | null>(null);
 
   const load = async () => {
     setError(null);
@@ -152,6 +167,9 @@ function InvoiceDetailModal({
 
   useEffect(() => {
     load();
+    apiFetch<PaymentProviderDto[]>(`/properties/${propertyId}/payment-providers`)
+      .then(setProviders)
+      .catch(() => setProviders([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId]);
 
@@ -191,6 +209,28 @@ function InvoiceDetailModal({
       setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Payments moduli — to'lov shlyuzi adapteri orqali (hozircha faqat mock)
+  // to'lovni "haqiqiy" ravishda amalga oshiradi, so'ng InvoicingService'ga
+  // avtomatik yozadi. Qo'lda kiritishdan farqi: bu yerda backend adapterga
+  // murojaat qilib, natija muvaffaqiyatli bo'lgandagina yozuv qo'shiladi.
+  const chargeViaGateway = async (provider: string) => {
+    if (Number(paymentAmount) <= 0) return;
+    setChargingProvider(provider);
+    setError(null);
+    try {
+      await apiFetch(`/properties/${propertyId}/invoices/${invoiceId}/charge`, {
+        method: 'POST',
+        body: JSON.stringify({ amount: Number(paymentAmount), provider }),
+      });
+      await load();
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "To'lov amalga oshmadi");
+    } finally {
+      setChargingProvider(null);
     }
   };
 
@@ -295,8 +335,15 @@ function InvoiceDetailModal({
               {(invoice.payments ?? []).map((p) => (
                 <li key={p.id} className="px-3 py-2 flex items-center justify-between text-sm">
                   <span>
-                    {p.method === 'cash' ? 'Naqd' : p.method === 'card' ? 'Karta' : "Bank o'tkazmasi"} ·{' '}
-                    {new Date(p.createdAt).toLocaleString('uz-UZ')}
+                    {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+                    {p.provider && (
+                      <span className="text-xs text-slate-400">
+                        {' '}
+                        · {PROVIDER_LABELS[p.provider] ?? p.provider}
+                        {p.providerRef ? ` (${p.providerRef})` : ''}
+                      </span>
+                    )}{' '}
+                    · {new Date(p.createdAt).toLocaleString('uz-UZ')}
                   </span>
                   <span className="text-slate-600">{p.amount}</span>
                 </li>
@@ -308,25 +355,45 @@ function InvoiceDetailModal({
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         {Number(balance) > 0 && invoice.status !== 'cancelled' && canCreate && (
-          <div className="border-t border-slate-100 pt-3 flex items-center gap-2">
+          <div className="border-t border-slate-100 pt-3 space-y-2">
             <input
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
-              className="input flex-1"
+              className="input w-full"
               placeholder="Summa"
             />
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as InvoicePaymentMethod)}
-              className="input"
-            >
-              <option value="cash">Naqd</option>
-              <option value="card">Karta</option>
-              <option value="bank_transfer">Bank o'tkazmasi</option>
-            </select>
-            <button type="button" disabled={busy} onClick={addPayment} className="btn-primary shrink-0">
-              To'lov qo'shish
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as InvoicePaymentMethod)}
+                className="input flex-1"
+              >
+                <option value="cash">Naqd</option>
+                <option value="card">Karta</option>
+                <option value="bank_transfer">Bank o'tkazmasi</option>
+              </select>
+              <button type="button" disabled={busy} onClick={addPayment} className="btn-primary shrink-0">
+                Qo'lda qayd etish
+              </button>
+            </div>
+            {providers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-slate-500">yoki to'lov shlyuzi orqali:</span>
+                {providers.map((p) => (
+                  <button
+                    key={p.provider}
+                    type="button"
+                    disabled={chargingProvider !== null}
+                    onClick={() => chargeViaGateway(p.provider)}
+                    className="btn-secondary shrink-0"
+                  >
+                    {chargingProvider === p.provider
+                      ? 'Yuborilmoqda...'
+                      : PROVIDER_LABELS[p.provider] ?? p.provider}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
