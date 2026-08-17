@@ -37,6 +37,7 @@ import { InvoicePayment } from './modules/invoicing/entities/invoice-payment.ent
 import { Account } from './modules/accounting/entities/account.entity';
 import { JournalEntry } from './modules/accounting/entities/journal-entry.entity';
 import { JournalEntryLine } from './modules/accounting/entities/journal-entry-line.entity';
+import { SubscriptionInvoice } from './modules/billing/entities/subscription-invoice.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -52,6 +53,7 @@ import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { InvoicingModule } from './modules/invoicing/invoicing.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -100,6 +102,7 @@ import { ReportsModule } from './modules/reports/reports.module';
           Account,
           JournalEntry,
           JournalEntryLine,
+          SubscriptionInvoice,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -124,6 +127,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     InvoicingModule,
     AccountingModule,
     ReportsModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [
