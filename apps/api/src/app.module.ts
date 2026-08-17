@@ -52,6 +52,7 @@ import { PosModule } from './modules/pos/pos.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { InvoicingModule } from './modules/invoicing/invoicing.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { BillingModule } from './modules/billing/billing.module';
@@ -127,6 +128,7 @@ import { BillingModule } from './modules/billing/billing.module';
     PropertiesModule,
     HousekeepingModule,
     InvoicingModule,
+    PaymentsModule,
     AccountingModule,
     ReportsModule,
     BillingModule,
