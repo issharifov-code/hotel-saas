@@ -10,6 +10,7 @@ import { Guest } from '../modules/guests/entities/guest.entity';
 import { LoyaltyTransaction } from '../modules/guests/entities/loyalty-transaction.entity';
 import { RoomType } from '../modules/rooms/entities/room-type.entity';
 import { Room } from '../modules/rooms/entities/room.entity';
+import { RatePlan } from '../modules/rooms/entities/rate-plan.entity';
 import { Booking } from '../modules/bookings/entities/booking.entity';
 import { Warehouse } from '../modules/warehouse/entities/warehouse.entity';
 import { Supplier } from '../modules/warehouse/entities/supplier.entity';
@@ -29,6 +30,7 @@ import { InvoicePayment } from '../modules/invoicing/entities/invoice-payment.en
 import { Account } from '../modules/accounting/entities/account.entity';
 import { JournalEntry } from '../modules/accounting/entities/journal-entry.entity';
 import { JournalEntryLine } from '../modules/accounting/entities/journal-entry-line.entity';
+import { SubscriptionInvoice } from '../modules/billing/entities/subscription-invoice.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -50,6 +52,7 @@ export const AppDataSource = new DataSource({
     LoyaltyTransaction,
     RoomType,
     Room,
+    RatePlan,
     Booking,
     Warehouse,
     Supplier,
@@ -69,6 +72,7 @@ export const AppDataSource = new DataSource({
     Account,
     JournalEntry,
     JournalEntryLine,
+    SubscriptionInvoice,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
