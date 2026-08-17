@@ -124,9 +124,9 @@ export function DashboardPage() {
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <KpiCard
-                    label="Bandlik"
+                    label={`Bandlik (o'rtacha, ${overview.periodDays} kun)`}
                     value={`${overview.occupancy.occupancyRatePct}%`}
-                    hint={`${overview.occupancy.occupiedRooms} / ${overview.occupancy.totalRooms} xona`}
+                    hint={`hozir: ${overview.occupancy.occupiedRooms} / ${overview.occupancy.totalRooms} xona band`}
                   />
                   <KpiCard label="ADR (o'rtacha kunlik narx)" value={money(overview.adr, currency)} />
                   <KpiCard label="RevPAR" value={money(overview.revPar, currency)} />
