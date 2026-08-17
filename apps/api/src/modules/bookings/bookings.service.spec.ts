@@ -37,6 +37,9 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
         roomNumber: '101',
       }),
     };
+    const ratePlansService = {
+      findById: jest.fn(),
+    };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
     };
@@ -48,11 +51,12 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       roomRepo as never,
       roomTypeRepo as never,
       roomsService as never,
+      ratePlansService as never,
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
     );
-    return { service, bookingRepo, bookingQueryBuilder };
+    return { service, bookingRepo, bookingQueryBuilder, ratePlansService };
   }
 
   const dto = {
@@ -119,5 +123,43 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     await service.create('t1', 'p1', { ...dto, totalAmount: '999.99' });
     const createdArg = bookingRepo.create.mock.calls[0][0];
     expect(createdArg.totalAmount).toBe('999.99');
+  });
+
+  it("ratePlanId berilsa, RoomType.basePrice o'rniga rejaning nightlyPrice'idan hisoblaydi", async () => {
+    const { service, bookingRepo, ratePlansService } = createService(null);
+    ratePlansService.findById.mockResolvedValue({
+      id: 'rp-1',
+      roomTypeId: 'rt-1', // xonaning roomTypeId'siga mos
+      nightlyPrice: '650000',
+    });
+
+    await service.create('t1', 'p1', { ...dto, ratePlanId: 'rp-1' });
+
+    const createdArg = bookingRepo.create.mock.calls[0][0];
+    // 4 tun * 650000 = 2600000.00 (500000 emas — bazaviy narx e'tiborga olinmadi)
+    expect(createdArg.totalAmount).toBe('2600000.00');
+    expect(createdArg.ratePlanId).toBe('rp-1');
+  });
+
+  it("narx rejasi boshqa xona turiga tegishli bo'lsa xato tashlaydi", async () => {
+    const { service, ratePlansService } = createService(null);
+    ratePlansService.findById.mockResolvedValue({
+      id: 'rp-1',
+      roomTypeId: 'rt-BOSHQA', // xonaning roomTypeId'siga mos EMAS
+      nightlyPrice: '650000',
+    });
+
+    await expect(
+      service.create('t1', 'p1', { ...dto, ratePlanId: 'rp-1' }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("marketSegment berilmasa 'other' ga tushadi, berilsa saqlanadi", async () => {
+    const { service, bookingRepo } = createService(null);
+    await service.create('t1', 'p1', dto);
+    expect(bookingRepo.create.mock.calls[0][0].marketSegment).toBe('other');
+
+    await service.create('t1', 'p1', { ...dto, marketSegment: 'corporate' as never });
+    expect(bookingRepo.create.mock.calls[1][0].marketSegment).toBe('corporate');
   });
 });

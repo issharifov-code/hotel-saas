@@ -1,12 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Booking, BookingSource, BookingStatus } from './entities/booking.entity';
+import { Booking, BookingSource, BookingStatus, MarketSegment } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ChangeRoomDto } from './dto/change-room.dto';
 import { UpdateBookingDatesDto } from './dto/update-booking-dates.dto';
 import { RoomsService } from '../rooms/rooms.service';
 import { RoomType } from '../rooms/entities/room-type.entity';
+import { RatePlansService } from '../rooms/rate-plans.service';
+import { RatePlan } from '../rooms/entities/rate-plan.entity';
 import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
@@ -23,6 +25,7 @@ export class BookingsService {
     @InjectRepository(Room) private readonly roomRepo: Repository<Room>,
     @InjectRepository(RoomType) private readonly roomTypeRepo: Repository<RoomType>,
     private readonly roomsService: RoomsService,
+    private readonly ratePlansService: RatePlansService,
     private readonly guestsService: GuestsService,
     private readonly housekeepingService: HousekeepingService,
     private readonly invoicingService: InvoicingService,
@@ -38,10 +41,16 @@ export class BookingsService {
 
     await this.assertRoomAvailable(dto.roomId, dto.checkIn, dto.checkOut);
 
-    const roomType = await this.roomTypeRepo.findOneBy({ id: room.roomTypeId });
+    let ratePlan: RatePlan | null = null;
+    if (dto.ratePlanId) {
+      ratePlan = await this.ratePlansService.findById(tenantId, propertyId, dto.ratePlanId);
+      if (ratePlan.roomTypeId !== room.roomTypeId) {
+        throw new BadRequestException("Tanlangan narx rejasi shu xona turiga tegishli emas");
+      }
+    }
+
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
-    const totalAmount =
-      dto.totalAmount ?? (Number(roomType!.basePrice) * nights).toFixed(2);
+    const totalAmount = dto.totalAmount ?? (await this.calcNightlyTotal(room.roomTypeId, ratePlan, nights));
 
     const booking = this.bookingRepo.create({
       tenantId,
@@ -52,6 +61,8 @@ export class BookingsService {
       checkOut: dto.checkOut,
       status: BookingStatus.CONFIRMED,
       source: dto.source ?? BookingSource.DIRECT,
+      marketSegment: dto.marketSegment ?? MarketSegment.OTHER,
+      ratePlanId: ratePlan?.id ?? null,
       totalAmount,
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,
@@ -150,9 +161,17 @@ export class BookingsService {
       await this.housekeepingService.assertRoomCleanForCheckIn(tenantId, propertyId, dto.roomId);
     }
 
-    const newRoomType = await this.roomTypeRepo.findOneBy({ id: newRoom.roomTypeId });
+    // Agar bronda narx rejasi tanlangan bo'lsa-yu, yangi xona boshqa xona
+    // turiga tegishli bo'lsa — o'sha reja endi mos kelmaydi, shuning uchun
+    // avtomatik bekor qilinadi (null) va bazaviy narxga qaytiladi.
+    const currentRatePlan = booking.ratePlanId
+      ? await this.ratePlansService.findById(tenantId, propertyId, booking.ratePlanId)
+      : null;
+    const stillMatchesRatePlan = currentRatePlan?.roomTypeId === newRoom.roomTypeId;
+    const nextRatePlan = stillMatchesRatePlan ? currentRatePlan : null;
+
     const nights = this.diffNights(booking.checkIn, booking.checkOut);
-    const newTotal = (Number(newRoomType!.basePrice) * nights).toFixed(2);
+    const newTotal = await this.calcNightlyTotal(newRoom.roomTypeId, nextRatePlan, nights);
     const diff = (Number(newTotal) - Number(booking.totalAmount)).toFixed(2);
     const oldRoomId = booking.roomId;
     const oldRoomNumber = booking.room?.roomNumber ?? oldRoomId;
@@ -162,7 +181,10 @@ export class BookingsService {
     // ManyToOne relation borligi sababli, agar entity `room` relation'i bilan
     // yuklangan (findById shuni qiladi) bo'lsa, `save()` eski `room` obyektini
     // ko'rib roomId'ni orqaga qaytarib qo'yishi mumkin.
-    await this.bookingRepo.update({ id: booking.id }, { roomId: dto.roomId, totalAmount: newTotal });
+    await this.bookingRepo.update(
+      { id: booking.id },
+      { roomId: dto.roomId, totalAmount: newTotal, ratePlanId: nextRatePlan?.id ?? null },
+    );
 
     if (wasCheckedIn) {
       await this.roomRepo.update({ id: oldRoomId }, { status: RoomStatus.AVAILABLE });
@@ -199,9 +221,14 @@ export class BookingsService {
 
     await this.assertRoomAvailable(booking.roomId, dto.checkIn, dto.checkOut, booking.id);
 
-    const roomType = await this.roomTypeRepo.findOneBy({ id: booking.room?.roomTypeId ?? undefined });
+    // Xona (va shu bilan xona turi) o'zgarmaydi — narx rejasi bo'lsa, o'sha
+    // saqlanib qoladi, faqat tunlar soni asosida summa qayta hisoblanadi.
+    const ratePlan = booking.ratePlanId
+      ? await this.ratePlansService.findById(tenantId, propertyId, booking.ratePlanId)
+      : null;
+    const roomTypeId = booking.room?.roomTypeId;
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
-    const newTotal = (Number(roomType!.basePrice) * nights).toFixed(2);
+    const newTotal = await this.calcNightlyTotal(roomTypeId!, ratePlan, nights);
     const diff = (Number(newTotal) - Number(booking.totalAmount)).toFixed(2);
     const oldCheckIn = booking.checkIn;
     const oldCheckOut = booking.checkOut;
@@ -266,5 +293,19 @@ export class BookingsService {
   private diffNights(checkIn: string, checkOut: string): number {
     const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
     return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
+  }
+
+  // Narx rejasi berilgan bo'lsa shu rejaning kechalik narxidan, aks holda
+  // xona turining bazaviy narxidan (RoomType.basePrice) jami summani hisoblaydi.
+  private async calcNightlyTotal(
+    roomTypeId: string,
+    ratePlan: RatePlan | null,
+    nights: number,
+  ): Promise<string> {
+    if (ratePlan) {
+      return (Number(ratePlan.nightlyPrice) * nights).toFixed(2);
+    }
+    const roomType = await this.roomTypeRepo.findOneBy({ id: roomTypeId });
+    return (Number(roomType!.basePrice) * nights).toFixed(2);
   }
 }
