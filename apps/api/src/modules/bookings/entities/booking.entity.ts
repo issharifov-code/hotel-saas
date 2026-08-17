@@ -11,6 +11,7 @@ import {
 import { Property } from '../../properties/entities/property.entity';
 import { Room } from '../../rooms/entities/room.entity';
 import { Guest } from '../../guests/entities/guest.entity';
+import { RatePlan } from '../../rooms/entities/rate-plan.entity';
 
 export enum BookingStatus {
   PENDING = 'pending', // hali tasdiqlanmagan (masalan to'lov kutilmoqda)
@@ -26,6 +27,19 @@ export enum BookingSource {
   WEBSITE = 'website',
   OTA = 'ota', // Booking.com va h.k.
   EXELY = 'exely', // migratsiya/parallel integratsiya davri uchun
+}
+
+// Bozor segmenti — hisobot/tahlil uchun (qaysi mijoz toifasi qancha daromad
+// keltirayotgani). `source` (qanday kanal orqali kelgani) bilan mustaqil —
+// masalan bitta OTA bronida ham market segment "corporate" bo'lishi mumkin.
+export enum MarketSegment {
+  WALK_IN = 'walk_in',
+  CORPORATE = 'corporate',
+  OTA = 'ota',
+  TRAVEL_AGENT = 'travel_agent',
+  GROUP = 'group',
+  GOVERNMENT = 'government',
+  OTHER = 'other',
 }
 
 @Entity('bookings')
@@ -70,6 +84,20 @@ export class Booking {
 
   @Column({ type: 'enum', enum: BookingSource, default: BookingSource.DIRECT })
   source: BookingSource;
+
+  @Column({ type: 'enum', enum: MarketSegment, default: MarketSegment.OTHER })
+  marketSegment: MarketSegment;
+
+  // Tanlangan narx rejasi (ixtiyoriy) — berilgan bo'lsa, totalAmount shu
+  // rejaning nightlyPrice'idan hisoblanadi (RoomType.basePrice o'rniga).
+  // Xona turi almashtirilib, yangi xona shu rejaga tegishli bo'lmasa, backend
+  // buni avtomatik null qiladi (bookings.service.ts'dagi changeRoom'ga qarang).
+  @Column({ name: 'rate_plan_id', type: 'uuid', nullable: true })
+  ratePlanId: string | null;
+
+  @ManyToOne(() => RatePlan, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'rate_plan_id' })
+  ratePlan: RatePlan | null;
 
   @Column({ name: 'total_amount', type: 'numeric', precision: 12, scale: 2 })
   totalAmount: string;
