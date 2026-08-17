@@ -25,6 +25,19 @@ export interface RoomDto {
   createdAt: string;
 }
 
+export interface RatePlanDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  roomTypeId: string;
+  name: string;
+  nightlyPrice: string;
+  isRefundable: boolean;
+  isActive: boolean;
+  description: string | null;
+  createdAt: string;
+}
+
 export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjust';
 
@@ -59,6 +72,7 @@ export interface LoyaltyTransactionDto {
 
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
 export type BookingSource = 'direct' | 'website' | 'ota' | 'exely';
+export type MarketSegment = 'walk_in' | 'corporate' | 'ota' | 'travel_agent' | 'group' | 'government' | 'other';
 
 export interface BookingDto {
   id: string;
@@ -73,6 +87,8 @@ export interface BookingDto {
   checkOut: string;
   status: BookingStatus;
   source: BookingSource;
+  marketSegment: MarketSegment;
+  ratePlanId: string | null;
   totalAmount: string;
   currency: string;
   externalRef: string | null;
