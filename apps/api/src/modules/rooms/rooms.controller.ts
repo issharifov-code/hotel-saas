@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { RoomTypesService } from './room-types.service';
 import { RoomsService } from './rooms.service';
+import { RatePlansService } from './rate-plans.service';
 import { CreateRoomTypeDto } from './dto/create-room-type.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { CreateRatePlanDto } from './dto/create-rate-plan.dto';
+import { UpdateRatePlanDto } from './dto/update-rate-plan.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -19,6 +22,7 @@ export class RoomsController {
   constructor(
     private readonly roomTypesService: RoomTypesService,
     private readonly roomsService: RoomsService,
+    private readonly ratePlansService: RatePlansService,
   ) {}
 
   @Get('room-types')
@@ -51,5 +55,38 @@ export class RoomsController {
     @Body() dto: CreateRoomDto,
   ) {
     return this.roomsService.create(user.tenantId!, propertyId, dto);
+  }
+
+  // Narx rejalari (Rate Plans) — bitta xona turi ostida bir nechta narx
+  // variantini (Rack Rate, Korporativ, Online, va h.k.) belgilash uchun.
+  @Get('rate-plans')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.VIEW)
+  listRatePlans(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Query('roomTypeId') roomTypeId?: string,
+  ) {
+    return this.ratePlansService.listByProperty(user.tenantId!, propertyId, roomTypeId);
+  }
+
+  @Post('rate-plans')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.CREATE)
+  createRatePlan(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Body() dto: CreateRatePlanDto,
+  ) {
+    return this.ratePlansService.create(user.tenantId!, propertyId, dto);
+  }
+
+  @Patch('rate-plans/:id')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.EDIT)
+  updateRatePlan(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateRatePlanDto,
+  ) {
+    return this.ratePlansService.update(user.tenantId!, propertyId, id, dto);
   }
 }
