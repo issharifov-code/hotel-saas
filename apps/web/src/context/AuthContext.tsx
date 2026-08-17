@@ -15,7 +15,7 @@ interface AuthContextValue {
   property: PropertyDto | null;
   permissions: string[];
   loading: boolean;
-  login: (params: { subdomain?: string; email: string; password: string }) => Promise<void>;
+  login: (params: { subdomain?: string; email: string; password: string }) => Promise<CurrentUser>;
   logout: () => void;
   refresh: () => Promise<void>;
   can: (moduleKey: string, action: string) => boolean;
@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (res.user.tenantId) {
       await loadTenantContext();
     }
+    return res.user;
   };
 
   const logout = () => {
