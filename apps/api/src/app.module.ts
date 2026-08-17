@@ -18,6 +18,7 @@ import { Guest } from './modules/guests/entities/guest.entity';
 import { LoyaltyTransaction } from './modules/guests/entities/loyalty-transaction.entity';
 import { RoomType } from './modules/rooms/entities/room-type.entity';
 import { Room } from './modules/rooms/entities/room.entity';
+import { RatePlan } from './modules/rooms/entities/rate-plan.entity';
 import { Booking } from './modules/bookings/entities/booking.entity';
 import { Warehouse } from './modules/warehouse/entities/warehouse.entity';
 import { Supplier } from './modules/warehouse/entities/supplier.entity';
@@ -83,6 +84,7 @@ import { BillingModule } from './modules/billing/billing.module';
           LoyaltyTransaction,
           RoomType,
           Room,
+          RatePlan,
           Booking,
           Warehouse,
           Supplier,
