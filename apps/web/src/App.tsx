@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PlatformAdminRoute } from './components/PlatformAdminRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterTenantPage } from './pages/RegisterTenantPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -12,6 +13,8 @@ import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
 import { InvoicingPage } from './pages/InvoicingPage';
 import { AccountingPage } from './pages/AccountingPage';
+import { BillingPage } from './pages/BillingPage';
+import { AdminPage } from './pages/AdminPage';
 
 function App() {
   return (
@@ -90,6 +93,22 @@ function App() {
               <ProtectedRoute>
                 <AccountingPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <PlatformAdminRoute>
+                <AdminPage />
+              </PlatformAdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
