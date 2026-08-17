@@ -18,6 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/pos', label: 'POS', moduleKey: 'pos' },
   { to: '/invoicing', label: 'Hisob-fakturalar', moduleKey: 'invoicing' },
   { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
+  { to: '/billing', label: 'Obuna va to\'lovlar', moduleKey: 'billing' },
 ];
 
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
