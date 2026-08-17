@@ -17,8 +17,8 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login({ subdomain: subdomain || undefined, email, password });
-      navigate('/dashboard');
+      const loggedInUser = await login({ subdomain: subdomain || undefined, email, password });
+      navigate(loggedInUser.isPlatformAdmin ? '/admin' : '/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Kirishda xatolik yuz berdi");
     } finally {
