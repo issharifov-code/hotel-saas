@@ -18,10 +18,15 @@ import { AccountingService } from '../accounting/accounting.service';
 import { LoyaltyService } from '../guests/loyalty.service';
 
 // InvoicePaymentMethod -> Accounting hisob-kitobi system key (Kassa/Bank/Karta kliringi).
+// ONLINE (to'lov shlyuzi) uchun alohida hisob hali ochilmagan — Payme/Click
+// kabi provayderlar ham amalda karta/elektron kliring orqali hisoblashadi,
+// shuning uchun hozircha 'card_clearing' bilan bir xil hisobga yoziladi.
+// Haqiqiy provayder ulanganda, agar kerak bo'lsa, alohida systemKey ajratish mumkin.
 const PAYMENT_METHOD_SYSTEM_KEY: Record<InvoicePaymentMethod, string> = {
   [InvoicePaymentMethod.CASH]: 'cash',
   [InvoicePaymentMethod.CARD]: 'card_clearing',
   [InvoicePaymentMethod.BANK_TRANSFER]: 'bank_transfer',
+  [InvoicePaymentMethod.ONLINE]: 'card_clearing',
 };
 
 @Injectable()
@@ -289,6 +294,50 @@ export class InvoicingService {
     userId: string,
   ): Promise<Invoice> {
     const invoice = await this.findById(tenantId, propertyId, id);
+    return this.persistPayment(tenantId, propertyId, invoice, {
+      amount: dto.amount.toFixed(2),
+      method: dto.method,
+      receivedByUserId: userId,
+      notes: dto.notes ?? null,
+    });
+  }
+
+  // Payments moduli (to'lov shlyuzi adapterlari — mock/Payme/Click) orqali
+  // muvaffaqiyatli amalga oshirilgan to'lovni yozib qo'yish uchun. Chaqiruvchi
+  // (PaymentsService) shlyuzga chindan ham murojaat qilib, natija
+  // muvaffaqiyatli bo'lgandan keyingina shu metodni chaqiradi — bu yerda
+  // shlyuz bilan bog'liq hech qanday mantiq yo'q, faqat yozuv.
+  async recordGatewayPayment(
+    tenantId: string,
+    propertyId: string,
+    invoiceId: string,
+    params: { amount: string; provider: string; providerRef: string },
+    userId: string,
+  ): Promise<Invoice> {
+    const invoice = await this.findById(tenantId, propertyId, invoiceId);
+    return this.persistPayment(tenantId, propertyId, invoice, {
+      amount: params.amount,
+      method: InvoicePaymentMethod.ONLINE,
+      receivedByUserId: userId,
+      notes: null,
+      provider: params.provider,
+      providerRef: params.providerRef,
+    });
+  }
+
+  private async persistPayment(
+    tenantId: string,
+    propertyId: string,
+    invoice: Invoice,
+    params: {
+      amount: string;
+      method: InvoicePaymentMethod;
+      receivedByUserId: string;
+      notes: string | null;
+      provider?: string;
+      providerRef?: string;
+    },
+  ): Promise<Invoice> {
     if (invoice.status === InvoiceStatus.CANCELLED) {
       throw new ConflictException(
         "Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi",
@@ -298,10 +347,12 @@ export class InvoicingService {
     const savedPayment = await this.paymentRepo.save(
       this.paymentRepo.create({
         invoiceId: invoice.id,
-        amount: dto.amount.toFixed(2),
-        method: dto.method,
-        receivedByUserId: userId,
-        notes: dto.notes ?? null,
+        amount: params.amount,
+        method: params.method,
+        receivedByUserId: params.receivedByUserId,
+        notes: params.notes,
+        provider: params.provider ?? null,
+        providerRef: params.providerRef ?? null,
       }),
     );
 
@@ -311,9 +362,9 @@ export class InvoicingService {
       description: `To'lov qabul qilindi — hisob-faktura ${invoice.id.slice(0, 8)}`,
       sourceModule: 'invoicing',
       sourceId: savedPayment.id,
-      debitSystemKey: PAYMENT_METHOD_SYSTEM_KEY[dto.method],
+      debitSystemKey: PAYMENT_METHOD_SYSTEM_KEY[params.method],
       creditSystemKey: 'guest_ledger_ar',
-      amount: dto.amount,
+      amount: params.amount,
     });
 
     const updated = await this.recomputeAndSave(invoice.id);
@@ -323,7 +374,7 @@ export class InvoicingService {
     await this.loyaltyService.awardPointsForPayment(
       tenantId,
       invoice.guestId,
-      dto.amount.toFixed(2),
+      params.amount,
       invoice.id,
     );
 
