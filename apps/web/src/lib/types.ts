@@ -376,6 +376,61 @@ export interface IncomeStatementDto {
   expense: IncomeStatementRow[];
 }
 
+// --- Billing / SaaS Billing ---
+
+export type TenantPlan = 'start' | 'professional' | 'enterprise';
+export type TenantStatus = 'trial' | 'active' | 'suspended' | 'cancelled';
+export type SubscriptionInvoiceStatus = 'pending' | 'paid' | 'cancelled';
+
+export interface PlanPricingDto {
+  plan: TenantPlan;
+  label: string;
+  monthlyPrice: number;
+  currency: string;
+  maxProperties: number;
+  maxUsers: number;
+}
+
+export interface SubscriptionInvoiceDto {
+  id: string;
+  tenantId: string;
+  plan: TenantPlan;
+  periodStart: string;
+  periodEnd: string;
+  amount: string;
+  currency: string;
+  status: SubscriptionInvoiceStatus;
+  dueDate: string;
+  issuedAt: string;
+  paidAt: string | null;
+  markedPaidByUserId: string | null;
+  notes: string | null;
+  createdAt: string;
+  isOverdue: boolean;
+}
+
+export interface AdminSubscriptionInvoiceDto extends SubscriptionInvoiceDto {
+  tenantName: string | null;
+}
+
+export interface TenantSubscriptionDto {
+  plan: TenantPlan;
+  status: TenantStatus;
+  pricing: PlanPricingDto;
+  latestInvoice: SubscriptionInvoiceDto | null;
+}
+
+export interface TenantDto {
+  id: string;
+  name: string;
+  subdomain: string;
+  baseCurrency: string;
+  status: TenantStatus;
+  plan: TenantPlan;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // --- Reports / Dashboard ---
 
 export interface ReportsOverviewDto {
