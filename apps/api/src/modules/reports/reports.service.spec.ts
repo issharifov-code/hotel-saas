@@ -84,13 +84,17 @@ describe('ReportsService', () => {
     );
   }
 
-  it("bandlik foizini to'g'ri hisoblaydi", async () => {
+  it("hozirgi band xonalar sonini (snapshot) to'g'ri qaytaradi, bandlik foizi esa davr bo'yicha hisoblanadi", async () => {
+    // occupiedRooms — shu daqiqadagi jonli holat, occupancyRatePct esa
+    // ADR/RevPAR bilan bir xil davr (periodDays) asosida hisoblanadi —
+    // shuning uchun periodBookings bo'sh bo'lsa, occupancyRatePct 0 bo'ladi,
+    // occupiedRooms esa 15 bo'lib qoladi (ikkisi mustaqil metrikalar).
     const service = createService({ totalRooms: 20, occupiedRooms: 15 });
     const result = await service.getOverview('t1', 'p1', 30);
     expect(result.occupancy).toEqual({
       totalRooms: 20,
       occupiedRooms: 15,
-      occupancyRatePct: 75,
+      occupancyRatePct: 0,
     });
   });
 
@@ -121,6 +125,12 @@ describe('ReportsService', () => {
     const result = await service.getOverview('t1', 'p1', 30);
     expect(result.adr).toBe(80); // 400 / 5 kecha
     expect(result.revPar).toBe(1.33); // round2(400 / (10 * 30))
+    // Bandlik foizi ham xuddi shu davr (5 kecha / (10 xona * 30 kun)) asosida:
+    expect(result.occupancy.occupancyRatePct).toBe(1.67);
+    // RevPAR = ADR x Bandlik% identifikatsiyasi (yaxlitlash xatoligi ichida) saqlanadi:
+    expect(
+      (result.adr * result.occupancy.occupancyRatePct) / 100,
+    ).toBeCloseTo(result.revPar, 1);
   });
 
   it("daromad tendensiyasini 14 kunga to'liq to'ldiradi (bo'sh kunlar 0)", async () => {

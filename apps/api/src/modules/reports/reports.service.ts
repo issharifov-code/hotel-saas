@@ -16,8 +16,8 @@ export interface ReportsOverviewDto {
   periodDays: number;
   occupancy: {
     totalRooms: number;
-    occupiedRooms: number;
-    occupancyRatePct: number;
+    occupiedRooms: number; // hozirgi (shu daqiqadagi) band xonalar soni — jonli holat
+    occupancyRatePct: number; // davr bo'yicha o'rtacha bandlik — ADR/RevPAR bilan bir xil davrga tayanadi
   };
   todayArrivals: number;
   todayDepartures: number;
@@ -174,6 +174,16 @@ export class ReportsService {
     const adr = roomNights > 0 ? round2(roomRevenue / roomNights) : 0;
     const revPar =
       totalRooms > 0 ? round2(roomRevenue / (totalRooms * periodDays)) : 0;
+    // Bandlik foizi ham xuddi ADR/RevPAR kabi shu davr (periodDays) bo'yicha
+    // o'rtacha qiymat sifatida hisoblanadi (band kecha-xonalar / mavjud
+    // kecha-xonalar), "hozirgi holat" snapshot emas — shunday qilib
+    // RevPAR = ADR x Bandlik% identifikatsiyasi doim to'g'ri chiqadi
+    // (avval occupancyRatePct "hozir"gi holatdan, adr/revPar esa davr
+    // o'rtachasidan hisoblanardi, bu ikkisi mos kelmasdi).
+    const occupancyRatePct =
+      totalRooms > 0
+        ? round2((roomNights / (totalRooms * periodDays)) * 100)
+        : 0;
 
     // Oxirgi TREND_DAYS kun uchun to'liq sana ketma-ketligini quramiz (bo'sh
     // kunlar 0 bilan to'ldiriladi) — frontend'da uzluksiz grafik chizish uchun.
@@ -210,8 +220,7 @@ export class ReportsService {
       occupancy: {
         totalRooms,
         occupiedRooms,
-        occupancyRatePct:
-          totalRooms > 0 ? round2((occupiedRooms / totalRooms) * 100) : 0,
+        occupancyRatePct,
       },
       todayArrivals,
       todayDepartures,
