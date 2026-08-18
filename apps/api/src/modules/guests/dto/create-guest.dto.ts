@@ -1,4 +1,5 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { CommunicationPreference } from '../entities/guest.entity';
 
 export class CreateGuestDto {
   @IsString()
@@ -24,4 +25,16 @@ export class CreateGuestDto {
   @IsOptional()
   @IsString()
   documentNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  roomPreference?: string;
+
+  @IsOptional()
+  @IsString()
+  dietaryPreference?: string;
+
+  @IsOptional()
+  @IsEnum(CommunicationPreference)
+  communicationPreference?: CommunicationPreference;
 }

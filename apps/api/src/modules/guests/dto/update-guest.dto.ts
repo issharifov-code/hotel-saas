@@ -1,4 +1,11 @@
-import { IsDateString, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { CommunicationPreference } from '../entities/guest.entity';
 
 export class UpdateGuestDto {
   @IsOptional()
@@ -33,4 +40,16 @@ export class UpdateGuestDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  roomPreference?: string;
+
+  @IsOptional()
+  @IsString()
+  dietaryPreference?: string;
+
+  @IsOptional()
+  @IsEnum(CommunicationPreference)
+  communicationPreference?: CommunicationPreference;
 }
