@@ -20,6 +20,16 @@ export enum LoyaltyTier {
   PLATINUM = 'platinum',
 }
 
+// Mehmon bilan qanday kanal orqali bog'lanish afzalligi (masalan bron
+// tasdiqlash/eslatmalar) — hozircha faqat saqlanadi, avtomatik xabar
+// yuborish integratsiyasi kelajakda shu maydonga qarab yo'naltiriladi.
+export enum CommunicationPreference {
+  EMAIL = 'email',
+  SMS = 'sms',
+  PHONE = 'phone',
+  NONE = 'none',
+}
+
 // Mehmon tenant darajasida saqlanadi (property'ga bog'lanmagan) — ko'p mulkli
 // zanjirda bitta mehmon turli filiallarda qolishi mumkin. Hujjat raqami O'zbekiston
 // mehmonlarni ro'yxatga olish talablari uchun saqlanadi (front_desk moduli
@@ -71,6 +81,34 @@ export class Guest {
   // Front Desk/CRM xodimlari uchun erkin izoh (masalan: xona afzalliklari, allergiya, VIP eslatmalar).
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  // Strukturaviy afzalliklar — CRM/duplicate-merge kengaytmasi (2026-08-17). `notes`dan
+  // farqli, bular alohida maydonlar sifatida saqlanadi, chunki front-desk/booking
+  // moduli kelajakda avtomatik ravishda (masalan bron yaratishda) shundan foydalanishi
+  // mumkin (erkin matnni tahlil qilishga hojat qoldirmasdan).
+  @Column({
+    name: 'room_preference',
+    length: 255,
+    nullable: true,
+    type: 'varchar',
+  })
+  roomPreference: string | null; // masalan "Yuqori qavat, tinch xona"
+
+  @Column({
+    name: 'dietary_preference',
+    length: 255,
+    nullable: true,
+    type: 'varchar',
+  })
+  dietaryPreference: string | null; // masalan "Vegetarian, yong'oqqa allergiya"
+
+  @Column({
+    name: 'communication_preference',
+    type: 'enum',
+    enum: CommunicationPreference,
+    default: CommunicationPreference.EMAIL,
+  })
+  communicationPreference: CommunicationPreference;
 
   // Loyalty — CRM/Loyalty moduli (LoyaltyService orqali boshqariladi, to'g'ridan-to'g'ri yozilmaydi).
   @Column({
