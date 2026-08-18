@@ -40,6 +40,7 @@ export interface RatePlanDto {
 
 export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjust';
+export type CommunicationPreference = 'email' | 'sms' | 'phone' | 'none';
 
 export interface GuestDto {
   id: string;
@@ -52,6 +53,9 @@ export interface GuestDto {
   documentNumber: string | null;
   dateOfBirth: string | null;
   notes: string | null;
+  roomPreference: string | null;
+  dietaryPreference: string | null;
+  communicationPreference: CommunicationPreference;
   loyaltyTier: LoyaltyTier;
   loyaltyPoints: number;
   lifetimePoints: number;
