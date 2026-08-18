@@ -3,13 +3,26 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { BookingDto, GuestDto, LoyaltyTier, LoyaltyTransactionDto } from '../lib/types';
+import type {
+  BookingDto,
+  CommunicationPreference,
+  GuestDto,
+  LoyaltyTier,
+  LoyaltyTransactionDto,
+} from '../lib/types';
 
 const TIER_LABELS: Record<LoyaltyTier, string> = {
   bronze: 'Bronza',
   silver: 'Kumush',
   gold: 'Oltin',
   platinum: 'Platina',
+};
+
+const COMMUNICATION_LABELS: Record<CommunicationPreference, string> = {
+  email: 'Email',
+  sms: 'SMS',
+  phone: 'Qo\'ng\'iroq',
+  none: "Aloqa kerak emas",
 };
 
 const TIER_STYLES: Record<LoyaltyTier, string> = {
@@ -40,6 +53,7 @@ export function GuestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  const [showDuplicates, setShowDuplicates] = useState(false);
 
   const load = async (q?: string) => {
     setLoading(true);
@@ -75,11 +89,18 @@ export function GuestsPage() {
           placeholder="Ism, telefon yoki email bo'yicha qidirish..."
           className="input max-w-sm"
         />
-        {can('guest_crm', 'create') && (
-          <button onClick={() => setShowModal(true)} className="btn-primary shrink-0">
-            + Mehmon qo'shish
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {can('guest_crm', 'delete') && (
+            <button onClick={() => setShowDuplicates(true)} className="btn-secondary">
+              Ikkilanmalar
+            </button>
+          )}
+          {can('guest_crm', 'create') && (
+            <button onClick={() => setShowModal(true)} className="btn-primary">
+              + Mehmon qo'shish
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
@@ -119,6 +140,13 @@ export function GuestsPage() {
           guestId={selectedGuestId}
           onClose={() => setSelectedGuestId(null)}
           onChanged={() => load(search || undefined)}
+        />
+      )}
+
+      {showDuplicates && (
+        <DuplicatesModal
+          onClose={() => setShowDuplicates(false)}
+          onMerged={() => load(search || undefined)}
         />
       )}
     </AppLayout>
@@ -338,6 +366,11 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
   const [nationality, setNationality] = useState(guest.nationality ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(guest.dateOfBirth ?? '');
   const [notes, setNotes] = useState(guest.notes ?? '');
+  const [roomPreference, setRoomPreference] = useState(guest.roomPreference ?? '');
+  const [dietaryPreference, setDietaryPreference] = useState(guest.dietaryPreference ?? '');
+  const [communicationPreference, setCommunicationPreference] = useState<CommunicationPreference>(
+    guest.communicationPreference,
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -354,6 +387,9 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
           nationality: nationality || undefined,
           dateOfBirth: dateOfBirth || undefined,
           notes: notes || undefined,
+          roomPreference: roomPreference || undefined,
+          dietaryPreference: dietaryPreference || undefined,
+          communicationPreference,
         }),
       });
       onSaved();
@@ -389,9 +425,44 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
             className="input"
           />
         </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Xona afzalligi</span>
+          <input
+            disabled={!canEdit}
+            value={roomPreference}
+            onChange={(e) => setRoomPreference(e.target.value)}
+            className="input"
+            placeholder="masalan: Yuqori qavat, tinch xona"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Parhez/allergiya</span>
+          <input
+            disabled={!canEdit}
+            value={dietaryPreference}
+            onChange={(e) => setDietaryPreference(e.target.value)}
+            className="input"
+            placeholder="masalan: Vegetarian, yong'oqqa allergiya"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa afzalligi</span>
+          <select
+            disabled={!canEdit}
+            value={communicationPreference}
+            onChange={(e) => setCommunicationPreference(e.target.value as CommunicationPreference)}
+            className="input"
+          >
+            {Object.entries(COMMUNICATION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <label className="block">
-        <span className="block text-xs font-medium text-slate-600 mb-1">Izoh (xona afzalliklari, eslatmalar...)</span>
+        <span className="block text-xs font-medium text-slate-600 mb-1">Izoh (eslatmalar, VIP maqomi...)</span>
         <textarea
           disabled={!canEdit}
           value={notes}
@@ -474,5 +545,108 @@ function AdjustPointsForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function DuplicatesModal({ onClose, onMerged }: { onClose: () => void; onMerged: () => void }) {
+  const [groups, setGroups] = useState<GuestDto[][]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mergingGroupIndex, setMergingGroupIndex] = useState<number | null>(null);
+  // Har bir guruh uchun tanlangan "asosiy" mehmon ID'si (boshqalari shu ID'ga birlashtiriladi).
+  const [primaryByGroup, setPrimaryByGroup] = useState<Record<number, string>>({});
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch<GuestDto[][]>('/guests/duplicates');
+      setGroups(data);
+      const defaults: Record<number, string> = {};
+      data.forEach((group, i) => {
+        defaults[i] = group[0].id;
+      });
+      setPrimaryByGroup(defaults);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const merge = async (groupIndex: number) => {
+    const group = groups[groupIndex];
+    const primaryId = primaryByGroup[groupIndex];
+    if (!primaryId) return;
+    setMergingGroupIndex(groupIndex);
+    setError(null);
+    try {
+      // Guruhdagi qolgan barcha mehmonlarni birma-bir asosiy mehmonga birlashtiradi.
+      for (const g of group) {
+        if (g.id === primaryId) continue;
+        await apiFetch(`/guests/${primaryId}/merge`, {
+          method: 'POST',
+          body: JSON.stringify({ duplicateGuestId: g.id }),
+        });
+      }
+      onMerged();
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Birlashtirishda xatolik yuz berdi');
+    } finally {
+      setMergingGroupIndex(null);
+    }
+  };
+
+  return (
+    <Modal title="Ehtimoliy ikkilanmalar" onClose={onClose} width="max-w-2xl">
+      <p className="text-sm text-slate-500 mb-4">
+        Bir xil telefon, email yoki hujjat raqamiga ega mehmonlar shu yerda guruhlangan. Har bir
+        guruhda "asosiy" mehmonni tanlang — qolganlarining bronlari, hisob-fakturalari va loyalty
+        ballari shunga ko'chiriladi, so'ng ular o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.
+      </p>
+      {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
+      {loading ? (
+        <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+      ) : groups.length === 0 ? (
+        <p className="text-sm text-slate-500">Ikkilanma mehmonlar topilmadi.</p>
+      ) : (
+        <div className="space-y-4">
+          {groups.map((group, i) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-3">
+              <div className="space-y-2 mb-3">
+                {group.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name={`primary-${i}`}
+                      checked={primaryByGroup[i] === g.id}
+                      onChange={() => setPrimaryByGroup((prev) => ({ ...prev, [i]: g.id }))}
+                    />
+                    <span className="font-medium text-slate-900">{g.fullName}</span>
+                    <span className="text-xs text-slate-500">
+                      {[g.phone, g.email, g.documentNumber].filter(Boolean).join(' · ') || '—'}
+                    </span>
+                    <span className="text-xs text-slate-400">({g.loyaltyPoints} ball)</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={() => merge(i)}
+                disabled={mergingGroupIndex === i}
+                className="btn-primary text-sm"
+              >
+                {mergingGroupIndex === i ? 'Birlashtirilmoqda...' : "Tanlangan mehmonga birlashtirish"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   );
 }
