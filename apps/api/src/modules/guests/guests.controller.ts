@@ -11,6 +11,7 @@ import {
 import { GuestsService } from './guests.service';
 import { CreateGuestDto } from './dto/create-guest.dto';
 import { UpdateGuestDto } from './dto/update-guest.dto';
+import { MergeGuestsDto } from './dto/merge-guests.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -33,6 +34,14 @@ export class GuestsController {
     @Query('search') search?: string,
   ) {
     return this.guestsService.list(user.tenantId!, search);
+  }
+
+  // ':id' route'idan OLDIN e'lon qilinishi shart — aks holda Nest "duplicates"ni
+  // ':id' parametri sifatida moslashtirib qo'yadi.
+  @Get('duplicates')
+  @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.VIEW)
+  duplicates(@CurrentUser() user: AuthenticatedUser) {
+    return this.guestsService.findDuplicateGroups(user.tenantId!);
   }
 
   @Get(':id')
@@ -61,5 +70,21 @@ export class GuestsController {
   @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.VIEW)
   stays(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.guestsService.getStayHistory(user.tenantId!, id);
+  }
+
+  // Ikkilanma mehmonni asosiy mehmonga birlashtiradi — buzilmas (destruktiv)
+  // amal bo'lgani uchun DELETE ruxsati talab qilinadi (EDIT emas).
+  @Post(':id/merge')
+  @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.DELETE)
+  merge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: MergeGuestsDto,
+  ) {
+    return this.guestsService.mergeGuests(
+      user.tenantId!,
+      id,
+      dto.duplicateGuestId,
+    );
   }
 }
