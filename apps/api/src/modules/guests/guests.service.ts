@@ -52,6 +52,38 @@ export class GuestsService {
     return this.guestRepo.save(guest);
   }
 
+  // Jonli bron widget'i (Booking Engine) uchun — telefon yoki email bo'yicha
+  // mos keluvchi mavjud mehmonni topadi (topilsa o'shani qaytaradi, yozuvni
+  // takrorlamaydi), topilmasa yangi mehmon yaratadi. `findDuplicateGroups`dagi
+  // bilan bir xil normalizatsiya (bo'shliq/tire/"+" olib tashlanadi, email
+  // kichik harfga o'tkaziladi) ishlatiladi — shuning uchun ikkalasi ham bir
+  // xil mehmonni "bir xil" deb hisoblaydi.
+  async findOrCreateForBooking(
+    tenantId: string,
+    data: { fullName: string; phone?: string | null; email?: string | null },
+  ): Promise<Guest> {
+    const normPhone = data.phone ? this.normalizePhone(data.phone) : null;
+    const normEmail = data.email ? this.normalizeText(data.email) : null;
+
+    if (normPhone || normEmail) {
+      const candidates = await this.guestRepo.find({ where: { tenantId } });
+      const existing = candidates.find(
+        (g) =>
+          (normPhone &&
+            g.phone &&
+            this.normalizePhone(g.phone) === normPhone) ||
+          (normEmail && g.email && this.normalizeText(g.email) === normEmail),
+      );
+      if (existing) return existing;
+    }
+
+    return this.create(tenantId, {
+      fullName: data.fullName,
+      phone: data.phone ?? undefined,
+      email: data.email ?? undefined,
+    });
+  }
+
   async list(tenantId: string, search?: string): Promise<Guest[]> {
     const qb = this.guestRepo
       .createQueryBuilder('guest')

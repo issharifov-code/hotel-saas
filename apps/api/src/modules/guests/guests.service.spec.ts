@@ -29,6 +29,7 @@ describe('GuestsService', () => {
       ...g,
     }));
 
+    let nextNewId = 0;
     const guestRepo = {
       find: jest
         .fn()
@@ -44,10 +45,35 @@ describe('GuestsService', () => {
                 null,
             ),
         ),
+      // `GuestsService.create` (va shu orqali `findOrCreateForBooking`) uchun —
+      // haqiqiy TypeORM `.create()` kabi, hali saqlanmagan yangi entity obyektini
+      // qaytaradi (`id` faqat `.save()` chaqirilganda "beriladi").
+      create: jest.fn((data: Record<string, unknown>) => ({
+        phone: null,
+        email: null,
+        nationality: null,
+        documentType: null,
+        documentNumber: null,
+        roomPreference: null,
+        dietaryPreference: null,
+        communicationPreference: CommunicationPreference.EMAIL,
+        loyaltyPoints: 0,
+        lifetimePoints: 0,
+        loyaltyTier: LoyaltyTier.BRONZE,
+        createdAt: new Date(),
+        ...data,
+      })),
       save: jest.fn().mockImplementation((g: Record<string, unknown>) => {
         const idx = guests.findIndex((x) => x.id === g.id);
-        if (idx >= 0) guests[idx] = { ...guests[idx], ...g };
-        return Promise.resolve(g);
+        if (idx >= 0) {
+          guests[idx] = { ...guests[idx], ...g };
+          return Promise.resolve(guests[idx]);
+        }
+        // Yangi (hali `id`siz) mehmon — `save()` yangi id "beradi", xotiradagi
+        // ro'yxatga qo'shiladi (haqiqiy DB'ning auto-generate xulq-atvorini taqlid qiladi).
+        const created = { ...g, id: g.id ?? `new-guest-${nextNewId++}` };
+        guests.push(created as never);
+        return Promise.resolve(created);
       }),
       remove: jest.fn().mockImplementation((g: Record<string, unknown>) => {
         const idx = guests.findIndex((x) => x.id === g.id);
@@ -228,6 +254,60 @@ describe('GuestsService', () => {
       const result = await service.mergeGuests('t1', 'primary', 'dup');
       expect(result.notes).toContain('VIP mehmon');
       expect(result.notes).toContain('Vegetarian');
+    });
+  });
+
+  // Booking Engine (jonli bron widget'i) mehmon ma'lumotini kiritganda,
+  // xuddi shu mehmonning ikki marta (har bir bron uchun alohida) yaratilib
+  // ketmasligi uchun `findOrCreateForBooking` mavjud mehmonni telefon/email
+  // bo'yicha topishi (yoki topilmasa yangi yaratishi) kerak.
+  describe('findOrCreateForBooking', () => {
+    it("mavjud mehmonni telefon bo'yicha (format farqidan qat'iy nazar) topadi, yangisini yaratmaydi", async () => {
+      const { service, guests, guestRepo } = createService([
+        { id: 'g1', tenantId: 't1', phone: '998901234567' },
+      ]);
+      const result = await service.findOrCreateForBooking('t1', {
+        fullName: 'Ism Familiya',
+        phone: '+998 90 123-45-67',
+      });
+      expect(result.id).toBe('g1');
+      expect(guestRepo.save).not.toHaveBeenCalled();
+      expect(guests).toHaveLength(1);
+    });
+
+    it("mavjud mehmonni email bo'yicha (kichik/katta harfdan qat'iy nazar) topadi", async () => {
+      const { service } = createService([
+        { id: 'g1', tenantId: 't1', email: 'guest@example.com' },
+      ]);
+      const result = await service.findOrCreateForBooking('t1', {
+        fullName: 'Ism Familiya',
+        email: 'GUEST@EXAMPLE.COM',
+      });
+      expect(result.id).toBe('g1');
+    });
+
+    it("mos kelmasa (yoki kontakt berilmagan bo'lsa) yangi mehmon yaratadi", async () => {
+      const { service, guests } = createService([
+        { id: 'g1', tenantId: 't1', phone: '998901234567' },
+      ]);
+      const result = await service.findOrCreateForBooking('t1', {
+        fullName: 'Boshqa Mehmon',
+        phone: '998907654321',
+      });
+      expect(result.id).not.toBe('g1');
+      expect(guests).toHaveLength(2);
+    });
+
+    it("boshqa tenant'ning mos keluvchi mehmonini hisobga olmaydi (yangi yaratadi)", async () => {
+      const { service, guests } = createService([
+        { id: 'g1', tenantId: 't2', phone: '998901234567' },
+      ]);
+      const result = await service.findOrCreateForBooking('t1', {
+        fullName: 'Ism Familiya',
+        phone: '998901234567',
+      });
+      expect(result.id).not.toBe('g1');
+      expect(guests.filter((g) => g.tenantId === 't1')).toHaveLength(1);
     });
   });
 });
