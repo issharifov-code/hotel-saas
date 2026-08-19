@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ChangeRoomDto } from './dto/change-room.dto';
@@ -8,7 +16,10 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/interfaces/jwt-payload.interface';
-import { PermissionAction, PermissionModule } from '../../common/enums/permission.enum';
+import {
+  PermissionAction,
+  PermissionModule,
+} from '../../common/enums/permission.enum';
 
 @Controller('properties/:propertyId/bookings')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -23,7 +34,12 @@ export class BookingsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.bookingsService.listByProperty(user.tenantId!, propertyId, from, to);
+    return this.bookingsService.listByProperty(
+      user.tenantId!,
+      propertyId,
+      from,
+      to,
+    );
   }
 
   @Get(':id')
@@ -56,6 +72,18 @@ export class BookingsController {
     return this.bookingsService.cancel(user.tenantId!, propertyId, id);
   }
 
+  // Jonli bron widget'idan ("pending"/"website") kelgan bronni xodim ko'rib
+  // chiqib tasdiqlaydi (Booking Engine kengaytmasi).
+  @Post(':id/confirm')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.EDIT)
+  confirm(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.confirm(user.tenantId!, propertyId, id);
+  }
+
   // Front Desk (kengaytirilgan): xona almashtirish / sanani o'zgartirish.
   @Post(':id/change-room')
   @RequirePermission(PermissionModule.FRONT_DESK, PermissionAction.EDIT)
@@ -76,7 +104,12 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: UpdateBookingDatesDto,
   ) {
-    return this.bookingsService.updateDates(user.tenantId!, propertyId, id, dto);
+    return this.bookingsService.updateDates(
+      user.tenantId!,
+      propertyId,
+      id,
+      dto,
+    );
   }
 
   // Check-in/check-out — Front Desk modulining vazifasi (permission matritsasiga mos).
