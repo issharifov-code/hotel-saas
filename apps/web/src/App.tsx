@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PlatformAdminRoute } from './components/PlatformAdminRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterTenantPage } from './pages/RegisterTenantPage';
+import { PublicBookingPage } from './pages/PublicBookingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterTenantPage />} />
+          <Route path="/book/:subdomain" element={<PublicBookingPage />} />
           <Route
             path="/dashboard"
             element={
