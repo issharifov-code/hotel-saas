@@ -56,6 +56,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { PublicModule } from './modules/public/public.module';
 
 @Module({
   imports: [
@@ -132,6 +133,7 @@ import { BillingModule } from './modules/billing/billing.module';
     AccountingModule,
     ReportsModule,
     BillingModule,
+    PublicModule,
   ],
   controllers: [AppController],
   providers: [
