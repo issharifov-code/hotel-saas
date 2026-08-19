@@ -457,6 +457,41 @@ export interface TenantDto {
   updatedAt: string;
 }
 
+// --- Booking Engine (jonli, autentifikatsiyasiz bron widget'i) ---
+
+export interface PublicPropertyDto {
+  id: string;
+  name: string;
+  address: string | null;
+  currency: string;
+}
+
+export interface PublicRatePlanDto {
+  id: string;
+  name: string;
+  nightlyPrice: string;
+  isRefundable: boolean;
+}
+
+export interface PublicAvailabilityDto {
+  roomTypeId: string;
+  name: string;
+  description: string | null;
+  maxOccupancy: number;
+  availableCount: number;
+  nightlyPriceFrom: number;
+  ratePlans: PublicRatePlanDto[];
+}
+
+export interface PublicBookingResultDto {
+  id: string;
+  checkIn: string;
+  checkOut: string;
+  totalAmount: string;
+  currency: string;
+  status: BookingStatus;
+}
+
 // --- Reports / Dashboard ---
 
 export interface ReportsOverviewDto {
