@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal } from './Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { BookingDto, BookingStatus, RoomDto } from '../lib/types';
+import type { BookingDto, BookingSource, BookingStatus, RoomDto } from '../lib/types';
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
   pending: 'Kutilmoqda',
@@ -11,6 +11,13 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   checked_out: 'Chiqib ketgan',
   cancelled: 'Bekor qilingan',
   no_show: 'Kelmadi',
+};
+
+const SOURCE_LABELS: Record<BookingSource, string> = {
+  direct: 'Resepshn',
+  website: "Jonli bron (veb-sayt)",
+  ota: 'OTA',
+  exely: 'Exely',
 };
 
 export function BookingDetailModal({
@@ -36,7 +43,7 @@ export function BookingDetailModal({
   const [newCheckIn, setNewCheckIn] = useState(booking.checkIn);
   const [newCheckOut, setNewCheckOut] = useState(booking.checkOut);
 
-  const act = async (action: 'check-in' | 'check-out' | 'cancel') => {
+  const act = async (action: 'check-in' | 'check-out' | 'cancel' | 'confirm') => {
     setSubmitting(true);
     setError(null);
     try {
@@ -95,12 +102,18 @@ export function BookingDetailModal({
         <Row label="Mehmon" value={booking.guest?.fullName ?? '—'} />
         <Row label="Sana" value={`${booking.checkIn} — ${booking.checkOut}`} />
         <Row label="Holat" value={STATUS_LABELS[booking.status]} />
+        <Row label="Manba" value={SOURCE_LABELS[booking.source]} />
         <Row label="Summa" value={`${Number(booking.totalAmount).toLocaleString('uz-UZ')} ${booking.currency}`} />
         {booking.notes && <Row label="Izoh" value={booking.notes} />}
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         <div className="flex flex-wrap gap-2 pt-2">
+          {booking.status === 'pending' && canEditBooking && (
+            <button disabled={submitting} onClick={() => act('confirm')} className="btn-primary">
+              Tasdiqlash
+            </button>
+          )}
           {booking.status === 'confirmed' && canCheckInOut && (
             <button disabled={submitting} onClick={() => act('check-in')} className="btn-primary">
               Check-in
