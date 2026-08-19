@@ -42,7 +42,7 @@ function buildRoomSegments(dates: string[], bookings: BookingDto[]): Segment[] {
 }
 
 export function BookingCalendarPage() {
-  const { property, can } = useAuth();
+  const { property, user, can } = useAuth();
   const [windowStart, setWindowStart] = useState(toISODate(new Date()));
   const [rooms, setRooms] = useState<RoomDto[]>([]);
   const [bookings, setBookings] = useState<BookingDto[]>([]);
@@ -110,6 +110,8 @@ export function BookingCalendarPage() {
           </button>
         )}
       </div>
+
+      {user?.tenantSubdomain && <BookingEngineLink subdomain={user.tenantSubdomain} />}
 
       <Legend />
 
@@ -213,6 +215,37 @@ export function BookingCalendarPage() {
         />
       )}
     </AppLayout>
+  );
+}
+
+// Booking Engine (jonli, autentifikatsiyasiz bron widget'i) havolasi —
+// xodim mehmonxonaning veb-saytiga yoki ijtimoiy tarmoq profiliga qo'shishi
+// mumkin. Mehmon shu havola orqali OTA komissiyasisiz to'g'ridan-to'g'ri
+// bron qilishi mumkin (backend: `/public/:subdomain/...`).
+function BookingEngineLink({ subdomain }: { subdomain: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}/book/${subdomain}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard mavjud bo'lmasa jimgina o'tkazib yuboriladi — havola baribir ko'rinadi
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 mb-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-600">Jonli bron havolasi</p>
+        <p className="text-xs text-slate-500 truncate">{url}</p>
+      </div>
+      <button type="button" onClick={copy} className="btn-secondary shrink-0 text-xs px-3 py-1.5">
+        {copied ? 'Nusxalandi!' : 'Nusxalash'}
+      </button>
+    </div>
   );
 }
 
