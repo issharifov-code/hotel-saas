@@ -7,6 +7,7 @@ import { RegisterTenantDto } from './dto/register-tenant.dto';
 import { LoginDto } from './dto/login.dto';
 import { SystemRoleKey } from '../../common/enums/permission.enum';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
+import { Tenant } from '../tenants/entities/tenant.entity';
 
 @Injectable()
 export class AuthService {
@@ -20,11 +21,12 @@ export class AuthService {
   // Onboarding: yangi mehmonxona ro'yxatdan o'tkazish (6.1-bo'lim, self-service).
   // Tenant + default Property + 6 ta standart rol + Owner foydalanuvchi bitta oqimda yaratiladi.
   async registerTenant(dto: RegisterTenantDto) {
-    const { tenant, property } = await this.tenantsService.createTenantWithDefaultProperty({
-      tenantName: dto.tenantName,
-      subdomain: dto.subdomain,
-      baseCurrency: dto.baseCurrency,
-    });
+    const { tenant, property } =
+      await this.tenantsService.createTenantWithDefaultProperty({
+        tenantName: dto.tenantName,
+        subdomain: dto.subdomain,
+        baseCurrency: dto.baseCurrency,
+      });
 
     const roles = await this.rolesService.seedSystemRolesForTenant(tenant.id);
     const ownerRole = roles.find((r) => r.systemKey === SystemRoleKey.OWNER)!;
@@ -36,7 +38,12 @@ export class AuthService {
       fullName: dto.ownerFullName,
     });
 
-    await this.rolesService.assignRoleToUser(tenant.id, owner.id, ownerRole.id, null);
+    await this.rolesService.assignRoleToUser(
+      tenant.id,
+      owner.id,
+      ownerRole.id,
+      null,
+    );
 
     const token = this.issueToken({
       sub: owner.id,
@@ -44,23 +51,38 @@ export class AuthService {
       isPlatformAdmin: false,
     });
 
-    return { tenant, property, user: this.publicUser(owner), ...token };
+    return {
+      tenant,
+      property,
+      user: this.publicUser(owner, tenant.subdomain),
+      ...token,
+    };
   }
 
   async login(dto: LoginDto) {
-    let tenantId: string | null = null;
+    let tenant: Tenant | null = null;
 
     if (dto.subdomain) {
-      const tenant = await this.tenantsService.findBySubdomain(dto.subdomain);
-      if (!tenant) throw new UnauthorizedException("Mehmonxona (subdomain) topilmadi");
-      tenantId = tenant.id;
+      tenant = await this.tenantsService.findBySubdomain(dto.subdomain);
+      if (!tenant)
+        throw new UnauthorizedException('Mehmonxona (subdomain) topilmadi');
     }
 
-    const user = await this.usersService.findByEmailAndTenant(dto.email, tenantId);
+    const user = await this.usersService.findByEmailAndTenant(
+      dto.email,
+      tenant?.id ?? null,
+    );
     if (!user) throw new UnauthorizedException("Email yoki parol noto'g'ri");
 
     const valid = await this.usersService.validatePassword(user, dto.password);
     if (!valid) throw new UnauthorizedException("Email yoki parol noto'g'ri");
+
+    // Booking Engine (jonli bron widget'i) havolasini frontend'da ko'rsatish
+    // uchun — subdomain login paytida berilmagan bo'lsa ham, foydalanuvchining
+    // o'z tenant'i orqali qidiriladi.
+    if (!tenant && user.tenantId) {
+      tenant = await this.tenantsService.findById(user.tenantId);
+    }
 
     const token = this.issueToken({
       sub: user.id,
@@ -68,19 +90,29 @@ export class AuthService {
       isPlatformAdmin: user.isPlatformAdmin,
     });
 
-    return { user: this.publicUser(user), ...token };
+    return { user: this.publicUser(user, tenant?.subdomain ?? null), ...token };
   }
 
   private issueToken(payload: JwtPayload) {
     return { accessToken: this.jwtService.sign(payload) };
   }
 
-  private publicUser(user: { id: string; email: string; fullName: string; tenantId: string | null; isPlatformAdmin: boolean }) {
+  private publicUser(
+    user: {
+      id: string;
+      email: string;
+      fullName: string;
+      tenantId: string | null;
+      isPlatformAdmin: boolean;
+    },
+    tenantSubdomain: string | null = null,
+  ) {
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
       tenantId: user.tenantId,
+      tenantSubdomain,
       isPlatformAdmin: user.isPlatformAdmin,
     };
   }
