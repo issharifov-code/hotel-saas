@@ -1,0 +1,89 @@
+databases:
+  - name: hotel-saas-db
+    plan: basic-256mb
+    databaseName: hotel_saas
+    user: hotel_saas
+    region: frankfurt
+
+services:
+  # Backend — NestJS API
+  - name: hotel-saas-api
+    type: web
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: >-
+      npm install -g pnpm@9.15.0 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter api build &&
+      cd apps/api &&
+      pnpm exec typeorm migration:run -d dist/database/data-source.js &&
+      node dist/database/seed.js
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: hotel-saas-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: hotel-saas-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: hotel-saas-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: hotel-saas-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: hotel-saas-db
+          property: database
+      # RLS ilova roli (EnableRowLevelSecurity migratsiyasi shu nom bilan yaratadi) —
+      # o'zgartirmang, migratsiya kodi bilan mos kelishi shart.
+      - key: DB_APP_USERNAME
+        value: hotel_saas_app
+      - key: DB_APP_PASSWORD
+        generateValue: true
+      - key: DB_SSL
+        value: 'true'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN_SECONDS
+        value: '28800'
+      # folioone.uz frontend'idan kelgan so'rovlarga ruxsat berish uchun.
+      - key: CORS_ORIGIN
+        value: https://folioone.uz,https://www.folioone.uz
+      # Birinchi deploy'dan oldin Render dashboard'da qo'lda kiriting
+      # (sync: false — qiymat repo'ga yozilmaydi).
+      - key: PLATFORM_ADMIN_EMAIL
+        sync: false
+      - key: PLATFORM_ADMIN_PASSWORD
+        sync: false
+
+  # Frontend — Vite/React statik sayti
+  - name: hotel-saas-web
+    type: web
+    runtime: static
+    region: frankfurt
+    buildCommand: >-
+      npm install -g pnpm@9.15.0 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter web build
+    staticPublishPath: apps/web/dist
+    routes:
+      # /api/* so'rovlari backend'ga proksi qilinadi — frontend kodi (apiFetch)
+      # o'zgarishsiz, nisbiy `/api/...` yo'llardan foydalanaveradi.
+      # DIQQAT: agar backend servis nomi/manzili boshqacha bo'lsa, quyidagi
+      # destination'ni Render dashboard'dagi haqiqiy backend URL bilan yangilang.
+      - type: rewrite
+        source: /api/*
+        destination: https://hotel-saas-api.onrender.com/api/$1
+      # Qolgan barcha yo'llar SPA (React Router) uchun index.html'ga qaytariladi.
+      - type: rewrite
+        source: /*
+        destination: /index.html
