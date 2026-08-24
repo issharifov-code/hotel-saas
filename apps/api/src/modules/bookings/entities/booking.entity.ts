@@ -85,7 +85,7 @@ export class Booking {
   @Column({ type: 'enum', enum: BookingSource, default: BookingSource.DIRECT })
   source: BookingSource;
 
-  @Column({ type: 'enum', enum: MarketSegment, default: MarketSegment.OTHER })
+  @Column({ name: 'market_segment', type: 'enum', enum: MarketSegment, default: MarketSegment.OTHER })
   marketSegment: MarketSegment;
 
   // Tanlangan narx rejasi (ixtiyoriy) — berilgan bo'lsa, totalAmount shu
