@@ -8,6 +8,7 @@ interface CurrentUser {
   fullName: string;
   tenantId: string | null;
   tenantSubdomain: string | null;
+  hasSampleData: boolean;
   isPlatformAdmin: boolean;
 }
 
