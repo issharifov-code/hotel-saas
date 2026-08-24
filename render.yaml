@@ -69,7 +69,6 @@ services:
   - name: hotel-saas-web
     type: web
     runtime: static
-    region: frankfurt
     buildCommand: >-
       npm install -g pnpm@9.15.0 &&
       pnpm install --frozen-lockfile &&
