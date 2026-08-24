@@ -41,6 +41,7 @@ export class AuthController {
       fullName: fullUser?.fullName,
       tenantId: fullUser?.tenantId,
       tenantSubdomain: tenant?.subdomain ?? null,
+      hasSampleData: tenant?.hasSampleData ?? false,
       isPlatformAdmin: fullUser?.isPlatformAdmin,
     };
   }

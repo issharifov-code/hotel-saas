@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { RolesService } from '../roles/roles.service';
+import { SampleDataService } from '../sample-data/sample-data.service';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
 import { LoginDto } from './dto/login.dto';
 import { SystemRoleKey } from '../../common/enums/permission.enum';
@@ -11,10 +12,13 @@ import { Tenant } from '../tenants/entities/tenant.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly tenantsService: TenantsService,
     private readonly rolesService: RolesService,
+    private readonly sampleDataService: SampleDataService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -45,6 +49,28 @@ export class AuthService {
       null,
     );
 
+    // Namunaviy (demo) ma'lumotlar — foydalanuvchi bo'sh tizim o'rniga jonli
+    // misol bilan tanishishi uchun. Bu YORDAMCHI qadam: agar biror sababdan
+    // (masalan kutilmagan xatolik) muvaffaqiyatsiz bo'lsa, butun ro'yxatdan
+    // o'tish oqimini BUZMASLIGI kerak — shuning uchun xato faqat log qilinadi.
+    try {
+      await this.sampleDataService.seedForTenant({
+        tenantId: tenant.id,
+        propertyId: property.id,
+        ownerUserId: owner.id,
+        currency: tenant.baseCurrency,
+      });
+      // `tenant` obyekti shu funksiya boshida yaratilgan — seed tranzaksiyasi
+      // `has_sample_data`ni DB'da true qilib qo'ydi, lekin shu xotiradagi
+      // nusxani avtomatik yangilamaydi. Javobda to'g'ri qiymat qaytishi uchun
+      // qo'lda yangilaymiz.
+      tenant.hasSampleData = true;
+    } catch (err) {
+      this.logger.error(
+        `Namunaviy ma'lumotlarni yaratishda xatolik (tenant ${tenant.id}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
     const token = this.issueToken({
       sub: owner.id,
       tenantId: tenant.id,
@@ -54,7 +80,7 @@ export class AuthService {
     return {
       tenant,
       property,
-      user: this.publicUser(owner, tenant.subdomain),
+      user: this.publicUser(owner, tenant.subdomain, tenant.hasSampleData),
       ...token,
     };
   }
@@ -90,7 +116,10 @@ export class AuthService {
       isPlatformAdmin: user.isPlatformAdmin,
     });
 
-    return { user: this.publicUser(user, tenant?.subdomain ?? null), ...token };
+    return {
+      user: this.publicUser(user, tenant?.subdomain ?? null, tenant?.hasSampleData ?? false),
+      ...token,
+    };
   }
 
   private issueToken(payload: JwtPayload) {
@@ -106,6 +135,7 @@ export class AuthService {
       isPlatformAdmin: boolean;
     },
     tenantSubdomain: string | null = null,
+    hasSampleData = false,
   ) {
     return {
       id: user.id,
@@ -113,6 +143,7 @@ export class AuthService {
       fullName: user.fullName,
       tenantId: user.tenantId,
       tenantSubdomain,
+      hasSampleData,
       isPlatformAdmin: user.isPlatformAdmin,
     };
   }
