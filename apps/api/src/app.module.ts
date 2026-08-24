@@ -114,6 +114,9 @@ import { PublicModule } from './modules/public/public.module';
         // sxema o'zgarishlarining oldini olish uchun migratsiya yagona yo'l bo'lishi kerak.
         synchronize: false,
         logging: config.get<string>('nodeEnv') === 'development',
+        ssl: config.get<boolean>('database.ssl')
+          ? { rejectUnauthorized: false }
+          : false,
       }),
     }),
     RlsContextModule,
