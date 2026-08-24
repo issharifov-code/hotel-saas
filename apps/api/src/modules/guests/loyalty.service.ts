@@ -10,20 +10,7 @@ import {
   LoyaltyTransaction,
   LoyaltyTransactionType,
 } from './entities/loyalty-transaction.entity';
-
-// Daraja bo'sag'alari — `lifetimePoints` (umr bo'yi to'plangan, hech qachon kamaymaydigan)
-// asosida. Eng yuqoridan pastga tekshiriladi. Kelajakda tenant-sozlanadigan qilish mumkin,
-// hozircha butun platforma uchun bitta standart.
-const TIER_THRESHOLDS: Array<[LoyaltyTier, number]> = [
-  [LoyaltyTier.PLATINUM, 15000],
-  [LoyaltyTier.GOLD, 5000],
-  [LoyaltyTier.SILVER, 1000],
-  [LoyaltyTier.BRONZE, 0],
-];
-
-// 1 ball = 10 valyuta birligi (to'lov summasi asosida) — sodda, tenant-sozlanadigan
-// bo'lishi kelajakda mumkin (hozircha butun platforma uchun bitta qoida).
-const POINTS_PER_CURRENCY_UNIT = 0.1;
+import { calculateLoyaltyTier, pointsForPayment as computePointsForPayment } from './loyalty-formula.util';
 
 @Injectable()
 export class LoyaltyService {
@@ -33,15 +20,16 @@ export class LoyaltyService {
     private readonly txRepo: Repository<LoyaltyTransaction>,
   ) {}
 
+  // Sof hisob-kitob logikasi `loyalty-formula.util.ts`ga ko'chirildi (SampleDataService
+  // ham xuddi shu formuladan, RLS-repository'larsiz, to'g'ridan-to'g'ri import orqali
+  // foydalanishi uchun) — bu ikki metod orqaga moslik uchun shu yerda qoldirilgan (mavjud
+  // chaqiruvchilar, masalan GuestsService.mergeGuests, o'zgarishsiz ishlayveradi).
   calculateTier(lifetimePoints: number): LoyaltyTier {
-    for (const [tier, threshold] of TIER_THRESHOLDS) {
-      if (lifetimePoints >= threshold) return tier;
-    }
-    return LoyaltyTier.BRONZE;
+    return calculateLoyaltyTier(lifetimePoints);
   }
 
   pointsForPayment(amount: string | number): number {
-    return Math.floor(Number(amount) * POINTS_PER_CURRENCY_UNIT);
+    return computePointsForPayment(amount);
   }
 
   // Barcha ball o'zgarishlari shu yagona yo'l orqali o'tadi — Guest.loyaltyPoints/
