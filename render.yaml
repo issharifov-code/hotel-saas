@@ -14,7 +14,7 @@ services:
     region: frankfurt
     buildCommand: >-
       npm install -g pnpm@9.15.0 &&
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter api build &&
       cd apps/api &&
       pnpm exec typeorm migration:run -d dist/database/data-source.js &&
