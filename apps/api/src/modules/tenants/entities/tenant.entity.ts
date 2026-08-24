@@ -42,6 +42,12 @@ export class Tenant {
   @Column({ type: 'enum', enum: TenantPlan, default: TenantPlan.START })
   plan: TenantPlan;
 
+  // Ro'yxatdan o'tishda SampleDataService tomonidan avtomatik to'ldirilgan namunaviy
+  // (demo) ma'lumotlar hali mavjudmi. Front-end shu bayroq true bo'lsa "Namunaviy
+  // ma'lumotlarni o'chirish" bannerini ko'rsatadi (SampleDataController.remove orqali).
+  @Column({ name: 'has_sample_data', type: 'boolean', default: false })
+  hasSampleData: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
