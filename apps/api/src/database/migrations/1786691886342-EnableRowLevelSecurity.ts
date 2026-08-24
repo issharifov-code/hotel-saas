@@ -62,15 +62,26 @@ export class EnableRowLevelSecurity1786691886342 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1) Runtime uchun jadval egasi bo'lmagan rol.
-    await queryRunner.query(`
+    // Parol DB_APP_PASSWORD env o'zgaruvchisidan olinadi (production'da
+    // majburiy — aks holda oldingi hardcoded dev parol xavfsizlik teshigi
+    // bo'lib qolar edi). Mahalliy dasturlash uchun standart qiymat saqlanadi.
+    const appRolePassword = process.env.DB_APP_PASSWORD || 'hotel_saas_app_dev';
+    if (process.env.NODE_ENV === 'production' && !process.env.DB_APP_PASSWORD) {
+      throw new Error(
+        "DB_APP_PASSWORD environment o'zgaruvchisi production muhitida majburiy (RLS ilova roli uchun).",
+      );
+    }
+    await queryRunner.query(
+      `
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${APP_ROLE}') THEN
-          CREATE ROLE "${APP_ROLE}" LOGIN PASSWORD 'hotel_saas_app_dev';
+          CREATE ROLE "${APP_ROLE}" LOGIN PASSWORD '${appRolePassword.replace(/'/g, "''")}';
         END IF;
       END
       $$;
-    `);
+    `,
+    );
     await queryRunner.query(`GRANT USAGE ON SCHEMA public TO "${APP_ROLE}"`);
     await queryRunner.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${APP_ROLE}"`);
     // Kelajakda migratsiyalar orqali yaratiladigan yangi jadvallarga ham
