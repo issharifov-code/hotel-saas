@@ -33,7 +33,14 @@ export class Tenant {
   @Column({ unique: true, length: 63 })
   subdomain: string;
 
-  @Column({ length: 3, default: 'UZS' })
+  // DIQQAT: DB ustuni tarixan literal, mixed-case `"baseCurrency"` nomi bilan
+  // yaratilgan (boshlang'ich migratsiya shu unmapped entity'dan generatsiya
+  // qilingan) — loyihaning boshqa hamma joyida snake_case qoidasiga amal
+  // qilinadi. `name:` shu holatni ENDI ANIQ ko'rsatadi (avval yashirin/default
+  // edi) — bu Booking.marketSegment'da yuz bergan sinfdagi xatoning oldini
+  // oladi: agar kelajakda kimdir shu ustunni "to'g'irlash" uchun snake_case'ga
+  // o'tkazadigan migratsiya yozsa, shu qatorni ham yangilashi SHART bo'ladi.
+  @Column({ name: 'baseCurrency', length: 3, default: 'UZS' })
   baseCurrency: string;
 
   @Column({ type: 'enum', enum: TenantStatus, default: TenantStatus.TRIAL })
