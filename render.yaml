@@ -81,7 +81,12 @@ services:
       # destination'ni Render dashboard'dagi haqiqiy backend URL bilan yangilang.
       - type: rewrite
         source: /api/*
-        destination: https://hotel-saas-api.onrender.com/api/$1
+        # DIQQAT: destination'dagi host nomi backend xizmati birinchi marta
+        # yaratilganda Render tomonidan tasodifiy prefiks bilan yaratilishi
+        # mumkin (masalan hotel-saas-api-ac6c.onrender.com). Har doim Render
+        # dashboard'dagi haqiqiy backend URL bilan tekshiring/yangilang.
+        # Wildcard qiymatini olib o'tish uchun Render'da $1 EMAS, * ishlatiladi.
+        destination: https://hotel-saas-api-ac6c.onrender.com/api/*
       # Qolgan barcha yo'llar SPA (React Router) uchun index.html'ga qaytariladi.
       - type: rewrite
         source: /*
