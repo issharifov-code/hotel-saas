@@ -79,4 +79,7 @@ export const AppDataSource = new DataSource({
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
+  // Render/boshqa boshqariladigan Postgres xizmatlari uchun (o'z-o'ziga imzolangan
+  // sertifikat bilan ham ishlashi uchun rejectUnauthorized: false).
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
