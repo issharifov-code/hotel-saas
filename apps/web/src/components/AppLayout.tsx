@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { SampleDataBanner } from './SampleDataBanner';
 
 interface NavItem {
   to: string;
@@ -60,7 +61,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
         <header className="bg-white border-b border-slate-200 px-8 py-4">
           <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
         </header>
-        <main className="px-8 py-6">{children}</main>
+        <main className="px-8 py-6">
+          <SampleDataBanner />
+          {children}
+        </main>
       </div>
     </div>
   );
