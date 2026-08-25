@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
+import { GroupBookingsPage } from './pages/GroupBookingsPage';
 import { NightAuditPage } from './pages/NightAuditPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
@@ -39,6 +40,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BookingCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/group-bookings"
+            element={
+              <ProtectedRoute>
+                <GroupBookingsPage />
               </ProtectedRoute>
             }
           />
