@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
+import folioOneLogo from '../assets/folio-one-logo.png';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -29,7 +30,10 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-        <h1 className="text-xl font-semibold text-slate-900 mb-1">Hotel SaaS</h1>
+        <div className="flex items-center gap-2 mb-1">
+          <img src={folioOneLogo} alt="Folio One" className="h-8 w-8" />
+          <h1 className="text-xl font-semibold text-slate-900">Folio One</h1>
+        </div>
         <p className="text-sm text-slate-500 mb-6">Tizimga kirish</p>
 
         <form onSubmit={onSubmit} className="space-y-4">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type { AdminSubscriptionInvoiceDto, PlanPricingDto, TenantDto, TenantStatus } from '../lib/types';
+import folioOneLogo from '../assets/folio-one-logo.png';
 
 const TENANT_STATUS_LABELS: Record<TenantStatus, string> = {
   trial: 'Sinov muddati',
@@ -129,7 +130,10 @@ export function AdminPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
         <div>
-          <p className="font-semibold text-slate-900">Hotel SaaS — Platforma boshqaruvi</p>
+          <div className="flex items-center gap-2">
+            <img src={folioOneLogo} alt="Folio One" className="h-6 w-6" />
+            <p className="font-semibold text-slate-900">Folio One — Platforma boshqaruvi</p>
+          </div>
           <p className="text-xs text-slate-500">{user?.email}</p>
         </div>
         <button onClick={logout} className="text-sm text-slate-600 hover:text-slate-900 underline">
