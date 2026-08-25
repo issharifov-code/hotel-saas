@@ -39,6 +39,7 @@ import { Account } from './modules/accounting/entities/account.entity';
 import { JournalEntry } from './modules/accounting/entities/journal-entry.entity';
 import { JournalEntryLine } from './modules/accounting/entities/journal-entry-line.entity';
 import { SubscriptionInvoice } from './modules/billing/entities/subscription-invoice.entity';
+import { NightAuditRun } from './modules/night-audit/entities/night-audit-run.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -58,6 +59,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { PublicModule } from './modules/public/public.module';
 import { SampleDataModule } from './modules/sample-data/sample-data.module';
+import { NightAuditModule } from './modules/night-audit/night-audit.module';
 
 @Module({
   imports: [
@@ -108,6 +110,7 @@ import { SampleDataModule } from './modules/sample-data/sample-data.module';
           JournalEntry,
           JournalEntryLine,
           SubscriptionInvoice,
+          NightAuditRun,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -139,6 +142,7 @@ import { SampleDataModule } from './modules/sample-data/sample-data.module';
     BillingModule,
     PublicModule,
     SampleDataModule,
+    NightAuditModule,
   ],
   controllers: [AppController],
   providers: [
