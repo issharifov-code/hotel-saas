@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
+import { NightAuditPage } from './pages/NightAuditPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
@@ -54,6 +55,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <GuestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/night-audit"
+            element={
+              <ProtectedRoute>
+                <NightAuditPage />
               </ProtectedRoute>
             }
           />
