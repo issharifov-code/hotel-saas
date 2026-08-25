@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
+@theme {
+  /* Folio One brend ranglari (logotipdan olingan) */
+  --color-brand-navy: #002283;
+  --color-brand-navy-dark: #001a63;
+  --color-brand-navy-light: #e8ecf7;
+  --color-brand-gold: #e0a237;
+  --color-brand-gold-dark: #c98a1f;
+}
+
 @layer components {
   .input {
-    @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500;
+    @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy;
   }
 
   .btn-primary {
-    @apply rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40;
+    @apply rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40;
   }
 
   .btn-secondary {
-    @apply rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40;
+    @apply rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-brand-navy hover:bg-slate-50 disabled:opacity-40;
   }
 }
