@@ -33,6 +33,12 @@ export class Property {
   @Column({ length: 3 })
   currency: string;
 
+  // Mulkning joriy "biznes sanasi" — Night Audit ("kunni yopish") orqali
+  // har safar bir kunga suriladi (NightAuditService.run). Yangi property
+  // uchun DB DEFAULT CURRENT_DATE orqali bugungi sana bilan boshlanadi.
+  @Column({ name: 'business_date', type: 'date' })
+  businessDate: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
