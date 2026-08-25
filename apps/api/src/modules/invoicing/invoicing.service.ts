@@ -338,9 +338,32 @@ export class InvoicingService {
       providerRef?: string;
     },
   ): Promise<Invoice> {
-    if (invoice.status === InvoiceStatus.CANCELLED) {
+    // Invoice qatorini joriy so'rov tranzaksiyasi ichida bloklab (pessimistic_write),
+    // eng so'nggi holatni qayta o'qiymiz — bu (a) qoldiqdan oshiq to'lov yozib
+    // qo'yilishining oldini oladi (avval bu yerda umuman tekshiruv yo'q edi — faqat
+    // PaymentsService.chargeInvoice'da bor edi, addPayment orqali qo'lda kiritilganda
+    // esa hech qanday yuqori chegara tekshirilmasdi), va (b) ikkita bir vaqtdagi
+    // to'lov so'rovi (masalan ikki xodim yoki gateway+qo'lda) bir-birini "ko'rmasdan"
+    // ikkalasi ham eski qoldiqni tekshirib o'tib ketishi (TOCTOU race) xavfini yopadi.
+    const locked = await this.invoiceRepo
+      .createQueryBuilder('invoice')
+      .setLock('pessimistic_write')
+      .where('invoice.id = :id', { id: invoice.id })
+      .getOne();
+    if (!locked) {
+      throw new NotFoundException('Hisob-faktura topilmadi');
+    }
+
+    if (locked.status === InvoiceStatus.CANCELLED) {
       throw new ConflictException(
         "Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi",
+      );
+    }
+
+    const balance = Number(locked.totalAmount) - Number(locked.paidAmount);
+    if (Number(params.amount) > balance + 0.005) {
+      throw new ConflictException(
+        `To'lov summasi qoldiqdan (${balance.toFixed(2)}) oshib ketmasligi kerak`,
       );
     }
 
