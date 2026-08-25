@@ -101,6 +101,23 @@ export interface BookingDto {
   updatedAt: string;
 }
 
+// --- Guruh/blok bron ---
+
+export interface BookingGroupDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  groupName: string;
+  companyName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  notes: string | null;
+  createdByUserId: string;
+  bookings: BookingDto[];
+  createdAt: string;
+}
+
 export interface PropertyDto {
   id: string;
   tenantId: string;
