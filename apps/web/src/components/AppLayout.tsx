@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SampleDataBanner } from './SampleDataBanner';
+import folioOneLogo from '../assets/folio-one-logo.png';
 
 interface NavItem {
   to: string;
@@ -31,7 +32,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     <div className="min-h-screen bg-slate-50 flex">
       <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col">
         <div className="px-5 py-5 border-b border-slate-100">
-          <p className="font-semibold text-slate-900">Hotel SaaS</p>
+          <div className="flex items-center gap-2">
+            <img src={folioOneLogo} alt="Folio One" className="h-6 w-6" />
+            <p className="font-semibold text-slate-900">Folio One</p>
+          </div>
           {property && <p className="text-xs text-slate-500 mt-0.5">{property.name}</p>}
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
