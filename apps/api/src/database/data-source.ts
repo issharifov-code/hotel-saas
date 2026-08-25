@@ -31,6 +31,7 @@ import { Account } from '../modules/accounting/entities/account.entity';
 import { JournalEntry } from '../modules/accounting/entities/journal-entry.entity';
 import { JournalEntryLine } from '../modules/accounting/entities/journal-entry-line.entity';
 import { SubscriptionInvoice } from '../modules/billing/entities/subscription-invoice.entity';
+import { NightAuditRun } from '../modules/night-audit/entities/night-audit-run.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -73,6 +74,7 @@ export const AppDataSource = new DataSource({
     JournalEntry,
     JournalEntryLine,
     SubscriptionInvoice,
+    NightAuditRun,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
