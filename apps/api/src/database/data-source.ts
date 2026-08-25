@@ -12,6 +12,7 @@ import { RoomType } from '../modules/rooms/entities/room-type.entity';
 import { Room } from '../modules/rooms/entities/room.entity';
 import { RatePlan } from '../modules/rooms/entities/rate-plan.entity';
 import { Booking } from '../modules/bookings/entities/booking.entity';
+import { BookingGroup } from '../modules/bookings/entities/booking-group.entity';
 import { Warehouse } from '../modules/warehouse/entities/warehouse.entity';
 import { Supplier } from '../modules/warehouse/entities/supplier.entity';
 import { StockItem } from '../modules/warehouse/entities/stock-item.entity';
@@ -55,6 +56,7 @@ export const AppDataSource = new DataSource({
     Room,
     RatePlan,
     Booking,
+    BookingGroup,
     Warehouse,
     Supplier,
     StockItem,
