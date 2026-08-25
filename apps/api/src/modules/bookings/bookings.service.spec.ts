@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingSource, BookingStatus } from './entities/booking.entity';
 import { RoomStatus } from '../rooms/entities/room.entity';
@@ -46,6 +50,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     };
     const housekeepingService = {};
     const invoicingService = {};
+    const bookingGroupRepo = {};
 
     const service = new BookingsService(
       bookingRepo as never,
@@ -56,6 +61,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
+      bookingGroupRepo as never,
     );
     return { service, bookingRepo, bookingQueryBuilder, ratePlansService };
   }
@@ -228,9 +234,19 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     };
     const roomsService = {};
     const ratePlansService = { findById: jest.fn() };
-    const guestsService = {};
+    const guestsService = {
+      findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
+    };
     const housekeepingService = {};
     const invoicingService = {};
+    const bookingGroupRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((g: { id?: string }) =>
+        Promise.resolve({ id: g.id ?? 'group-1', ...g }),
+      ),
+      find: jest.fn(),
+      findOne: jest.fn(),
+    };
 
     const service = new BookingsService(
       bookingRepo as never,
@@ -241,8 +257,16 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
+      bookingGroupRepo as never,
     );
-    return { service, bookingRepo, roomRepo, ratePlansService };
+    return {
+      service,
+      bookingRepo,
+      roomRepo,
+      ratePlansService,
+      bookingGroupRepo,
+      guestsService,
+    };
   }
 
   const dto = {
@@ -393,5 +417,176 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       '2026-10-03',
     );
     expect(count).toBe(2); // room-2 out_of_order bo'lgani uchun hisoblanmaydi
+  });
+});
+
+// Guruh/blok bron — `createGroup`/`addRoomToGroup`/`listGroups`/`findGroupById`
+// metodlarini sinaydi. `createRoomForGroup` (xususiy) `createFromWebsite` bilan
+// bir xil "xona turi tanlanadi, birinchi bo'sh xona avtomatik tayinlanadi"
+// naqshini qayta ishlatadi, shuning uchun shu yerda ham bir xil
+// `createWebsiteService` yordamchisidan foydalaniladi.
+describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
+  function createGroupService(
+    params: {
+      rooms?: Array<{ id: string; status?: RoomStatus }>;
+    } = {},
+  ) {
+    const rooms = params.rooms ?? [
+      { id: 'room-1', status: RoomStatus.AVAILABLE },
+    ];
+    const bookingQueryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(null), // hech qanday to'qnashuv yo'q
+    };
+    const bookingRepo = {
+      createQueryBuilder: jest.fn(() => bookingQueryBuilder),
+      create: jest.fn((data: unknown) => ({
+        id: 'booking-1',
+        ...(data as object),
+      })),
+      save: jest.fn((b: unknown) => Promise.resolve(b)),
+    };
+    const roomRepo = { find: jest.fn().mockResolvedValue(rooms) };
+    const roomTypeRepo = {
+      findOneBy: jest
+        .fn()
+        .mockResolvedValue({ id: 'rt-1', basePrice: '500000' }),
+    };
+    const roomsService = {};
+    const ratePlansService = { findById: jest.fn() };
+    const guestsService = {
+      findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
+    };
+    const housekeepingService = {};
+    const invoicingService = {};
+    const bookingGroupRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((g: { id?: string }) =>
+        Promise.resolve({ id: 'group-1', ...g }),
+      ),
+      find: jest.fn(),
+      findOne: jest.fn(),
+    };
+
+    const service = new BookingsService(
+      bookingRepo as never,
+      roomRepo as never,
+      roomTypeRepo as never,
+      roomsService as never,
+      ratePlansService as never,
+      guestsService as never,
+      housekeepingService as never,
+      invoicingService as never,
+      bookingGroupRepo as never,
+    );
+    return {
+      service,
+      bookingRepo,
+      bookingGroupRepo,
+      guestsService,
+      ratePlansService,
+    };
+  }
+
+  const groupDto = {
+    groupName: 'ACME konferensiyasi',
+    companyName: 'ACME MChJ',
+    checkIn: '2026-11-01',
+    checkOut: '2026-11-03',
+    rooms: [
+      { roomTypeId: 'rt-1', guestId: 'guest-1' },
+      { roomTypeId: 'rt-1', guestId: 'guest-2' },
+    ],
+  };
+
+  it("check-out check-in dan oldin (yoki teng) bo'lsa xato tashlaydi", async () => {
+    const { service } = createGroupService();
+    await expect(
+      service.createGroup('t1', 'p1', 'user-1', {
+        ...groupDto,
+        checkIn: '2026-11-03',
+        checkOut: '2026-11-01',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("guruhni yaratadi va har bir qator uchun alohida, groupId'ga bog'langan bron yasaydi", async () => {
+    const { service, bookingRepo, bookingGroupRepo } = createGroupService({
+      rooms: [
+        { id: 'room-1', status: RoomStatus.AVAILABLE },
+        { id: 'room-2', status: RoomStatus.AVAILABLE },
+      ],
+    });
+
+    const group = await service.createGroup('t1', 'p1', 'user-1', groupDto);
+
+    expect(bookingGroupRepo.save).toHaveBeenCalledTimes(1);
+    expect(group.id).toBe('group-1');
+    expect(bookingRepo.save).toHaveBeenCalledTimes(2);
+    const created1 = bookingRepo.create.mock.calls[0][0];
+    const created2 = bookingRepo.create.mock.calls[1][0];
+    expect(created1.groupId).toBe('group-1');
+    expect(created2.groupId).toBe('group-1');
+    expect(created1.marketSegment).toBe('group');
+    expect(created1.guestId).toBe('guest-1');
+    expect(created2.guestId).toBe('guest-2');
+  });
+
+  it("shu turdagi bo'sh xona qolmasa ConflictException tashlaydi (guruh baribir yaratilib bo'lgan bo'ladi, lekin so'rov transaksiya ichida bo'lgani uchun chaqiruvchi tomonda rollback bo'ladi)", async () => {
+    const { service } = createGroupService({ rooms: [] });
+    await expect(
+      service.createGroup('t1', 'p1', 'user-1', groupDto),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it("addRoomToGroup: mavjud guruhga yangi xona qo'shadi", async () => {
+    const { service, bookingRepo, bookingGroupRepo } = createGroupService();
+    bookingGroupRepo.findOne.mockResolvedValue({
+      id: 'group-1',
+      tenantId: 't1',
+      propertyId: 'p1',
+    });
+
+    const booking = await service.addRoomToGroup('t1', 'p1', 'group-1', {
+      roomTypeId: 'rt-1',
+      guestId: 'guest-3',
+      checkIn: '2026-11-01',
+      checkOut: '2026-11-03',
+    });
+
+    expect(booking.groupId).toBe('group-1');
+    expect(bookingRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('addRoomToGroup: guruh topilmasa NotFoundException tashlaydi', async () => {
+    const { service, bookingGroupRepo } = createGroupService();
+    bookingGroupRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.addRoomToGroup('t1', 'p1', 'yoq-guruh', {
+        roomTypeId: 'rt-1',
+        guestId: 'guest-1',
+        checkIn: '2026-11-01',
+        checkOut: '2026-11-03',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it("listGroups: tenant/property bo'yicha filtrlab, bookings relation bilan qaytaradi", async () => {
+    const { service, bookingGroupRepo } = createGroupService();
+    bookingGroupRepo.find.mockResolvedValue([{ id: 'group-1' }]);
+    const result = await service.listGroups('t1', 'p1');
+    expect(result).toEqual([{ id: 'group-1' }]);
+    expect(bookingGroupRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tenantId: 't1', propertyId: 'p1' } }),
+    );
+  });
+
+  it('findGroupById: topilmasa NotFoundException tashlaydi', async () => {
+    const { service, bookingGroupRepo } = createGroupService();
+    bookingGroupRepo.findOne.mockResolvedValue(null);
+    await expect(service.findGroupById('t1', 'p1', 'yoq')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

@@ -12,9 +12,12 @@ import {
   BookingStatus,
   MarketSegment,
 } from './entities/booking.entity';
+import { BookingGroup } from './entities/booking-group.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ChangeRoomDto } from './dto/change-room.dto';
 import { UpdateBookingDatesDto } from './dto/update-booking-dates.dto';
+import { CreateBookingGroupDto } from './dto/create-booking-group.dto';
+import { AddGroupRoomDto } from './dto/add-group-room.dto';
 import { RoomsService } from '../rooms/rooms.service';
 import { RoomType } from '../rooms/entities/room-type.entity';
 import { RatePlansService } from '../rooms/rate-plans.service';
@@ -45,6 +48,8 @@ export class BookingsService {
     private readonly guestsService: GuestsService,
     private readonly housekeepingService: HousekeepingService,
     private readonly invoicingService: InvoicingService,
+    @InjectRepository(BookingGroup)
+    private readonly bookingGroupRepo: Repository<BookingGroup>,
   ) {}
 
   async create(
@@ -585,6 +590,173 @@ export class BookingsService {
       );
     }
     booking.status = BookingStatus.CONFIRMED;
+    return this.bookingRepo.save(booking);
+  }
+
+  // Guruh/blok bron — korporativ mijoz yoki turizm agentligi bir vaqtning
+  // o'zida bir nechta xonani bitta "guruh" ostida bron qiladi. Har bir qator
+  // uchun oddiy bron yaratish mantig'i (`createRoomForGroup`) qayta
+  // ishlatiladi — mehmon aniq xonani emas, faqat xona TURINI tanlaydi
+  // (Booking Engine'dagi `createFromWebsite` bilan bir xil naqsh), birinchi
+  // bo'sh xona avtomatik tayinlanadi. Butun so'rov RLS interceptor tomonidan
+  // bitta HTTP-tranzaksiyaga o'ralgani uchun, agar biror qatorda xatolik
+  // chiqsa (masalan bo'sh xona qolmasa), butun guruh yaratish operatsiyasi
+  // avtomatik ravishda orqaga qaytariladi (rollback) — qisman yaratilgan
+  // guruh saqlanib qolmaydi.
+  async createGroup(
+    tenantId: string,
+    propertyId: string,
+    userId: string,
+    dto: CreateBookingGroupDto,
+  ): Promise<BookingGroup> {
+    if (new Date(dto.checkOut) <= new Date(dto.checkIn)) {
+      throw new BadRequestException(
+        "check-out sanasi check-in sanasidan keyin bo'lishi kerak",
+      );
+    }
+
+    const group = await this.bookingGroupRepo.save(
+      this.bookingGroupRepo.create({
+        tenantId,
+        propertyId,
+        groupName: dto.groupName,
+        companyName: dto.companyName ?? null,
+        contactName: dto.contactName ?? null,
+        contactPhone: dto.contactPhone ?? null,
+        contactEmail: dto.contactEmail ?? null,
+        notes: dto.notes ?? null,
+        createdByUserId: userId,
+      }),
+    );
+
+    for (const room of dto.rooms) {
+      await this.createRoomForGroup(tenantId, propertyId, group.id, {
+        roomTypeId: room.roomTypeId,
+        guestId: room.guestId,
+        ratePlanId: room.ratePlanId,
+        checkIn: dto.checkIn,
+        checkOut: dto.checkOut,
+      });
+    }
+
+    return group;
+  }
+
+  async listGroups(
+    tenantId: string,
+    propertyId: string,
+  ): Promise<BookingGroup[]> {
+    return this.bookingGroupRepo.find({
+      where: { tenantId, propertyId },
+      relations: { bookings: { room: true, guest: true } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findGroupById(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+  ): Promise<BookingGroup> {
+    const group = await this.bookingGroupRepo.findOne({
+      where: { id, tenantId, propertyId },
+      relations: { bookings: { room: true, guest: true } },
+    });
+    if (!group) throw new NotFoundException('Guruh bron topilmadi');
+    return group;
+  }
+
+  // Mavjud guruhga qo'shimcha xona (rooming list qatori) qo'shadi.
+  async addRoomToGroup(
+    tenantId: string,
+    propertyId: string,
+    groupId: string,
+    dto: AddGroupRoomDto,
+  ): Promise<Booking> {
+    // Guruh haqiqatan mavjudligini va shu tenant/property'ga tegishliligini
+    // tekshiradi (topilmasa NotFoundException tashlaydi).
+    const group = await this.bookingGroupRepo.findOne({
+      where: { id: groupId, tenantId, propertyId },
+    });
+    if (!group) throw new NotFoundException('Guruh bron topilmadi');
+    return this.createRoomForGroup(tenantId, propertyId, groupId, dto);
+  }
+
+  // `create()`/`createFromWebsite()` bilan bir xil "xona turi tanlanadi,
+  // birinchi bo'sh xona avtomatik tayinlanadi" naqshi — faqat qo'shimcha
+  // ravishda `groupId` va `marketSegment: GROUP` bilan.
+  private async createRoomForGroup(
+    tenantId: string,
+    propertyId: string,
+    groupId: string,
+    dto: {
+      roomTypeId: string;
+      guestId: string;
+      ratePlanId?: string;
+      checkIn: string;
+      checkOut: string;
+    },
+  ): Promise<Booking> {
+    if (new Date(dto.checkOut) <= new Date(dto.checkIn)) {
+      throw new BadRequestException(
+        "check-out sanasi check-in sanasidan keyin bo'lishi kerak",
+      );
+    }
+    await this.guestsService.findById(tenantId, dto.guestId);
+
+    const availableRooms = await this.listAvailableRoomsOfType(
+      tenantId,
+      propertyId,
+      dto.roomTypeId,
+      dto.checkIn,
+      dto.checkOut,
+    );
+    if (availableRooms.length === 0) {
+      throw new ConflictException(
+        "Tanlangan sana oralig'ida shu turdagi bo'sh xona yo'q",
+      );
+    }
+    const room = availableRooms[0];
+
+    let ratePlan: RatePlan | null = null;
+    if (dto.ratePlanId) {
+      ratePlan = await this.ratePlansService.findById(
+        tenantId,
+        propertyId,
+        dto.ratePlanId,
+      );
+      if (ratePlan.roomTypeId !== dto.roomTypeId) {
+        throw new BadRequestException(
+          'Tanlangan narx rejasi shu xona turiga tegishli emas',
+        );
+      }
+      if (!ratePlan.isActive) {
+        throw new BadRequestException('Tanlangan narx rejasi endi faol emas');
+      }
+    }
+
+    const nights = this.diffNights(dto.checkIn, dto.checkOut);
+    const totalAmount = await this.calcNightlyTotal(
+      dto.roomTypeId,
+      ratePlan,
+      nights,
+    );
+
+    const booking = this.bookingRepo.create({
+      tenantId,
+      propertyId,
+      roomId: room.id,
+      guestId: dto.guestId,
+      checkIn: dto.checkIn,
+      checkOut: dto.checkOut,
+      status: BookingStatus.CONFIRMED,
+      source: BookingSource.DIRECT,
+      marketSegment: MarketSegment.GROUP,
+      ratePlanId: ratePlan?.id ?? null,
+      totalAmount,
+      currency: 'UZS',
+      groupId,
+    });
     return this.bookingRepo.save(booking);
   }
 

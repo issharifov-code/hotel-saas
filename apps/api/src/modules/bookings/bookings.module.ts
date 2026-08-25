@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { Booking } from './entities/booking.entity';
+import { BookingGroup } from './entities/booking-group.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { RoomType } from '../rooms/entities/room-type.entity';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
+import { BookingGroupsController } from './booking-groups.controller';
 import { RoomsModule } from '../rooms/rooms.module';
 import { GuestsModule } from '../guests/guests.module';
 import { RolesModule } from '../roles/roles.module';
@@ -13,7 +15,7 @@ import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
   imports: [
-    RlsModule.forFeature([Booking, Room, RoomType]),
+    RlsModule.forFeature([Booking, BookingGroup, Room, RoomType]),
     RoomsModule,
     GuestsModule,
     RolesModule,
@@ -21,7 +23,7 @@ import { RlsModule } from '../../common/rls/rls.module';
     InvoicingModule,
   ],
   providers: [BookingsService],
-  controllers: [BookingsController],
+  controllers: [BookingsController, BookingGroupsController],
   exports: [BookingsService],
 })
 export class BookingsModule {}
