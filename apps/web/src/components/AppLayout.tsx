@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Bosh sahifa' },
   { to: '/bookings', label: 'Bronlar taqvimi', moduleKey: 'booking' },
   { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
+  { to: '/night-audit', label: 'Kunni yopish', moduleKey: 'front_desk' },
   { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
   { to: '/housekeeping', label: 'Housekeeping', moduleKey: 'housekeeping' },
   { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
