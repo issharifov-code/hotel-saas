@@ -12,6 +12,7 @@ import { Property } from '../../properties/entities/property.entity';
 import { Room } from '../../rooms/entities/room.entity';
 import { Guest } from '../../guests/entities/guest.entity';
 import { RatePlan } from '../../rooms/entities/rate-plan.entity';
+import { BookingGroup } from './booking-group.entity';
 
 export enum BookingStatus {
   PENDING = 'pending', // hali tasdiqlanmagan (masalan to'lov kutilmoqda)
@@ -79,13 +80,22 @@ export class Booking {
   @Column({ name: 'check_out', type: 'date' })
   checkOut: string;
 
-  @Column({ type: 'enum', enum: BookingStatus, default: BookingStatus.CONFIRMED })
+  @Column({
+    type: 'enum',
+    enum: BookingStatus,
+    default: BookingStatus.CONFIRMED,
+  })
   status: BookingStatus;
 
   @Column({ type: 'enum', enum: BookingSource, default: BookingSource.DIRECT })
   source: BookingSource;
 
-  @Column({ name: 'market_segment', type: 'enum', enum: MarketSegment, default: MarketSegment.OTHER })
+  @Column({
+    name: 'market_segment',
+    type: 'enum',
+    enum: MarketSegment,
+    default: MarketSegment.OTHER,
+  })
   marketSegment: MarketSegment;
 
   // Tanlangan narx rejasi (ixtiyoriy) — berilgan bo'lsa, totalAmount shu
@@ -106,11 +116,30 @@ export class Booking {
   currency: string;
 
   // Exely (yoki boshqa tashqi PMS) bron ID'si — migratsiya/dedupe uchun.
-  @Column({ name: 'external_ref', length: 100, nullable: true, type: 'varchar' })
+  @Column({
+    name: 'external_ref',
+    length: 100,
+    nullable: true,
+    type: 'varchar',
+  })
   externalRef: string | null;
 
   @Column({ length: 1000, nullable: true, type: 'varchar' })
   notes: string | null;
+
+  // Guruh/blok bron (ixtiyoriy) — berilsa, bu bron bitta BookingGroup'ning
+  // "rooming list"idagi bitta qatori hisoblanadi. Guruh o'chirilsa (hozircha
+  // o'chirish funksiyasi yo'q) bron o'zi saqlanib qoladi (SET NULL) —
+  // check-in/check-out/folio mantig'iga hech qanday ta'sir qilmaydi.
+  @Column({ name: 'group_id', type: 'uuid', nullable: true })
+  groupId: string | null;
+
+  @ManyToOne(() => BookingGroup, (group) => group.bookings, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'group_id' })
+  group: BookingGroup | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
