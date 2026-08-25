@@ -77,7 +77,7 @@ export function AccountingPage() {
             type="button"
             onClick={() => setView(v)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === v ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+              view === v ? 'bg-brand-navy text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {VIEW_LABELS[v]}
@@ -596,7 +596,7 @@ function IncomeStatementView({ propertyId }: { propertyId: string }) {
             </div>
           </section>
 
-          <div className="bg-slate-900 text-white rounded-lg px-4 py-3 flex items-center justify-between text-sm font-semibold">
+          <div className="bg-brand-navy text-white rounded-lg px-4 py-3 flex items-center justify-between text-sm font-semibold">
             <span>Sof foyda</span>
             <span>{(revenueTotal - expenseTotal).toFixed(2)}</span>
           </div>

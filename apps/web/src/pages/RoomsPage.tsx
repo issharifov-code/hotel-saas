@@ -79,7 +79,7 @@ export function RoomsPage() {
           {can('booking', 'create') && (
             <button
               onClick={() => setShowRoomTypeModal(true)}
-              className="text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-700"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark"
             >
               + Xona turi qo'shish
             </button>
@@ -109,7 +109,7 @@ export function RoomsPage() {
             <button
               onClick={() => setShowRatePlanModal(true)}
               disabled={roomTypes.length === 0}
-              className="text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-700 disabled:opacity-40"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark disabled:opacity-40"
             >
               + Narx rejasi qo'shish
             </button>
@@ -153,7 +153,7 @@ export function RoomsPage() {
             <button
               onClick={() => setShowRoomModal(true)}
               disabled={roomTypes.length === 0}
-              className="text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-700 disabled:opacity-40"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark disabled:opacity-40"
             >
               + Xona qo'shish
             </button>

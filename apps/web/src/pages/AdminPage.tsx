@@ -148,7 +148,7 @@ export function AdminPage() {
               key={t}
               onClick={() => setTab(t)}
               className={`rounded-md px-4 py-2 text-sm font-medium ${
-                tab === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                tab === t ? 'bg-brand-navy text-white' : 'bg-white text-slate-600 border border-slate-200'
               }`}
             >
               {t === 'tenants' ? 'Tenantlar' : 'Billing'}
@@ -222,7 +222,7 @@ export function AdminPage() {
                 <button
                   onClick={generateInvoice}
                   disabled={genBusy}
-                  className="rounded-md bg-slate-900 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+                  className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-dark disabled:opacity-50"
                 >
                   {genBusy ? 'Yaratilmoqda...' : 'Yaratish'}
                 </button>

@@ -69,7 +69,7 @@ export function RegisterTenantPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
+            className="w-full bg-brand-navy text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-navy-dark disabled:opacity-50"
           >
             {loading ? 'Yaratilmoqda...' : "Ro'yxatdan o'tish"}
           </button>
