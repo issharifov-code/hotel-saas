@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
 import folioOneLogo from '../assets/folio-one-logo.png';
@@ -81,10 +81,15 @@ export function LoginPage() {
         </form>
 
         <p className="text-sm text-slate-500 mt-4 text-center">
-          Yangi mehmonxonasiz?{' '}
-          <Link to="/register" className="text-slate-900 font-medium underline">
-            Ro'yxatdan o'ting
-          </Link>
+          Yangi mehmonxonami?{' '}
+          <a
+            href="https://folioone.uz/uz/contact.html"
+            target="_blank"
+            rel="noopener"
+            className="text-brand-navy font-medium underline"
+          >
+            Demo uchun biz bilan bog'laning
+          </a>
         </p>
       </div>
     </div>
