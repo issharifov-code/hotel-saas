@@ -107,6 +107,30 @@ export interface PropertyDto {
   name: string;
   address: string | null;
   currency: string;
+  businessDate: string;
+  createdAt: string;
+}
+
+// --- Night Audit ("kunni yopish") ---
+
+export interface NightAuditStatusDto {
+  businessDate: string;
+  pendingNoShows: number;
+  lastAuditDate: string | null;
+  lastRunAt: string | null;
+}
+
+export interface NightAuditRunDto {
+  id: string;
+  auditDate: string;
+  totalRooms: number;
+  occupiedRooms: number;
+  occupancyRatePct: string;
+  adr: string;
+  revPar: string;
+  roomRevenue: string;
+  noShowsProcessed: number;
+  runByUserId: string;
   createdAt: string;
 }
 
