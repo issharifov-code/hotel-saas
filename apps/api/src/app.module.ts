@@ -41,6 +41,10 @@ import { JournalEntry } from './modules/accounting/entities/journal-entry.entity
 import { JournalEntryLine } from './modules/accounting/entities/journal-entry-line.entity';
 import { SubscriptionInvoice } from './modules/billing/entities/subscription-invoice.entity';
 import { NightAuditRun } from './modules/night-audit/entities/night-audit-run.entity';
+import { Agency } from './modules/agencies/entities/agency.entity';
+import { FunctionSpace } from './modules/function-spaces/entities/function-space.entity';
+import { FunctionSpaceBooking } from './modules/function-spaces/entities/function-space-booking.entity';
+import { MaintenanceTicket } from './modules/maintenance/entities/maintenance-ticket.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -61,6 +65,9 @@ import { BillingModule } from './modules/billing/billing.module';
 import { PublicModule } from './modules/public/public.module';
 import { SampleDataModule } from './modules/sample-data/sample-data.module';
 import { NightAuditModule } from './modules/night-audit/night-audit.module';
+import { AgenciesModule } from './modules/agencies/agencies.module';
+import { FunctionSpacesModule } from './modules/function-spaces/function-spaces.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 
 @Module({
   imports: [
@@ -113,6 +120,10 @@ import { NightAuditModule } from './modules/night-audit/night-audit.module';
           JournalEntryLine,
           SubscriptionInvoice,
           NightAuditRun,
+          Agency,
+          FunctionSpace,
+          FunctionSpaceBooking,
+          MaintenanceTicket,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -145,6 +156,9 @@ import { NightAuditModule } from './modules/night-audit/night-audit.module';
     PublicModule,
     SampleDataModule,
     NightAuditModule,
+    AgenciesModule,
+    FunctionSpacesModule,
+    MaintenanceModule,
   ],
   controllers: [AppController],
   providers: [
