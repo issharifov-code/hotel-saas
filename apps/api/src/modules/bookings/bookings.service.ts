@@ -26,6 +26,7 @@ import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
 import { InvoicingService } from '../invoicing/invoicing.service';
+import { AgenciesService } from '../agencies/agencies.service';
 
 // Booking'ni "band" deb hisoblaydigan holatlar — bekor qilingan yoki checkout
 // bo'lgan bronlar yangi bron bilan taqvim to'qnashuvi hisoblanmaydi.
@@ -50,6 +51,7 @@ export class BookingsService {
     private readonly invoicingService: InvoicingService,
     @InjectRepository(BookingGroup)
     private readonly bookingGroupRepo: Repository<BookingGroup>,
+    private readonly agenciesService: AgenciesService,
   ) {}
 
   async create(
@@ -86,6 +88,20 @@ export class BookingsService {
       }
     }
 
+    // Agentlik (ixtiyoriy) — berilsa, mavjudligi tekshiriladi (404 agar
+    // topilmasa) va marketSegment aniq berilmagan bo'lsa avtomatik ravishda
+    // TRAVEL_AGENT deb belgilanadi (foydalanuvchi buni ustidan yozib
+    // qo'yishi ham mumkin, masalan korporativ agentlik bo'lsa CORPORATE).
+    let agencyId: string | null = null;
+    if (dto.agencyId) {
+      const agency = await this.agenciesService.findById(
+        tenantId,
+        propertyId,
+        dto.agencyId,
+      );
+      agencyId = agency.id;
+    }
+
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount =
       dto.totalAmount ??
@@ -100,8 +116,10 @@ export class BookingsService {
       checkOut: dto.checkOut,
       status: BookingStatus.CONFIRMED,
       source: dto.source ?? BookingSource.DIRECT,
-      marketSegment: dto.marketSegment ?? MarketSegment.OTHER,
+      marketSegment:
+        dto.marketSegment ?? (agencyId ? MarketSegment.TRAVEL_AGENT : MarketSegment.OTHER),
       ratePlanId: ratePlan?.id ?? null,
+      agencyId,
       totalAmount,
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,

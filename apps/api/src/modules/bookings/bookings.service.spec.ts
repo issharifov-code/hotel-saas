@@ -51,6 +51,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     const housekeepingService = {};
     const invoicingService = {};
     const bookingGroupRepo = {};
+    const agenciesService = { findById: jest.fn() };
 
     const service = new BookingsService(
       bookingRepo as never,
@@ -62,8 +63,9 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      agenciesService as never,
     );
-    return { service, bookingRepo, bookingQueryBuilder, ratePlansService };
+    return { service, bookingRepo, bookingQueryBuilder, ratePlansService, agenciesService };
   }
 
   const dto = {
@@ -172,6 +174,41 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     });
     expect(bookingRepo.create.mock.calls[1][0].marketSegment).toBe('corporate');
   });
+
+  it("agencyId berilsa, agentlik mavjudligini tekshiradi va marketSegment'ni 'travel_agent'ga o'rnatadi", async () => {
+    const { service, bookingRepo, agenciesService } = createService(null);
+    agenciesService.findById.mockResolvedValue({ id: 'agency-1' });
+
+    await service.create('t1', 'p1', { ...dto, agencyId: 'agency-1' });
+
+    expect(agenciesService.findById).toHaveBeenCalledWith('t1', 'p1', 'agency-1');
+    const createdArg = bookingRepo.create.mock.calls[0][0];
+    expect(createdArg.agencyId).toBe('agency-1');
+    expect(createdArg.marketSegment).toBe('travel_agent');
+  });
+
+  it("agencyId va marketSegment ikkalasi ham berilsa, aniq berilgan marketSegment ustunlik qiladi", async () => {
+    const { service, bookingRepo, agenciesService } = createService(null);
+    agenciesService.findById.mockResolvedValue({ id: 'agency-1' });
+
+    await service.create('t1', 'p1', {
+      ...dto,
+      agencyId: 'agency-1',
+      marketSegment: 'corporate' as never,
+    });
+
+    const createdArg = bookingRepo.create.mock.calls[0][0];
+    expect(createdArg.marketSegment).toBe('corporate');
+  });
+
+  it("mavjud bo'lmagan agencyId berilsa xato tashlaydi", async () => {
+    const { service, agenciesService } = createService(null);
+    agenciesService.findById.mockRejectedValue(new NotFoundException('Agentlik topilmadi'));
+
+    await expect(
+      service.create('t1', 'p1', { ...dto, agencyId: 'yoq-agency' }),
+    ).rejects.toThrow(NotFoundException);
+  });
 });
 
 // Bu testlar Booking Engine (jonli, autentifikatsiyasiz bron widget'i) uchun
@@ -247,6 +284,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       find: jest.fn(),
       findOne: jest.fn(),
     };
+    const agenciesService = { findById: jest.fn() };
 
     const service = new BookingsService(
       bookingRepo as never,
@@ -258,6 +296,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      agenciesService as never,
     );
     return {
       service,
@@ -266,6 +305,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       ratePlansService,
       bookingGroupRepo,
       guestsService,
+      agenciesService,
     };
   }
 
@@ -468,6 +508,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       find: jest.fn(),
       findOne: jest.fn(),
     };
+    const agenciesService = { findById: jest.fn() };
 
     const service = new BookingsService(
       bookingRepo as never,
@@ -479,6 +520,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      agenciesService as never,
     );
     return {
       service,
@@ -486,6 +528,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       bookingGroupRepo,
       guestsService,
       ratePlansService,
+      agenciesService,
     };
   }
 

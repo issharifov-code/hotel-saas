@@ -11,6 +11,7 @@ import { GuestsModule } from '../guests/guests.module';
 import { RolesModule } from '../roles/roles.module';
 import { HousekeepingModule } from '../housekeeping/housekeeping.module';
 import { InvoicingModule } from '../invoicing/invoicing.module';
+import { AgenciesModule } from '../agencies/agencies.module';
 import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { RlsModule } from '../../common/rls/rls.module';
     RolesModule,
     HousekeepingModule,
     InvoicingModule,
+    AgenciesModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController, BookingGroupsController],
