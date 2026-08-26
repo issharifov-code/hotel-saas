@@ -3,7 +3,7 @@ import { Modal } from './Modal';
 import { GuestPicker } from './GuestPicker';
 import { apiFetch, ApiError } from '../lib/api';
 import { addDays } from '../lib/dates';
-import type { GuestDto, MarketSegment, RatePlanDto, RoomDto } from '../lib/types';
+import type { AgencyDto, GuestDto, MarketSegment, RatePlanDto, RoomDto } from '../lib/types';
 
 const MARKET_SEGMENT_LABELS: Record<MarketSegment, string> = {
   walk_in: 'Walk-in',
@@ -36,7 +36,10 @@ export function CreateBookingModal({
   const [guest, setGuest] = useState<GuestDto | null>(null);
   const [ratePlans, setRatePlans] = useState<RatePlanDto[]>([]);
   const [ratePlanId, setRatePlanId] = useState<string>('');
+  const [agencies, setAgencies] = useState<AgencyDto[]>([]);
+  const [agencyId, setAgencyId] = useState<string>('');
   const [marketSegment, setMarketSegment] = useState<MarketSegment>('other');
+  const [marketSegmentTouched, setMarketSegmentTouched] = useState(false);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +48,18 @@ export function CreateBookingModal({
     apiFetch<RatePlanDto[]>(`/properties/${propertyId}/rate-plans`)
       .then(setRatePlans)
       .catch(() => setRatePlans([]));
+    apiFetch<AgencyDto[]>(`/properties/${propertyId}/agencies`)
+      .then((list) => setAgencies(list.filter((a) => a.isActive)))
+      .catch(() => setAgencies([]));
   }, [propertyId]);
+
+  // Agentlik tanlansa va foydalanuvchi bozor segmentini qo'lda o'zgartirmagan
+  // bo'lsa, backend'dagi avtomatik xatti-harakatni frontend'da ham aks
+  // ettirish uchun segmentni 'turizm agentligi'ga o'rnatamiz.
+  useEffect(() => {
+    if (marketSegmentTouched) return;
+    setMarketSegment(agencyId ? 'travel_agent' : 'other');
+  }, [agencyId, marketSegmentTouched]);
 
   const selectedRoom = rooms.find((r) => r.id === roomId);
   // Faqat tanlangan xonaning turiga mos, faol narx rejalari ko'rsatiladi.
@@ -80,6 +94,7 @@ export function CreateBookingModal({
           checkIn,
           checkOut,
           ratePlanId: ratePlanId || undefined,
+          agencyId: agencyId || undefined,
           marketSegment,
           notes: notes || undefined,
         }),
@@ -151,7 +166,10 @@ export function CreateBookingModal({
             <span className="block text-xs font-medium text-slate-600 mb-1">Bozor segmenti</span>
             <select
               value={marketSegment}
-              onChange={(e) => setMarketSegment(e.target.value as MarketSegment)}
+              onChange={(e) => {
+                setMarketSegment(e.target.value as MarketSegment);
+                setMarketSegmentTouched(true);
+              }}
               className="input"
             >
               {(Object.keys(MARKET_SEGMENT_LABELS) as MarketSegment[]).map((seg) => (
@@ -162,6 +180,20 @@ export function CreateBookingModal({
             </select>
           </label>
         </div>
+
+        {agencies.length > 0 && (
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Agentlik (ixtiyoriy)</span>
+            <select value={agencyId} onChange={(e) => setAgencyId(e.target.value)} className="input">
+              <option value="">— Yo'q —</option>
+              {agencies.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({Number(a.commissionPct)}% komissiya)
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Izoh (ixtiyoriy)</span>
