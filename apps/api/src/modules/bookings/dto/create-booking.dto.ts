@@ -21,6 +21,13 @@ export class CreateBookingDto {
   @IsUUID('4')
   ratePlanId?: string;
 
+  // Ixtiyoriy: bron shu turizm agentligi orqali kelgan bo'lsa. Berilsa va
+  // marketSegment aniq ko'rsatilmagan bo'lsa, marketSegment avtomatik
+  // ravishda 'travel_agent' deb belgilanadi.
+  @IsOptional()
+  @IsUUID('4')
+  agencyId?: string;
+
   // Berilmasa, xona turi bazaviy narxi (yoki ratePlanId berilgan bo'lsa, shu
   // rejaning narxi) * tunlar soni asosida avtomatik hisoblanadi.
   @IsOptional()
