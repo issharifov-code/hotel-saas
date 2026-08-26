@@ -118,6 +118,89 @@ export interface BookingGroupDto {
   createdAt: string;
 }
 
+// --- Turizm agentliklari (Agencies) ---
+
+export interface AgencyDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  commissionPct: string;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AgencySummaryDto {
+  agencyId: string;
+  bookingCount: number;
+  totalRevenue: string;
+  commissionOwed: string;
+}
+
+// --- Function Space / Events (banket zali, konferensiya xonasi) ---
+
+export interface FunctionSpaceDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  capacity: number;
+  dailyRate: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type FunctionSpaceBookingStatus = 'tentative' | 'confirmed' | 'cancelled';
+
+export interface FunctionSpaceBookingDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  functionSpaceId: string;
+  functionSpace?: FunctionSpaceDto;
+  eventName: string;
+  organizerName: string;
+  organizerPhone: string | null;
+  organizerEmail: string | null;
+  startTime: string;
+  endTime: string;
+  attendeeCount: number | null;
+  setupStyle: string | null;
+  status: FunctionSpaceBookingStatus;
+  totalAmount: string | null;
+  notes: string | null;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+// --- Texnik xizmat so'rovlari (Maintenance / Work Orders) ---
+
+export type MaintenanceTicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type MaintenanceTicketStatus = 'open' | 'in_progress' | 'resolved' | 'cancelled';
+
+export interface MaintenanceTicketDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  roomId: string;
+  room?: RoomDto;
+  title: string;
+  description: string | null;
+  priority: MaintenanceTicketPriority;
+  status: MaintenanceTicketStatus;
+  reportedByUserId: string;
+  assignedToUserId: string | null;
+  resolutionNotes: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 export interface PropertyDto {
   id: string;
   tenantId: string;
