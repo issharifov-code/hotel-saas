@@ -1,4 +1,8 @@
-import { PermissionAction, PermissionModule, SystemRoleKey } from '../enums/permission.enum';
+import {
+  PermissionAction,
+  PermissionModule,
+  SystemRoleKey,
+} from '../enums/permission.enum';
 
 export interface SystemRoleDefinition {
   key: SystemRoleKey;
@@ -32,13 +36,20 @@ export const SYSTEM_ROLE_DEFINITIONS: SystemRoleDefinition[] = [
     permissions: [
       { module: PermissionModule.BOOKING, actions: [PermissionAction.VIEW] },
       { module: PermissionModule.FRONT_DESK, actions: [PermissionAction.VIEW] },
-      { module: PermissionModule.HOUSEKEEPING, actions: [PermissionAction.VIEW] },
+      {
+        module: PermissionModule.HOUSEKEEPING,
+        actions: [PermissionAction.VIEW],
+      },
       { module: PermissionModule.WAREHOUSE, actions: [PermissionAction.VIEW] },
       { module: PermissionModule.POS, actions: [PermissionAction.VIEW] },
       { module: PermissionModule.GUEST_CRM, actions: [PermissionAction.VIEW] },
       {
         module: PermissionModule.INVOICING,
-        actions: [PermissionAction.VIEW, PermissionAction.CREATE, PermissionAction.EDIT],
+        actions: [
+          PermissionAction.VIEW,
+          PermissionAction.CREATE,
+          PermissionAction.EDIT,
+        ],
       },
       { module: PermissionModule.ACCOUNTING, actions: ALL_ACTIONS },
       { module: PermissionModule.REPORTS, actions: [PermissionAction.VIEW] },
@@ -51,7 +62,11 @@ export const SYSTEM_ROLE_DEFINITIONS: SystemRoleDefinition[] = [
     permissions: [
       {
         module: PermissionModule.BOOKING,
-        actions: [PermissionAction.VIEW, PermissionAction.CREATE, PermissionAction.EDIT],
+        actions: [
+          PermissionAction.VIEW,
+          PermissionAction.CREATE,
+          PermissionAction.EDIT,
+        ],
       },
       {
         module: PermissionModule.FRONT_DESK,
@@ -62,10 +77,20 @@ export const SYSTEM_ROLE_DEFINITIONS: SystemRoleDefinition[] = [
           PermissionAction.APPROVE, // check-in/out tasdiqlash
         ],
       },
-      { module: PermissionModule.HOUSEKEEPING, actions: [PermissionAction.VIEW] },
+      {
+        // VIEW + CREATE: front desk xodimi texnik xizmat muammosini (Maintenance)
+        // ko'rishi VA xabar berishi (yangi so'rov ochishi) mumkin, lekin
+        // hal qilish/bekor qilish (EDIT) Housekeeping nazoratchisiga qoladi.
+        module: PermissionModule.HOUSEKEEPING,
+        actions: [PermissionAction.VIEW, PermissionAction.CREATE],
+      },
       {
         module: PermissionModule.GUEST_CRM,
-        actions: [PermissionAction.VIEW, PermissionAction.CREATE, PermissionAction.EDIT],
+        actions: [
+          PermissionAction.VIEW,
+          PermissionAction.CREATE,
+          PermissionAction.EDIT,
+        ],
       },
       {
         module: PermissionModule.INVOICING,
@@ -104,7 +129,11 @@ export const SYSTEM_ROLE_DEFINITIONS: SystemRoleDefinition[] = [
     permissions: [
       {
         module: PermissionModule.POS,
-        actions: [PermissionAction.VIEW, PermissionAction.CREATE, PermissionAction.EDIT],
+        actions: [
+          PermissionAction.VIEW,
+          PermissionAction.CREATE,
+          PermissionAction.EDIT,
+        ],
       },
       { module: PermissionModule.WAREHOUSE, actions: [PermissionAction.VIEW] },
       {
