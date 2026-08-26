@@ -13,6 +13,7 @@ import { Room } from '../../rooms/entities/room.entity';
 import { Guest } from '../../guests/entities/guest.entity';
 import { RatePlan } from '../../rooms/entities/rate-plan.entity';
 import { BookingGroup } from './booking-group.entity';
+import { Agency } from '../../agencies/entities/agency.entity';
 
 export enum BookingStatus {
   PENDING = 'pending', // hali tasdiqlanmagan (masalan to'lov kutilmoqda)
@@ -140,6 +141,20 @@ export class Booking {
   })
   @JoinColumn({ name: 'group_id' })
   group: BookingGroup | null;
+
+  // Turizm agentligi (ixtiyoriy) — berilsa, bu bron shu agentlik orqali
+  // kelgan hisoblanadi (komissiya hisob-kitobi uchun). Agentlik o'chirilsa
+  // (hozircha o'chirish funksiyasi yo'q) bron o'zi saqlanib qoladi (SET NULL) —
+  // check-in/check-out/folio mantig'iga hech qanday ta'sir qilmaydi.
+  @Column({ name: 'agency_id', type: 'uuid', nullable: true })
+  agencyId: string | null;
+
+  @ManyToOne(() => Agency, (agency) => agency.bookings, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'agency_id' })
+  agency: Agency | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
