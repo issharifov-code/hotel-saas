@@ -10,10 +10,13 @@ import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
 import { GroupBookingsPage } from './pages/GroupBookingsPage';
+import { AgenciesPage } from './pages/AgenciesPage';
+import { FunctionSpacesPage } from './pages/FunctionSpacesPage';
 import { NightAuditPage } from './pages/NightAuditPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
+import { MaintenancePage } from './pages/MaintenancePage';
 import { InvoicingPage } from './pages/InvoicingPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { BillingPage } from './pages/BillingPage';
@@ -48,6 +51,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <GroupBookingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agencies"
+            element={
+              <ProtectedRoute>
+                <AgenciesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/function-spaces"
+            element={
+              <ProtectedRoute>
+                <FunctionSpacesPage />
               </ProtectedRoute>
             }
           />
@@ -96,6 +115,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HousekeepingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/maintenance"
+            element={
+              <ProtectedRoute>
+                <MaintenancePage />
               </ProtectedRoute>
             }
           />
