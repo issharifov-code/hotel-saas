@@ -36,6 +36,7 @@ export function BookingDetailModal({
   const { can } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
 
   const [showChangeRoom, setShowChangeRoom] = useState(false);
   const [newRoomId, setNewRoomId] = useState('');
@@ -47,7 +48,21 @@ export function BookingDetailModal({
     setSubmitting(true);
     setError(null);
     try {
-      await apiFetch(`/properties/${propertyId}/bookings/${booking.id}/${action}`, { method: 'POST' });
+      const updated = await apiFetch<BookingDto>(
+        `/properties/${propertyId}/bookings/${booking.id}/${action}`,
+        { method: 'POST' },
+      );
+      if (action === 'cancel') {
+        // Ro'yxatni darhol yangilab modalni yopish o'rniga, avval jarima
+        // natijasini ko'rsatamiz (agar bo'lsa) — foydalanuvchi "Yopish"ni
+        // bosganda ro'yxat yangilanadi (onChanged parentda modalni ham yopadi).
+        setCancelNotice(
+          updated.cancellationFeeAmount
+            ? `Bron bekor qilindi. Bekor qilish jarimasi: ${Number(updated.cancellationFeeAmount).toLocaleString('uz-UZ')} ${updated.currency} (hisob-fakturaga yozildi)`
+            : 'Bron jarimasiz bekor qilindi.',
+        );
+        return;
+      }
       onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
@@ -98,12 +113,26 @@ export function BookingDetailModal({
 
   return (
     <Modal title={`Bron — № ${booking.room?.roomNumber ?? ''}`} onClose={onClose}>
+      {cancelNotice ? (
+        <div className="space-y-3 text-sm">
+          <p className="text-slate-700">{cancelNotice}</p>
+          <button type="button" onClick={onChanged} className="btn-primary w-full">
+            Yopish
+          </button>
+        </div>
+      ) : (
       <div className="space-y-3 text-sm">
         <Row label="Mehmon" value={booking.guest?.fullName ?? '—'} />
         <Row label="Sana" value={`${booking.checkIn} — ${booking.checkOut}`} />
         <Row label="Holat" value={STATUS_LABELS[booking.status]} />
         <Row label="Manba" value={SOURCE_LABELS[booking.source]} />
         <Row label="Summa" value={`${Number(booking.totalAmount).toLocaleString('uz-UZ')} ${booking.currency}`} />
+        {booking.cancellationFeeAmount && (
+          <Row
+            label="Bekor qilish/no-show jarimasi"
+            value={`${Number(booking.cancellationFeeAmount).toLocaleString('uz-UZ')} ${booking.currency}`}
+          />
+        )}
         {booking.notes && <Row label="Izoh" value={booking.notes} />}
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -199,6 +228,7 @@ export function BookingDetailModal({
           </div>
         )}
       </div>
+      )}
     </Modal>
   );
 }
