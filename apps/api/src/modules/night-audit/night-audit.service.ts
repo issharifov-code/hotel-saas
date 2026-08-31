@@ -9,6 +9,12 @@ import { NightAuditRun } from './entities/night-audit-run.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { Room } from '../rooms/entities/room.entity';
+import { RatePlansService } from '../rooms/rate-plans.service';
+import {
+  CancellationFeeType,
+  RatePlan,
+} from '../rooms/entities/rate-plan.entity';
+import { InvoicingService } from '../invoicing/invoicing.service';
 
 export interface NightAuditStatusDto {
   businessDate: string;
@@ -62,6 +68,8 @@ export class NightAuditService {
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Room) private readonly roomRepo: Repository<Room>,
+    private readonly ratePlansService: RatePlansService,
+    private readonly invoicingService: InvoicingService,
   ) {}
 
   async getStatus(
@@ -129,10 +137,43 @@ export class NightAuditService {
       },
     });
     for (const booking of noShowCandidates) {
-      await this.bookingRepo.update(
-        { id: booking.id },
-        { status: BookingStatus.NO_SHOW },
-      );
+      // No-show jarimasi — muddat tekshirilmaydi (bekor qilishdan farqli
+      // o'laroq, no-show'ning o'zi allaqachon "kech" holat): agar narx
+      // rejasida noShowFeeType/Value sozlangan bo'lsa, jarima avtomatik
+      // hisoblanadi va mustaqil hisob-faktura sifatida yoziladi (bu bronlar
+      // ham hech qachon check-in qilinmagan, demak oddiy folio yo'q).
+      let feeAmount: string | null = null;
+      if (booking.ratePlanId) {
+        const ratePlan = await this.ratePlansService.findById(
+          tenantId,
+          propertyId,
+          booking.ratePlanId,
+        );
+        feeAmount = this.calcNoShowFee(booking, ratePlan);
+      }
+
+      if (feeAmount && Number(feeAmount) > 0) {
+        await this.bookingRepo.update(
+          { id: booking.id },
+          {
+            status: BookingStatus.NO_SHOW,
+            cancellationFeeAmount: feeAmount,
+          },
+        );
+        await this.invoicingService.createFeeInvoice(
+          tenantId,
+          propertyId,
+          { ...booking, cancellationFeeAmount: feeAmount },
+          `Kelmaslik (no-show) jarimasi — bron ${booking.id.slice(0, 8)}`,
+          feeAmount,
+          'cancellation_fee_revenue',
+        );
+      } else {
+        await this.bookingRepo.update(
+          { id: booking.id },
+          { status: BookingStatus.NO_SHOW },
+        );
+      }
     }
 
     // 2) Shu yopilayotgan kecha uchun bandlik/ADR/RevPAR/xona daromadi —
@@ -189,6 +230,32 @@ export class NightAuditService {
     );
 
     return run;
+  }
+
+  // Narx rejasida no-show jarimasi to'liq sozlanmagan bo'lsa (turi va
+  // summasi — ikkalasi ham berilishi shart) — jarima yo'q (null). Sozlangan
+  // bo'lsa, summa turi bo'yicha hisoblanadi va bron umumiy summasidan
+  // oshib ketmasligi kafolatlanadi.
+  private calcNoShowFee(booking: Booking, ratePlan: RatePlan): string | null {
+    if (!ratePlan.noShowFeeType || !ratePlan.noShowFeeValue) {
+      return null;
+    }
+    const value = Number(ratePlan.noShowFeeValue);
+    const total = Number(booking.totalAmount);
+    let amount: number;
+    switch (ratePlan.noShowFeeType) {
+      case CancellationFeeType.PERCENT_OF_TOTAL:
+        amount = (total * value) / 100;
+        break;
+      case CancellationFeeType.FIRST_NIGHT:
+        amount = Number(ratePlan.nightlyPrice);
+        break;
+      case CancellationFeeType.FLAT:
+      default:
+        amount = value;
+        break;
+    }
+    return Math.min(amount, total).toFixed(2);
   }
 
   private async findProperty(

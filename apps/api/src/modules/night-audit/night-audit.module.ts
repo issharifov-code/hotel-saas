@@ -7,11 +7,15 @@ import { NightAuditService } from './night-audit.service';
 import { NightAuditController } from './night-audit.controller';
 import { RolesModule } from '../roles/roles.module';
 import { RlsModule } from '../../common/rls/rls.module';
+import { RoomsModule } from '../rooms/rooms.module';
+import { InvoicingModule } from '../invoicing/invoicing.module';
 
 @Module({
   imports: [
     RlsModule.forFeature([NightAuditRun, Property, Booking, Room]),
     RolesModule,
+    RoomsModule,
+    InvoicingModule,
   ],
   providers: [NightAuditService],
   controllers: [NightAuditController],

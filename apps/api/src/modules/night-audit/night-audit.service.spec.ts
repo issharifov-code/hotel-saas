@@ -10,6 +10,7 @@ describe('NightAuditService', () => {
       noShowCandidates?: Record<string, unknown>[];
       stayingBookings?: Record<string, unknown>[];
       totalRooms?: number;
+      ratePlan?: Record<string, unknown> | null;
     } = {},
   ) {
     const property = {
@@ -44,14 +45,31 @@ describe('NightAuditService', () => {
     const roomRepo = {
       count: jest.fn().mockResolvedValue(opts.totalRooms ?? 10),
     };
+    const ratePlansService = {
+      findById: jest.fn().mockResolvedValue(opts.ratePlan ?? null),
+    };
+    const invoicingService = {
+      createFeeInvoice: jest.fn().mockResolvedValue({ id: 'inv-1' }),
+    };
 
     const service = new NightAuditService(
       runRepo as never,
       propertyRepo as never,
       bookingRepo as never,
       roomRepo as never,
+      ratePlansService as never,
+      invoicingService as never,
     );
-    return { service, runRepo, propertyRepo, bookingRepo, roomRepo, property };
+    return {
+      service,
+      runRepo,
+      propertyRepo,
+      bookingRepo,
+      roomRepo,
+      property,
+      ratePlansService,
+      invoicingService,
+    };
   }
 
   it("mavjud bo'lmagan mulk uchun NotFoundException tashlaydi", async () => {
@@ -88,6 +106,73 @@ describe('NightAuditService', () => {
       { id: 'b2' },
       { status: BookingStatus.NO_SHOW },
     );
+  });
+
+  it("narx rejasida no-show jarimasi sozlangan bo'lsa, jarima hisob-fakturasi yaratadi", async () => {
+    const { service, bookingRepo, invoicingService } = createService({
+      noShowCandidates: [
+        {
+          id: 'b1',
+          ratePlanId: 'rp-1',
+          status: BookingStatus.CONFIRMED,
+          checkIn: '2026-08-24',
+          totalAmount: '300.00',
+          currency: 'UZS',
+          guestId: 'guest-1',
+        },
+      ],
+      ratePlan: {
+        id: 'rp-1',
+        nightlyPrice: '100.00',
+        noShowFeeType: 'first_night',
+        noShowFeeValue: '100.00',
+      },
+    });
+
+    await service.run('t1', 'prop-1', 'user-1');
+
+    expect(bookingRepo.update).toHaveBeenCalledWith(
+      { id: 'b1' },
+      { status: BookingStatus.NO_SHOW, cancellationFeeAmount: '100.00' },
+    );
+    expect(invoicingService.createFeeInvoice).toHaveBeenCalledWith(
+      't1',
+      'prop-1',
+      expect.objectContaining({ id: 'b1', cancellationFeeAmount: '100.00' }),
+      expect.any(String),
+      '100.00',
+      'cancellation_fee_revenue',
+    );
+  });
+
+  it("narx rejasida no-show jarimasi sozlanmagan bo'lsa, jarimasiz no_show belgilaydi", async () => {
+    const { service, bookingRepo, invoicingService } = createService({
+      noShowCandidates: [
+        {
+          id: 'b1',
+          ratePlanId: 'rp-1',
+          status: BookingStatus.CONFIRMED,
+          checkIn: '2026-08-24',
+          totalAmount: '300.00',
+          currency: 'UZS',
+          guestId: 'guest-1',
+        },
+      ],
+      ratePlan: {
+        id: 'rp-1',
+        nightlyPrice: '100.00',
+        noShowFeeType: null,
+        noShowFeeValue: null,
+      },
+    });
+
+    await service.run('t1', 'prop-1', 'user-1');
+
+    expect(bookingRepo.update).toHaveBeenCalledWith(
+      { id: 'b1' },
+      { status: BookingStatus.NO_SHOW },
+    );
+    expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
   });
 
   it("bandlik/ADR/RevPAR/xona daromadini to'g'ri hisoblaydi va NightAuditRun saqlaydi", async () => {
