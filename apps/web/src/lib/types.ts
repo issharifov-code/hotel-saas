@@ -141,6 +141,49 @@ export interface AgencySummaryDto {
   commissionOwed: string;
 }
 
+// --- City Ledger / Korporativ hisoblar (Corporate Accounts) ---
+
+export interface CorporateAccountDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  taxId: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  billingAddress: string | null;
+  creditLimit: string | null;
+  paymentTermsDays: number;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CityLedgerStatementLineDto {
+  invoiceId: string;
+  bookingId: string;
+  guestName: string;
+  status: string;
+  totalAmount: string;
+  paidAmount: string;
+  balance: string;
+  issuedAt: string | null;
+  isOverdue: boolean;
+}
+
+export interface CityLedgerStatementDto {
+  corporateAccountId: string;
+  paymentTermsDays: number;
+  creditLimit: string | null;
+  invoiceCount: number;
+  totalCharged: string;
+  totalPaid: string;
+  totalBalance: string;
+  overdueBalance: string;
+  lines: CityLedgerStatementLineDto[];
+}
+
 // --- Function Space / Events (banket zali, konferensiya xonasi) ---
 
 export interface FunctionSpaceDto {
