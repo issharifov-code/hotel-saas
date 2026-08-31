@@ -174,6 +174,19 @@ export class Booking {
   @JoinColumn({ name: 'corporate_account_id' })
   corporateAccount: CorporateAccount | null;
 
+  // Bekor qilish yoki kelmaslik (no-show) sababli olingan jarima summasi
+  // (agar rate plan'da bekor qilish siyosati sozlangan bo'lsa va jarima
+  // shartlari bajarilgan bo'lsa). null — jarima olinmagan (yoki bron hali
+  // bekor qilinmagan/no-show bo'lmagan).
+  @Column({
+    name: 'cancellation_fee_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  cancellationFeeAmount: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
