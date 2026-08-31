@@ -38,6 +38,18 @@ export interface RatePlanDto {
   createdAt: string;
 }
 
+export interface RatePlanRestrictionDto {
+  id: string;
+  ratePlanId: string;
+  date: string;
+  closedToArrival: boolean;
+  closedToDeparture: boolean;
+  minLengthOfStay: number | null;
+  maxLengthOfStay: number | null;
+  stopSell: boolean;
+  createdAt: string;
+}
+
 export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjust';
 export type CommunicationPreference = 'email' | 'sms' | 'phone' | 'none';
