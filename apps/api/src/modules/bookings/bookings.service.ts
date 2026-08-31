@@ -22,7 +22,10 @@ import { RoomsService } from '../rooms/rooms.service';
 import { RoomType } from '../rooms/entities/room-type.entity';
 import { RatePlansService } from '../rooms/rate-plans.service';
 import { RatePlanRestrictionsService } from '../rooms/rate-plan-restrictions.service';
-import { RatePlan } from '../rooms/entities/rate-plan.entity';
+import {
+  CancellationFeeType,
+  RatePlan,
+} from '../rooms/entities/rate-plan.entity';
 import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
@@ -434,6 +437,14 @@ export class BookingsService {
     return this.findById(tenantId, propertyId, booking.id);
   }
 
+  // Bekor qilish — agar bronda narx rejasi tanlangan bo'lsa VA shu reja bekor
+  // qilish siyosati (deadline + jarima turi/summasi) bilan sozlangan bo'lsa-yu,
+  // bekor qilish muddati (cancellationDeadlineDays) allaqachon o'tgan bo'lsa,
+  // jarima avtomatik hisoblanadi va mustaqil hisob-faktura (InvoicingService.
+  // createFeeInvoice) sifatida yoziladi — chunki bu bronlar hech qachon check-in
+  // qilinmagan, demak oddiy folio (openFolio) umuman ochilmagan bo'ladi.
+  // Siyosat sozlanmagan (yoki muddat ichida) bo'lsa — avvalgi xulq-atvor
+  // (jarimasiz bekor qilish) o'zgarishsiz qoladi.
   async cancel(
     tenantId: string,
     propertyId: string,
@@ -450,7 +461,95 @@ export class BookingsService {
       );
     }
     booking.status = BookingStatus.CANCELLED;
+
+    let fee: string | null = null;
+    if (booking.ratePlanId) {
+      const ratePlan = await this.ratePlansService.findById(
+        tenantId,
+        propertyId,
+        booking.ratePlanId,
+      );
+      fee = this.calcCancellationFee(booking, ratePlan);
+    }
+
+    if (fee && Number(fee) > 0) {
+      booking.cancellationFeeAmount = fee;
+      const saved = await this.bookingRepo.save(booking);
+      await this.invoicingService.createFeeInvoice(
+        tenantId,
+        propertyId,
+        saved,
+        `Bekor qilish jarimasi — bron ${booking.id.slice(0, 8)}`,
+        fee,
+        'cancellation_fee_revenue',
+      );
+      return saved;
+    }
+
     return this.bookingRepo.save(booking);
+  }
+
+  // Bugundan check-in sanasigacha necha kun qolganini hisoblaydi (manfiy —
+  // check-in allaqachon o'tib ketgan). Booking.checkIn sana-only (soatsiz)
+  // bo'lgani uchun bu ham server "bugun"i (UTC, soatsiz)ga nisbatan hisoblanadi.
+  private daysUntil(dateIso: string): number {
+    const today = new Date().toISOString().slice(0, 10);
+    const ms =
+      new Date(`${dateIso}T00:00:00.000Z`).getTime() -
+      new Date(`${today}T00:00:00.000Z`).getTime();
+    return Math.round(ms / (1000 * 60 * 60 * 24));
+  }
+
+  // Narx rejasida bekor qilish siyosati to'liq sozlanmagan bo'lsa (deadline,
+  // jarima turi, jarima summasi — uchalasi ham berilishi shart), yoki hali
+  // bekor qilish muddati ichida bo'lsa — jarima yo'q (null).
+  private calcCancellationFee(
+    booking: Booking,
+    ratePlan: RatePlan,
+  ): string | null {
+    if (
+      ratePlan.cancellationDeadlineDays == null ||
+      !ratePlan.cancellationFeeType ||
+      !ratePlan.cancellationFeeValue
+    ) {
+      return null;
+    }
+    if (this.daysUntil(booking.checkIn) >= ratePlan.cancellationDeadlineDays) {
+      return null;
+    }
+    return this.computeFeeAmount(
+      ratePlan.cancellationFeeType,
+      ratePlan.cancellationFeeValue,
+      booking,
+      ratePlan,
+    );
+  }
+
+  // Jarima summasini turi bo'yicha hisoblaydi va bron umumiy summasidan
+  // oshib ketmasligini kafolatlaydi (masalan xato/haddan tashqari FLAT
+  // summa kiritilgan bo'lsa ham).
+  private computeFeeAmount(
+    feeType: CancellationFeeType,
+    feeValue: string,
+    booking: Booking,
+    ratePlan: RatePlan,
+  ): string {
+    const value = Number(feeValue);
+    const total = Number(booking.totalAmount);
+    let amount: number;
+    switch (feeType) {
+      case CancellationFeeType.PERCENT_OF_TOTAL:
+        amount = (total * value) / 100;
+        break;
+      case CancellationFeeType.FIRST_NIGHT:
+        amount = Number(ratePlan.nightlyPrice);
+        break;
+      case CancellationFeeType.FLAT:
+      default:
+        amount = value;
+        break;
+    }
+    return Math.min(amount, total).toFixed(2);
   }
 
   private async assertRoomAvailable(

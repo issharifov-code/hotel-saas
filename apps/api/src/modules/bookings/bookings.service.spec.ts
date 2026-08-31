@@ -758,3 +758,136 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     );
   });
 });
+
+// BookingsService.cancel — bekor qilish jarimasi (Cancellation Policy). "Bugun"
+// deterministik bo'lishi uchun fake timer bilan qotiriladi (2026-08-25).
+describe('BookingsService.cancel — bekor qilish jarimasi', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ advanceTimers: false });
+    jest.setSystemTime(new Date('2026-08-25T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function createCancelService(
+    booking: Record<string, unknown>,
+    ratePlan: Record<string, unknown> | null,
+  ) {
+    const bookingRepo = {
+      findOne: jest.fn().mockResolvedValue({ ...booking }),
+      save: jest.fn((b: Record<string, unknown>) => Promise.resolve(b)),
+    };
+    const ratePlansService = {
+      findById: jest.fn().mockResolvedValue(ratePlan),
+    };
+    const invoicingService = {
+      createFeeInvoice: jest.fn().mockResolvedValue({ id: 'inv-1' }),
+    };
+    const service = new BookingsService(
+      bookingRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      ratePlansService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      invoicingService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    return { service, bookingRepo, ratePlansService, invoicingService };
+  }
+
+  const baseBooking = {
+    id: 'b1',
+    tenantId: 't1',
+    propertyId: 'p1',
+    ratePlanId: 'rp-1',
+    status: BookingStatus.CONFIRMED,
+    totalAmount: '300.00',
+    currency: 'UZS',
+    guestId: 'guest-1',
+  };
+
+  it("bekor qilish muddati (deadline) o'tib ketgan bo'lsa, jarima hisoblab hisob-faktura yaratadi", async () => {
+    const { service, bookingRepo, invoicingService } = createCancelService(
+      { ...baseBooking, checkIn: '2026-08-26' }, // "bugun"dan 1 kun qolgan
+      {
+        id: 'rp-1',
+        nightlyPrice: '100.00',
+        cancellationDeadlineDays: 3,
+        cancellationFeeType: 'percent_of_total',
+        cancellationFeeValue: '50',
+      },
+    );
+
+    const result = await service.cancel('t1', 'p1', 'b1');
+
+    expect(result.status).toBe(BookingStatus.CANCELLED);
+    expect(result.cancellationFeeAmount).toBe('150.00');
+    expect(bookingRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: BookingStatus.CANCELLED,
+        cancellationFeeAmount: '150.00',
+      }),
+    );
+    expect(invoicingService.createFeeInvoice).toHaveBeenCalledWith(
+      't1',
+      'p1',
+      expect.objectContaining({ id: 'b1', cancellationFeeAmount: '150.00' }),
+      expect.any(String),
+      '150.00',
+      'cancellation_fee_revenue',
+    );
+  });
+
+  it("bekor qilish hali muddat ichida bo'lsa, jarimasiz bekor qiladi", async () => {
+    const { service, invoicingService } = createCancelService(
+      { ...baseBooking, checkIn: '2026-09-05' }, // "bugun"dan 11 kun qolgan
+      {
+        id: 'rp-1',
+        nightlyPrice: '100.00',
+        cancellationDeadlineDays: 3,
+        cancellationFeeType: 'percent_of_total',
+        cancellationFeeValue: '50',
+      },
+    );
+
+    const result = await service.cancel('t1', 'p1', 'b1');
+
+    expect(result.status).toBe(BookingStatus.CANCELLED);
+    expect(result.cancellationFeeAmount).toBeUndefined();
+    expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
+  });
+
+  it("narx rejasi tanlanmagan (ratePlanId yo'q) bronni jarimasiz bekor qiladi", async () => {
+    const { service, ratePlansService, invoicingService } = createCancelService(
+      { ...baseBooking, ratePlanId: null, checkIn: '2026-08-26' },
+      null,
+    );
+
+    const result = await service.cancel('t1', 'p1', 'b1');
+
+    expect(result.status).toBe(BookingStatus.CANCELLED);
+    expect(ratePlansService.findById).not.toHaveBeenCalled();
+    expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
+  });
+
+  it('check-in qilingan bronni bekor qilishga urinsa ConflictException tashlaydi', async () => {
+    const { service } = createCancelService(
+      {
+        ...baseBooking,
+        status: BookingStatus.CHECKED_IN,
+        checkIn: '2026-08-20',
+      },
+      null,
+    );
+    await expect(service.cancel('t1', 'p1', 'b1')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+});
