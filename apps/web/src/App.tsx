@@ -8,6 +8,7 @@ import { PublicBookingPage } from './pages/PublicBookingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { GuestsPage } from './pages/GuestsPage';
+import { MessagingPage } from './pages/MessagingPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
 import { GroupBookingsPage } from './pages/GroupBookingsPage';
 import { AgenciesPage } from './pages/AgenciesPage';
@@ -83,6 +84,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <GuestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messaging"
+            element={
+              <ProtectedRoute>
+                <MessagingPage />
               </ProtectedRoute>
             }
           />
