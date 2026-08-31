@@ -45,6 +45,9 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     const ratePlansService = {
       findById: jest.fn(),
     };
+    const ratePlanRestrictionsService = {
+      assertBookingAllowed: jest.fn().mockResolvedValue(undefined),
+    };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
     };
@@ -60,6 +63,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       roomTypeRepo as never,
       roomsService as never,
       ratePlansService as never,
+      ratePlanRestrictionsService as never,
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
@@ -72,6 +76,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       bookingRepo,
       bookingQueryBuilder,
       ratePlansService,
+      ratePlanRestrictionsService,
       agenciesService,
       cityLedgerService,
     };
@@ -157,6 +162,26 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     // 4 tun * 650000 = 2600000.00 (500000 emas — bazaviy narx e'tiborga olinmadi)
     expect(createdArg.totalAmount).toBe('2600000.00');
     expect(createdArg.ratePlanId).toBe('rp-1');
+  });
+
+  it('ratePlanId berilsa, cheklov (masalan Stop Sell) bronni rad etadi', async () => {
+    const { service, ratePlansService, ratePlanRestrictionsService } =
+      createService(null);
+    ratePlansService.findById.mockResolvedValue({
+      id: 'rp-1',
+      roomTypeId: 'rt-1',
+      nightlyPrice: '650000',
+    });
+    ratePlanRestrictionsService.assertBookingAllowed.mockRejectedValue(
+      new ConflictException('Stop Sell'),
+    );
+
+    await expect(
+      service.create('t1', 'p1', { ...dto, ratePlanId: 'rp-1' }),
+    ).rejects.toThrow(ConflictException);
+    expect(
+      ratePlanRestrictionsService.assertBookingAllowed,
+    ).toHaveBeenCalledWith('rp-1', dto.checkIn, dto.checkOut, 4);
   });
 
   it("narx rejasi boshqa xona turiga tegishli bo'lsa xato tashlaydi", async () => {
@@ -323,6 +348,9 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     };
     const roomsService = {};
     const ratePlansService = { findById: jest.fn() };
+    const ratePlanRestrictionsService = {
+      assertBookingAllowed: jest.fn().mockResolvedValue(undefined),
+    };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
     };
@@ -345,6 +373,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       roomTypeRepo as never,
       roomsService as never,
       ratePlansService as never,
+      ratePlanRestrictionsService as never,
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
@@ -357,6 +386,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       bookingRepo,
       roomRepo,
       ratePlansService,
+      ratePlanRestrictionsService,
       bookingGroupRepo,
       guestsService,
       agenciesService,
@@ -460,6 +490,40 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('narx rejasi cheklovi (masalan Min Length of Stay) bronni rad etadi', async () => {
+    const { service, ratePlansService, ratePlanRestrictionsService } =
+      createWebsiteService();
+    ratePlansService.findById.mockResolvedValue({
+      id: 'rp-1',
+      roomTypeId: 'rt-1',
+      nightlyPrice: '650000',
+      isActive: true,
+    });
+    ratePlanRestrictionsService.assertBookingAllowed.mockRejectedValue(
+      new BadRequestException('Min Length of Stay'),
+    );
+    await expect(
+      service.createFromWebsite('t1', 'p1', { ...dto, ratePlanId: 'rp-1' }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("cheklovga zid bo'lmagan narx rejali bron muvaffaqiyatli yaratiladi", async () => {
+    const { service, ratePlansService, ratePlanRestrictionsService } =
+      createWebsiteService();
+    ratePlansService.findById.mockResolvedValue({
+      id: 'rp-1',
+      roomTypeId: 'rt-1',
+      nightlyPrice: '650000',
+      isActive: true,
+    });
+    const result = await service.createFromWebsite('t1', 'p1', {
+      ...dto,
+      ratePlanId: 'rp-1',
+    });
+    expect(result).toBeDefined();
+    expect(ratePlanRestrictionsService.assertBookingAllowed).toHaveBeenCalled();
+  });
+
   it("confirm: PENDING bronni CONFIRMED holatiga o'tkazadi", async () => {
     const { service, bookingRepo } = createWebsiteService();
     bookingRepo.findOne.mockResolvedValue({
@@ -549,6 +613,9 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     };
     const roomsService = {};
     const ratePlansService = { findById: jest.fn() };
+    const ratePlanRestrictionsService = {
+      assertBookingAllowed: jest.fn().mockResolvedValue(undefined),
+    };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
     };
@@ -571,6 +638,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       roomTypeRepo as never,
       roomsService as never,
       ratePlansService as never,
+      ratePlanRestrictionsService as never,
       guestsService as never,
       housekeepingService as never,
       invoicingService as never,
@@ -584,6 +652,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       bookingGroupRepo,
       guestsService,
       ratePlansService,
+      ratePlanRestrictionsService,
       agenciesService,
     };
   }

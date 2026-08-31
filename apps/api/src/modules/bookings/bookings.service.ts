@@ -21,6 +21,7 @@ import { AddGroupRoomDto } from './dto/add-group-room.dto';
 import { RoomsService } from '../rooms/rooms.service';
 import { RoomType } from '../rooms/entities/room-type.entity';
 import { RatePlansService } from '../rooms/rate-plans.service';
+import { RatePlanRestrictionsService } from '../rooms/rate-plan-restrictions.service';
 import { RatePlan } from '../rooms/entities/rate-plan.entity';
 import { GuestsService } from '../guests/guests.service';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
@@ -47,6 +48,7 @@ export class BookingsService {
     private readonly roomTypeRepo: Repository<RoomType>,
     private readonly roomsService: RoomsService,
     private readonly ratePlansService: RatePlansService,
+    private readonly ratePlanRestrictionsService: RatePlanRestrictionsService,
     private readonly guestsService: GuestsService,
     private readonly housekeepingService: HousekeepingService,
     private readonly invoicingService: InvoicingService,
@@ -88,6 +90,14 @@ export class BookingsService {
           'Tanlangan narx rejasi shu xona turiga tegishli emas',
         );
       }
+      // Narx rejasi cheklovlari (Closed to Arrival/Departure, Min/Max LOS,
+      // Stop Sell) — cheklov qo'yilmagan sanalar uchun hech narsa tekshirilmaydi.
+      await this.ratePlanRestrictionsService.assertBookingAllowed(
+        ratePlan.id,
+        dto.checkIn,
+        dto.checkOut,
+        this.diffNights(dto.checkIn, dto.checkOut),
+      );
     }
 
     // Agentlik (ixtiyoriy) — berilsa, mavjudligi tekshiriladi (404 agar
@@ -592,6 +602,16 @@ export class BookingsService {
     }
 
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
+
+    if (ratePlan) {
+      await this.ratePlanRestrictionsService.assertBookingAllowed(
+        ratePlan.id,
+        dto.checkIn,
+        dto.checkOut,
+        nights,
+      );
+    }
+
     const totalAmount = await this.calcNightlyTotal(
       dto.roomTypeId,
       ratePlan,
