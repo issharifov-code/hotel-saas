@@ -201,6 +201,45 @@ export interface MaintenanceTicketDto {
   createdAt: string;
 }
 
+// --- Xabar shablonlari va yuborilgan xabarlar (Guest Messaging) ---
+
+export type MessageChannel = 'email' | 'sms';
+export type MessageTriggerType = 'booking_confirmed' | 'checked_in' | 'checked_out' | 'custom';
+export type MessageStatus = 'sent' | 'failed';
+
+export interface MessageTemplateDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  triggerType: MessageTriggerType;
+  channel: MessageChannel;
+  subject: string | null;
+  bodyTemplate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageLogDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  guestId: string;
+  guest?: GuestDto;
+  bookingId: string | null;
+  templateId: string | null;
+  channel: MessageChannel;
+  subject: string | null;
+  body: string;
+  status: MessageStatus;
+  provider: string | null;
+  providerRef: string | null;
+  failureReason: string | null;
+  sentByUserId: string;
+  createdAt: string;
+}
+
 export interface PropertyDto {
   id: string;
   tenantId: string;
