@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
   { to: '/night-audit', label: 'Kunni yopish', moduleKey: 'front_desk' },
   { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
+  { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
   { to: '/housekeeping', label: 'Housekeeping', moduleKey: 'housekeeping' },
   { to: '/maintenance', label: 'Texnik xizmat', moduleKey: 'housekeeping' },
   { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
