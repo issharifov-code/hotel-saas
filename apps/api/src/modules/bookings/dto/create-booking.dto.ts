@@ -1,4 +1,11 @@
-import { IsDateString, IsIn, IsNumberString, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { BookingSource, MarketSegment } from '../entities/booking.entity';
 
 export class CreateBookingDto {
@@ -27,6 +34,13 @@ export class CreateBookingDto {
   @IsOptional()
   @IsUUID('4')
   agencyId?: string;
+
+  // Ixtiyoriy: bron shu korporativ hisob (City Ledger) orqali kredit
+  // asosida hisoblansin. Berilsa va marketSegment aniq ko'rsatilmagan
+  // bo'lsa, marketSegment avtomatik ravishda 'corporate' deb belgilanadi.
+  @IsOptional()
+  @IsUUID('4')
+  corporateAccountId?: string;
 
   // Berilmasa, xona turi bazaviy narxi (yoki ratePlanId berilgan bo'lsa, shu
   // rejaning narxi) * tunlar soni asosida avtomatik hisoblanadi.
