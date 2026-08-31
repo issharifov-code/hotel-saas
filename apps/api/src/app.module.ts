@@ -47,6 +47,7 @@ import { FunctionSpaceBooking } from './modules/function-spaces/entities/functio
 import { MaintenanceTicket } from './modules/maintenance/entities/maintenance-ticket.entity';
 import { MessageTemplate } from './modules/messaging/entities/message-template.entity';
 import { MessageLog } from './modules/messaging/entities/message-log.entity';
+import { CorporateAccount } from './modules/city-ledger/entities/corporate-account.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -71,6 +72,7 @@ import { AgenciesModule } from './modules/agencies/agencies.module';
 import { FunctionSpacesModule } from './modules/function-spaces/function-spaces.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
 
 @Module({
   imports: [
@@ -129,6 +131,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
           MaintenanceTicket,
           MessageTemplate,
           MessageLog,
+          CorporateAccount,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -165,6 +168,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
     FunctionSpacesModule,
     MaintenanceModule,
     MessagingModule,
+    CityLedgerModule,
   ],
   controllers: [AppController],
   providers: [
