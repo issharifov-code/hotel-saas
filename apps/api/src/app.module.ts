@@ -45,6 +45,8 @@ import { Agency } from './modules/agencies/entities/agency.entity';
 import { FunctionSpace } from './modules/function-spaces/entities/function-space.entity';
 import { FunctionSpaceBooking } from './modules/function-spaces/entities/function-space-booking.entity';
 import { MaintenanceTicket } from './modules/maintenance/entities/maintenance-ticket.entity';
+import { MessageTemplate } from './modules/messaging/entities/message-template.entity';
+import { MessageLog } from './modules/messaging/entities/message-log.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -125,6 +127,8 @@ import { MessagingModule } from './modules/messaging/messaging.module';
           FunctionSpace,
           FunctionSpaceBooking,
           MaintenanceTicket,
+          MessageTemplate,
+          MessageLog,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
