@@ -25,6 +25,8 @@ export interface RoomDto {
   createdAt: string;
 }
 
+export type CancellationFeeType = 'flat' | 'percent_of_total' | 'first_night';
+
 export interface RatePlanDto {
   id: string;
   tenantId: string;
@@ -35,6 +37,11 @@ export interface RatePlanDto {
   isRefundable: boolean;
   isActive: boolean;
   description: string | null;
+  cancellationDeadlineDays: number | null;
+  cancellationFeeType: CancellationFeeType | null;
+  cancellationFeeValue: string | null;
+  noShowFeeType: CancellationFeeType | null;
+  noShowFeeValue: string | null;
   createdAt: string;
 }
 
@@ -109,6 +116,7 @@ export interface BookingDto {
   currency: string;
   externalRef: string | null;
   notes: string | null;
+  cancellationFeeAmount: string | null;
   createdAt: string;
   updatedAt: string;
 }
