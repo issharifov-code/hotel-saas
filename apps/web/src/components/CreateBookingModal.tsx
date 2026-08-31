@@ -3,7 +3,7 @@ import { Modal } from './Modal';
 import { GuestPicker } from './GuestPicker';
 import { apiFetch, ApiError } from '../lib/api';
 import { addDays } from '../lib/dates';
-import type { AgencyDto, GuestDto, MarketSegment, RatePlanDto, RoomDto } from '../lib/types';
+import type { AgencyDto, CorporateAccountDto, GuestDto, MarketSegment, RatePlanDto, RoomDto } from '../lib/types';
 
 const MARKET_SEGMENT_LABELS: Record<MarketSegment, string> = {
   walk_in: 'Walk-in',
@@ -38,6 +38,8 @@ export function CreateBookingModal({
   const [ratePlanId, setRatePlanId] = useState<string>('');
   const [agencies, setAgencies] = useState<AgencyDto[]>([]);
   const [agencyId, setAgencyId] = useState<string>('');
+  const [corporateAccounts, setCorporateAccounts] = useState<CorporateAccountDto[]>([]);
+  const [corporateAccountId, setCorporateAccountId] = useState<string>('');
   const [marketSegment, setMarketSegment] = useState<MarketSegment>('other');
   const [marketSegmentTouched, setMarketSegmentTouched] = useState(false);
   const [notes, setNotes] = useState('');
@@ -51,15 +53,20 @@ export function CreateBookingModal({
     apiFetch<AgencyDto[]>(`/properties/${propertyId}/agencies`)
       .then((list) => setAgencies(list.filter((a) => a.isActive)))
       .catch(() => setAgencies([]));
+    apiFetch<CorporateAccountDto[]>(`/properties/${propertyId}/corporate-accounts`)
+      .then((list) => setCorporateAccounts(list.filter((a) => a.isActive)))
+      .catch(() => setCorporateAccounts([]));
   }, [propertyId]);
 
-  // Agentlik tanlansa va foydalanuvchi bozor segmentini qo'lda o'zgartirmagan
-  // bo'lsa, backend'dagi avtomatik xatti-harakatni frontend'da ham aks
-  // ettirish uchun segmentni 'turizm agentligi'ga o'rnatamiz.
+  // Agentlik yoki korporativ hisob tanlansa va foydalanuvchi bozor segmentini
+  // qo'lda o'zgartirmagan bo'lsa, backend'dagi avtomatik xatti-harakatni
+  // frontend'da ham aks ettirish uchun segmentni mos ravishda o'rnatamiz
+  // (backend'dagi ustuvorlik bilan bir xil — agentlik korporativ hisobdan
+  // ustun turadi, ikkalasi ham berilgan kamdan-kam holat uchun).
   useEffect(() => {
     if (marketSegmentTouched) return;
-    setMarketSegment(agencyId ? 'travel_agent' : 'other');
-  }, [agencyId, marketSegmentTouched]);
+    setMarketSegment(agencyId ? 'travel_agent' : corporateAccountId ? 'corporate' : 'other');
+  }, [agencyId, corporateAccountId, marketSegmentTouched]);
 
   const selectedRoom = rooms.find((r) => r.id === roomId);
   // Faqat tanlangan xonaning turiga mos, faol narx rejalari ko'rsatiladi.
@@ -95,6 +102,7 @@ export function CreateBookingModal({
           checkOut,
           ratePlanId: ratePlanId || undefined,
           agencyId: agencyId || undefined,
+          corporateAccountId: corporateAccountId || undefined,
           marketSegment,
           notes: notes || undefined,
         }),
@@ -189,6 +197,26 @@ export function CreateBookingModal({
               {agencies.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name} ({Number(a.commissionPct)}% komissiya)
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {corporateAccounts.length > 0 && (
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">
+              Korporativ hisob (City Ledger, ixtiyoriy)
+            </span>
+            <select
+              value={corporateAccountId}
+              onChange={(e) => setCorporateAccountId(e.target.value)}
+              className="input"
+            >
+              <option value="">— Yo'q —</option>
+              {corporateAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.paymentTermsDays} kunlik to'lov muddati)
                 </option>
               ))}
             </select>

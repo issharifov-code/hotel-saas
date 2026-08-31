@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
   { to: '/pos', label: 'POS', moduleKey: 'pos' },
   { to: '/invoicing', label: 'Hisob-fakturalar', moduleKey: 'invoicing' },
+  { to: '/city-ledger', label: 'City Ledger', moduleKey: 'invoicing' },
   { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
   { to: '/billing', label: 'Obuna va to\'lovlar', moduleKey: 'billing' },
 ];
