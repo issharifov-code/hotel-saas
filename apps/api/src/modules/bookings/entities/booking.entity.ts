@@ -14,6 +14,7 @@ import { Guest } from '../../guests/entities/guest.entity';
 import { RatePlan } from '../../rooms/entities/rate-plan.entity';
 import { BookingGroup } from './booking-group.entity';
 import { Agency } from '../../agencies/entities/agency.entity';
+import { CorporateAccount } from '../../city-ledger/entities/corporate-account.entity';
 
 export enum BookingStatus {
   PENDING = 'pending', // hali tasdiqlanmagan (masalan to'lov kutilmoqda)
@@ -155,6 +156,23 @@ export class Booking {
   })
   @JoinColumn({ name: 'agency_id' })
   agency: Agency | null;
+
+  // Korporativ hisob (City Ledger, ixtiyoriy) — berilsa, bu bron shu
+  // kompaniya "kredit"ida hisoblanadi: mehmon check-out paytida o'zi
+  // to'lamaydi, hisob-faktura kompaniyaning hisob-varag'iga (statement)
+  // qo'shiladi (CityLedgerService.getStatement, real vaqtda hisoblanadi).
+  // Hisob o'chirilsa (hozircha o'chirish funksiyasi yo'q) bron o'zi saqlanib
+  // qoladi (SET NULL) — check-in/check-out/folio mantig'iga hech qanday
+  // ta'sir qilmaydi.
+  @Column({ name: 'corporate_account_id', type: 'uuid', nullable: true })
+  corporateAccountId: string | null;
+
+  @ManyToOne(() => CorporateAccount, (account) => account.bookings, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'corporate_account_id' })
+  corporateAccount: CorporateAccount | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
