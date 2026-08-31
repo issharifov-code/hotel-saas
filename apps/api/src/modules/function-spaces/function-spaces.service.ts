@@ -115,6 +115,7 @@ export class FunctionSpacesService {
     tenantId: string,
     propertyId: string,
     dto: CreateFunctionSpaceBookingDto,
+    createdByUserId: string,
   ): Promise<FunctionSpaceBooking> {
     if (new Date(dto.endTime) <= new Date(dto.startTime)) {
       throw new ConflictException(
@@ -150,6 +151,7 @@ export class FunctionSpacesService {
       status,
       totalAmount: dto.totalAmount ?? null,
       notes: dto.notes ?? null,
+      createdByUserId,
     });
     return this.bookingRepo.save(booking);
   }

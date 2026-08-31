@@ -68,28 +68,39 @@ describe('FunctionSpacesService', () => {
   it("tugash vaqti boshlanishdan oldin bo'lsa ConflictException tashlaydi", async () => {
     const { service } = createService();
     await expect(
-      service.createBooking('t1', 'p1', {
-        ...baseDto,
-        startTime: '2026-09-01T14:00:00.000Z',
-        endTime: '2026-09-01T10:00:00.000Z',
-      }),
+      service.createBooking(
+        't1',
+        'p1',
+        {
+          ...baseDto,
+          startTime: '2026-09-01T14:00:00.000Z',
+          endTime: '2026-09-01T10:00:00.000Z',
+        },
+        'u1',
+      ),
     ).rejects.toThrow(ConflictException);
   });
 
   it("to'qnashuv bo'lmasa bron muvaffaqiyatli yaratiladi (status default CONFIRMED)", async () => {
     const { service, bookingRepo } = createService();
-    await service.createBooking('t1', 'p1', baseDto);
+    await service.createBooking('t1', 'p1', baseDto, 'u1');
     const createdArg = bookingRepo.create.mock.calls[0][0];
     expect(createdArg.status).toBe(FunctionSpaceBookingStatus.CONFIRMED);
     expect(createdArg.functionSpaceId).toBe('s1');
+    expect(createdArg.createdByUserId).toBe('u1');
   });
 
   it("bekor qilingan (CANCELLED) status bilan yaratishda to'qnashuv tekshirilmaydi", async () => {
     const { service, bookingRepo, qb } = createService();
-    await service.createBooking('t1', 'p1', {
-      ...baseDto,
-      status: FunctionSpaceBookingStatus.CANCELLED,
-    });
+    await service.createBooking(
+      't1',
+      'p1',
+      {
+        ...baseDto,
+        status: FunctionSpaceBookingStatus.CANCELLED,
+      },
+      'u1',
+    );
     expect(qb.getOne).not.toHaveBeenCalled();
     expect(bookingRepo.create.mock.calls[0][0].status).toBe(
       FunctionSpaceBookingStatus.CANCELLED,
@@ -99,17 +110,17 @@ describe('FunctionSpacesService', () => {
   it("vaqt to'qnashsa ConflictException tashlaydi", async () => {
     const { service, qb } = createService();
     qb.getOne.mockResolvedValue({ id: 'existing-booking' });
-    await expect(service.createBooking('t1', 'p1', baseDto)).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.createBooking('t1', 'p1', baseDto, 'u1'),
+    ).rejects.toThrow(ConflictException);
   });
 
   it("mavjud bo'lmagan zal uchun bron yaratishda NotFoundException tashlaydi", async () => {
     const { service, spaceRepo } = createService();
     spaceRepo.findOneBy.mockResolvedValue(null);
-    await expect(service.createBooking('t1', 'p1', baseDto)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.createBooking('t1', 'p1', baseDto, 'u1'),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('topilmagan bron uchun NotFoundException tashlaydi', async () => {

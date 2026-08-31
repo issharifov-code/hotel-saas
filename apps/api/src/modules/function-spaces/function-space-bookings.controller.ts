@@ -66,6 +66,7 @@ export class FunctionSpaceBookingsController {
       user.tenantId!,
       propertyId,
       dto,
+      user.userId,
     );
   }
 
