@@ -90,6 +90,64 @@ export class InvoicingService {
     return saved;
   }
 
+  // Bekor qilish (BookingsService.cancel) yoki kelmaslik (NightAuditService no-show)
+  // sababli jarima yozish uchun — MUSTAQIL (standalone) hisob-faktura yaratadi.
+  // openFolio'dan farqli o'laroq check-in'ga BOG'LIQ EMAS: bekor qilingan/kelmagan
+  // bronlarda hech qachon check-in bo'lmaydi, demak openFolio umuman chaqirilmagan
+  // bo'ladi — shuning uchun chargeToFolioByBooking (OCHIQ invoice talab qiladi)
+  // bu holatda ishlatib bo'lmaydi. Darhol ISSUED holatida yaratiladi (turish hech
+  // qachon bo'lmaydi — qo'shimcha qator qo'shilishi kutilmaydi), lekin to'lov
+  // qabul qilish (addPayment) hamon mumkin. Idempotent: agar shu booking uchun
+  // (masalan qayta urinishda) hisob-faktura allaqachon mavjud bo'lsa, o'shani qaytaradi.
+  async createFeeInvoice(
+    tenantId: string,
+    propertyId: string,
+    booking: Booking,
+    description: string,
+    amount: string,
+    creditSystemKey: string,
+  ): Promise<Invoice> {
+    const existing = await this.invoiceRepo.findOne({
+      where: { tenantId, propertyId, bookingId: booking.id },
+    });
+    if (existing) return existing;
+
+    const feeLine = this.lineRepo.create({
+      description,
+      source: InvoiceLineSource.ADJUSTMENT,
+      quantity: '1',
+      unitPrice: amount,
+      amount,
+    });
+
+    const invoice = this.invoiceRepo.create({
+      tenantId,
+      propertyId,
+      bookingId: booking.id,
+      guestId: booking.guestId,
+      status: InvoiceStatus.ISSUED,
+      issuedAt: new Date(),
+      totalAmount: amount,
+      paidAmount: '0.00',
+      currency: booking.currency,
+      lines: [feeLine],
+    });
+    const saved = await this.invoiceRepo.save(invoice);
+
+    await this.accountingService.postSimpleEntry({
+      tenantId,
+      propertyId,
+      description,
+      sourceModule: 'invoicing',
+      sourceId: saved.id,
+      debitSystemKey: 'guest_ledger_ar',
+      creditSystemKey,
+      amount,
+    });
+
+    return saved;
+  }
+
   // Check-out paytida BookingsService tomonidan chaqiriladi — folio qat'iylashadi
   // ("issued"). To'lov holati tekshirilmaydi: check-out to'lovdan mustaqil
   // (biznes qoida — tasdiqlangan), to'lanmagan qoldiq keyin kuzatiladi.

@@ -96,7 +96,7 @@ describe('InvoicingService.recordGatewayPayment', () => {
 // endi to'lovni yozishdan oldin invoice qatorini bloklab, so'nggi qoldiqni qayta
 // tekshiradi — bu avval umuman mavjud bo'lmagan himoya edi (qo'lda addPayment
 // hech qanday yuqori chegarasiz to'lov yozib qo'yishga ruxsat berardi).
-describe('InvoicingService — qoldiqdan oshiq to\'lovni rad etish', () => {
+describe("InvoicingService — qoldiqdan oshiq to'lovni rad etish", () => {
   function createService(invoiceOverrides: Record<string, unknown> = {}) {
     const invoice = {
       id: 'inv-1',
@@ -198,7 +198,7 @@ describe('InvoicingService — qoldiqdan oshiq to\'lovni rad etish', () => {
     ).rejects.toThrow(/qoldiqdan/);
   });
 
-  it('bekor qilingan hisob-fakturaga (bloklangan holatda) to\'lov qo\'shib bo\'lmaydi', async () => {
+  it("bekor qilingan hisob-fakturaga (bloklangan holatda) to'lov qo'shib bo'lmaydi", async () => {
     const { service } = createService({ status: InvoiceStatus.CANCELLED });
 
     await expect(
@@ -210,5 +210,88 @@ describe('InvoicingService — qoldiqdan oshiq to\'lovni rad etish', () => {
         'user-1',
       ),
     ).rejects.toThrow(/Bekor qilingan/);
+  });
+});
+
+// createFeeInvoice — bekor qilish/no-show jarimasi uchun MUSTAQIL (standalone)
+// hisob-faktura yaratadi (check-in'ga bog'liq emas, chunki bu bronlar hech
+// qachon check-in qilinmagan — openFolio umuman chaqirilmagan bo'ladi).
+describe('InvoicingService.createFeeInvoice', () => {
+  function createService() {
+    const invoiceRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((data: Record<string, unknown>) =>
+        Promise.resolve({ id: 'inv-fee-1', ...data }),
+      ),
+    };
+    const lineRepo = { create: jest.fn((data: unknown) => data) };
+    const paymentRepo = {};
+    const accountingService = {
+      postSimpleEntry: jest.fn().mockResolvedValue(null),
+    };
+    const loyaltyService = {};
+
+    const service = new InvoicingService(
+      invoiceRepo as never,
+      lineRepo as never,
+      paymentRepo as never,
+      accountingService as never,
+      loyaltyService as never,
+    );
+    return { service, invoiceRepo, accountingService };
+  }
+
+  const booking = {
+    id: 'b1',
+    guestId: 'guest-1',
+    currency: 'UZS',
+  };
+
+  it('ISSUED holatida, guest_ledger_ar debet / berilgan creditSystemKey kredit bilan hisob-faktura yaratadi', async () => {
+    const { service, invoiceRepo, accountingService } = createService();
+
+    const result = await service.createFeeInvoice(
+      't1',
+      'p1',
+      booking as never,
+      'Bekor qilish jarimasi',
+      '150.00',
+      'cancellation_fee_revenue',
+    );
+
+    expect(result).toMatchObject({
+      status: InvoiceStatus.ISSUED,
+      totalAmount: '150.00',
+      bookingId: 'b1',
+      guestId: 'guest-1',
+    });
+    expect(invoiceRepo.save).toHaveBeenCalled();
+    expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debitSystemKey: 'guest_ledger_ar',
+        creditSystemKey: 'cancellation_fee_revenue',
+        amount: '150.00',
+      }),
+    );
+  });
+
+  it("shu booking uchun hisob-faktura allaqachon mavjud bo'lsa, qayta yaratmasdan o'shani qaytaradi (idempotent)", async () => {
+    const { service, invoiceRepo, accountingService } = createService();
+    const existing = { id: 'inv-existing', bookingId: 'b1' };
+    invoiceRepo.findOne.mockResolvedValue(existing);
+
+    const result = await service.createFeeInvoice(
+      't1',
+      'p1',
+      booking as never,
+      'Bekor qilish jarimasi',
+      '150.00',
+      'cancellation_fee_revenue',
+    );
+
+    expect(result).toBe(existing);
+    expect(invoiceRepo.save).not.toHaveBeenCalled();
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
   });
 });
