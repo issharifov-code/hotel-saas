@@ -37,6 +37,8 @@ import { Agency } from '../modules/agencies/entities/agency.entity';
 import { FunctionSpace } from '../modules/function-spaces/entities/function-space.entity';
 import { FunctionSpaceBooking } from '../modules/function-spaces/entities/function-space-booking.entity';
 import { MaintenanceTicket } from '../modules/maintenance/entities/maintenance-ticket.entity';
+import { MessageTemplate } from '../modules/messaging/entities/message-template.entity';
+import { MessageLog } from '../modules/messaging/entities/message-log.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -85,6 +87,8 @@ export const AppDataSource = new DataSource({
     FunctionSpace,
     FunctionSpaceBooking,
     MaintenanceTicket,
+    MessageTemplate,
+    MessageLog,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
