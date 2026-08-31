@@ -3,7 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { RatePlanDto, RoomDto, RoomStatus, RoomTypeDto } from '../lib/types';
+import type { RatePlanDto, RatePlanRestrictionDto, RoomDto, RoomStatus, RoomTypeDto } from '../lib/types';
 
 const STATUS_LABELS: Record<RoomStatus, string> = {
   available: "Bo'sh",
@@ -29,6 +29,7 @@ export function RoomsPage() {
   const [showRoomTypeModal, setShowRoomTypeModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showRatePlanModal, setShowRatePlanModal] = useState(false);
+  const [restrictionsFor, setRestrictionsFor] = useState<RatePlanDto | null>(null);
 
   const load = async () => {
     if (!property) return;
@@ -131,14 +132,24 @@ export function RoomsPage() {
                   {!rp.isRefundable && ' · qaytarilmaydi'}
                 </p>
               </div>
-              {can('booking', 'edit') && (
-                <button
-                  onClick={() => toggleRatePlanActive(rp)}
-                  className="text-xs text-slate-500 hover:text-slate-900 underline"
-                >
-                  {rp.isActive ? 'Nofaollashtirish' : 'Faollashtirish'}
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {can('booking', 'edit') && (
+                  <button
+                    onClick={() => setRestrictionsFor(rp)}
+                    className="text-xs text-slate-500 hover:text-slate-900 underline"
+                  >
+                    Cheklovlar
+                  </button>
+                )}
+                {can('booking', 'edit') && (
+                  <button
+                    onClick={() => toggleRatePlanActive(rp)}
+                    className="text-xs text-slate-500 hover:text-slate-900 underline"
+                  >
+                    {rp.isActive ? 'Nofaollashtirish' : 'Faollashtirish'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -209,6 +220,14 @@ export function RoomsPage() {
             setShowRatePlanModal(false);
             load();
           }}
+        />
+      )}
+
+      {restrictionsFor && property && (
+        <RatePlanRestrictionsModal
+          propertyId={property.id}
+          ratePlan={restrictionsFor}
+          onClose={() => setRestrictionsFor(null)}
         />
       )}
     </AppLayout>
@@ -453,6 +472,170 @@ function CreateRatePlanModal({
           {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </form>
+    </Modal>
+  );
+}
+
+function RatePlanRestrictionsModal({
+  propertyId,
+  ratePlan,
+  onClose,
+}: {
+  propertyId: string;
+  ratePlan: RatePlanDto;
+  onClose: () => void;
+}) {
+  const [restrictions, setRestrictions] = useState<RatePlanRestrictionDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [date, setDate] = useState('');
+  const [closedToArrival, setClosedToArrival] = useState(false);
+  const [closedToDeparture, setClosedToDeparture] = useState(false);
+  const [stopSell, setStopSell] = useState(false);
+  const [minLengthOfStay, setMinLengthOfStay] = useState('');
+  const [maxLengthOfStay, setMaxLengthOfStay] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<RatePlanRestrictionDto[]>(
+        `/properties/${propertyId}/rate-plans/${ratePlan.id}/restrictions`,
+      );
+      setRestrictions(data);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Cheklovlarni yuklashda xatolik');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratePlan.id]);
+
+  const loadIntoForm = (r: RatePlanRestrictionDto) => {
+    setDate(r.date.slice(0, 10));
+    setClosedToArrival(r.closedToArrival);
+    setClosedToDeparture(r.closedToDeparture);
+    setStopSell(r.stopSell);
+    setMinLengthOfStay(r.minLengthOfStay != null ? String(r.minLengthOfStay) : '');
+    setMaxLengthOfStay(r.maxLengthOfStay != null ? String(r.maxLengthOfStay) : '');
+  };
+
+  const resetForm = () => {
+    setDate('');
+    setClosedToArrival(false);
+    setClosedToDeparture(false);
+    setStopSell(false);
+    setMinLengthOfStay('');
+    setMaxLengthOfStay('');
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!date) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/properties/${propertyId}/rate-plans/${ratePlan.id}/restrictions/${date}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          closedToArrival,
+          closedToDeparture,
+          stopSell,
+          minLengthOfStay: minLengthOfStay ? Number(minLengthOfStay) : undefined,
+          maxLengthOfStay: maxLengthOfStay ? Number(maxLengthOfStay) : undefined,
+        }),
+      });
+      resetForm();
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal title={`Cheklovlar — ${ratePlan.name}`} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3 mb-4 pb-4 border-b border-slate-100">
+        <Field label="Sana">
+          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input" />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Min. turish (kecha)">
+            <input
+              type="number"
+              min={1}
+              value={minLengthOfStay}
+              onChange={(e) => setMinLengthOfStay(e.target.value)}
+              className="input"
+              placeholder="Cheklovsiz"
+            />
+          </Field>
+          <Field label="Max. turish (kecha)">
+            <input
+              type="number"
+              min={1}
+              value={maxLengthOfStay}
+              onChange={(e) => setMaxLengthOfStay(e.target.value)}
+              className="input"
+              placeholder="Cheklovsiz"
+            />
+          </Field>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={closedToArrival} onChange={(e) => setClosedToArrival(e.target.checked)} />
+          Kelish yopiq (Closed to Arrival)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={closedToDeparture}
+            onChange={(e) => setClosedToDeparture(e.target.checked)}
+          />
+          Jo'nab ketish yopiq (Closed to Departure)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={stopSell} onChange={(e) => setStopSell(e.target.checked)} />
+          Sotuvdan yopish (Stop Sell)
+        </label>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
+        </button>
+      </form>
+
+      <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+        {loading && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
+        {!loading && restrictions.length === 0 && (
+          <p className="text-sm text-slate-500">Hali cheklov qo'yilmagan</p>
+        )}
+        {restrictions.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => loadIntoForm(r)}
+            className="w-full text-left py-2 text-sm hover:bg-slate-50 flex items-center justify-between"
+          >
+            <span className="font-medium text-slate-800">{r.date.slice(0, 10)}</span>
+            <span className="text-xs text-slate-500">
+              {[
+                r.stopSell && 'Stop Sell',
+                r.closedToArrival && 'CTA',
+                r.closedToDeparture && 'CTD',
+                r.minLengthOfStay && `Min ${r.minLengthOfStay}`,
+                r.maxLengthOfStay && `Max ${r.maxLengthOfStay}`,
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—'}
+            </span>
+          </button>
+        ))}
+      </div>
     </Modal>
   );
 }
