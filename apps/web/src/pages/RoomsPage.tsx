@@ -3,7 +3,20 @@ import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { RatePlanDto, RatePlanRestrictionDto, RoomDto, RoomStatus, RoomTypeDto } from '../lib/types';
+import type {
+  CancellationFeeType,
+  RatePlanDto,
+  RatePlanRestrictionDto,
+  RoomDto,
+  RoomStatus,
+  RoomTypeDto,
+} from '../lib/types';
+
+const CANCELLATION_FEE_TYPE_LABELS: Record<CancellationFeeType, string> = {
+  flat: "Qat'iy summa",
+  percent_of_total: "Umumiy summadan foiz",
+  first_night: 'Birinchi kecha narxi',
+};
 
 const STATUS_LABELS: Record<RoomStatus, string> = {
   available: "Bo'sh",
@@ -131,6 +144,14 @@ export function RoomsPage() {
                   {roomTypeById.get(rp.roomTypeId)?.name ?? '—'} · {Number(rp.nightlyPrice).toLocaleString('uz-UZ')} so'm / kecha
                   {!rp.isRefundable && ' · qaytarilmaydi'}
                 </p>
+                {(rp.cancellationDeadlineDays != null || rp.noShowFeeType) && (
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    {rp.cancellationDeadlineDays != null &&
+                      `Bekor qilish: check-in'dan ${rp.cancellationDeadlineDays} kun oldin bepul, keyin jarima`}
+                    {rp.cancellationDeadlineDays != null && rp.noShowFeeType && ' · '}
+                    {rp.noShowFeeType && 'Kelmaslik (no-show) uchun jarima bor'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {can('booking', 'edit') && (
@@ -403,6 +424,13 @@ function CreateRatePlanModal({
   const [nightlyPrice, setNightlyPrice] = useState('');
   const [isRefundable, setIsRefundable] = useState(true);
   const [description, setDescription] = useState('');
+  const [hasCancellationPolicy, setHasCancellationPolicy] = useState(false);
+  const [cancellationDeadlineDays, setCancellationDeadlineDays] = useState('3');
+  const [cancellationFeeType, setCancellationFeeType] = useState<CancellationFeeType>('first_night');
+  const [cancellationFeeValue, setCancellationFeeValue] = useState('');
+  const [hasNoShowFee, setHasNoShowFee] = useState(false);
+  const [noShowFeeType, setNoShowFeeType] = useState<CancellationFeeType>('first_night');
+  const [noShowFeeValue, setNoShowFeeValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -419,6 +447,19 @@ function CreateRatePlanModal({
           nightlyPrice,
           isRefundable,
           description: description || undefined,
+          ...(hasCancellationPolicy
+            ? {
+                cancellationDeadlineDays: Number(cancellationDeadlineDays),
+                cancellationFeeType,
+                cancellationFeeValue: cancellationFeeType === 'first_night' ? nightlyPrice : cancellationFeeValue,
+              }
+            : {}),
+          ...(hasNoShowFee
+            ? {
+                noShowFeeType,
+                noShowFeeValue: noShowFeeType === 'first_night' ? nightlyPrice : noShowFeeValue,
+              }
+            : {}),
         }),
       });
       onCreated();
@@ -467,6 +508,98 @@ function CreateRatePlanModal({
         <Field label="Tavsif (ixtiyoriy)">
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={2} />
         </Field>
+
+        <div className="border-t border-slate-100 pt-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={hasCancellationPolicy}
+              onChange={(e) => setHasCancellationPolicy(e.target.checked)}
+            />
+            Bekor qilish siyosati (jarima)
+          </label>
+          {hasCancellationPolicy && (
+            <div className="grid grid-cols-2 gap-2 pl-6">
+              <Field label="Muddat (kun)">
+                <input
+                  type="number"
+                  min={0}
+                  value={cancellationDeadlineDays}
+                  onChange={(e) => setCancellationDeadlineDays(e.target.value)}
+                  className="input"
+                />
+              </Field>
+              <Field label="Jarima turi">
+                <select
+                  value={cancellationFeeType}
+                  onChange={(e) => setCancellationFeeType(e.target.value as CancellationFeeType)}
+                  className="input"
+                >
+                  {Object.entries(CANCELLATION_FEE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {cancellationFeeType !== 'first_night' && (
+                <div className="col-span-2">
+                  <Field label={cancellationFeeType === 'percent_of_total' ? 'Foiz (%)' : "Summa"}>
+                    <input
+                      inputMode="decimal"
+                      value={cancellationFeeValue}
+                      onChange={(e) => setCancellationFeeValue(e.target.value)}
+                      className="input"
+                      placeholder={cancellationFeeType === 'percent_of_total' ? '50' : '100000'}
+                    />
+                  </Field>
+                </div>
+              )}
+              <p className="col-span-2 text-xs text-slate-400">
+                Check-in sanasidan shu necha kun oldingacha bepul bekor qilish mumkin, keyin jarima olinadi.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 pt-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={hasNoShowFee} onChange={(e) => setHasNoShowFee(e.target.checked)} />
+            Kelmaslik (no-show) jarimasi
+          </label>
+          {hasNoShowFee && (
+            <div className="grid grid-cols-2 gap-2 pl-6">
+              <Field label="Jarima turi">
+                <select
+                  value={noShowFeeType}
+                  onChange={(e) => setNoShowFeeType(e.target.value as CancellationFeeType)}
+                  className="input"
+                >
+                  {Object.entries(CANCELLATION_FEE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {noShowFeeType !== 'first_night' && (
+                <Field label={noShowFeeType === 'percent_of_total' ? 'Foiz (%)' : 'Summa'}>
+                  <input
+                    inputMode="decimal"
+                    value={noShowFeeValue}
+                    onChange={(e) => setNoShowFeeValue(e.target.value)}
+                    className="input"
+                    placeholder={noShowFeeType === 'percent_of_total' ? '100' : '100000'}
+                  />
+                </Field>
+              )}
+              <p className="col-span-2 text-xs text-slate-400">
+                Night Audit mehmon kelmaganini aniqlaganda avtomatik qo'llanadi (muddatsiz).
+              </p>
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">
           {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
