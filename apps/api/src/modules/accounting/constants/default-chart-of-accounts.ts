@@ -182,7 +182,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: DefaultAccountDefinition[] = [
   { code: '4300', name: 'Other Operated Revenue', type: AccountType.REVENUE, department: AccountDepartment.OTHER_OPERATED, normalBalance: NormalBalance.CREDIT, systemKey: 'other_operated_revenue' },
   { code: '5300', name: 'Other Operated Expense', type: AccountType.EXPENSE, department: AccountDepartment.OTHER_OPERATED, normalBalance: NormalBalance.DEBIT, systemKey: null },
   { code: '4900', name: 'Attrition Fees', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: null },
-  { code: '4901', name: 'Cancellation Fees', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: null },
+  { code: '4901', name: 'Cancellation Fees', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: 'cancellation_fee_revenue' },
   { code: '4902', name: 'Cash Discounts Earned', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: null },
   { code: '4903', name: 'Commissions', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: null },
   { code: '4904', name: 'Destination/Resort/Urban Fees', type: AccountType.REVENUE, department: AccountDepartment.MISCELLANEOUS_INCOME, normalBalance: NormalBalance.CREDIT, systemKey: null },
