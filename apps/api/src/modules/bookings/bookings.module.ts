@@ -12,6 +12,7 @@ import { RolesModule } from '../roles/roles.module';
 import { HousekeepingModule } from '../housekeeping/housekeeping.module';
 import { InvoicingModule } from '../invoicing/invoicing.module';
 import { AgenciesModule } from '../agencies/agencies.module';
+import { CityLedgerModule } from '../city-ledger/city-ledger.module';
 import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { RlsModule } from '../../common/rls/rls.module';
     HousekeepingModule,
     InvoicingModule,
     AgenciesModule,
+    CityLedgerModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController, BookingGroupsController],

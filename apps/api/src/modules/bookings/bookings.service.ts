@@ -27,6 +27,7 @@ import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
 import { InvoicingService } from '../invoicing/invoicing.service';
 import { AgenciesService } from '../agencies/agencies.service';
+import { CityLedgerService } from '../city-ledger/city-ledger.service';
 
 // Booking'ni "band" deb hisoblaydigan holatlar — bekor qilingan yoki checkout
 // bo'lgan bronlar yangi bron bilan taqvim to'qnashuvi hisoblanmaydi.
@@ -52,6 +53,7 @@ export class BookingsService {
     @InjectRepository(BookingGroup)
     private readonly bookingGroupRepo: Repository<BookingGroup>,
     private readonly agenciesService: AgenciesService,
+    private readonly cityLedgerService: CityLedgerService,
   ) {}
 
   async create(
@@ -102,6 +104,20 @@ export class BookingsService {
       agencyId = agency.id;
     }
 
+    // Korporativ hisob (ixtiyoriy) — mavjudligi tekshiriladi (404 agar
+    // topilmasa) va marketSegment aniq berilmagan bo'lsa avtomatik ravishda
+    // CORPORATE deb belgilanadi (agencyId'dan farqli ustuvorlik — bitta bron
+    // ikkalasiga ham ega bo'lishi kamdan-kam, lekin texnik jihatdan mumkin).
+    let corporateAccountId: string | null = null;
+    if (dto.corporateAccountId) {
+      const account = await this.cityLedgerService.findById(
+        tenantId,
+        propertyId,
+        dto.corporateAccountId,
+      );
+      corporateAccountId = account.id;
+    }
+
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount =
       dto.totalAmount ??
@@ -117,9 +133,15 @@ export class BookingsService {
       status: BookingStatus.CONFIRMED,
       source: dto.source ?? BookingSource.DIRECT,
       marketSegment:
-        dto.marketSegment ?? (agencyId ? MarketSegment.TRAVEL_AGENT : MarketSegment.OTHER),
+        dto.marketSegment ??
+        (agencyId
+          ? MarketSegment.TRAVEL_AGENT
+          : corporateAccountId
+            ? MarketSegment.CORPORATE
+            : MarketSegment.OTHER),
       ratePlanId: ratePlan?.id ?? null,
       agencyId,
+      corporateAccountId,
       totalAmount,
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,
