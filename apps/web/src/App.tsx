@@ -19,6 +19,7 @@ import { PosPage } from './pages/PosPage';
 import { HousekeepingPage } from './pages/HousekeepingPage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { InvoicingPage } from './pages/InvoicingPage';
+import { CityLedgerPage } from './pages/CityLedgerPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { BillingPage } from './pages/BillingPage';
 import { AdminPage } from './pages/AdminPage';
@@ -140,6 +141,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <InvoicingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/city-ledger"
+            element={
+              <ProtectedRoute>
+                <CityLedgerPage />
               </ProtectedRoute>
             }
           />
