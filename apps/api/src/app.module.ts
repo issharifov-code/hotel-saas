@@ -68,6 +68,7 @@ import { NightAuditModule } from './modules/night-audit/night-audit.module';
 import { AgenciesModule } from './modules/agencies/agencies.module';
 import { FunctionSpacesModule } from './modules/function-spaces/function-spaces.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -159,6 +160,7 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
     AgenciesModule,
     FunctionSpacesModule,
     MaintenanceModule,
+    MessagingModule,
   ],
   controllers: [AppController],
   providers: [
