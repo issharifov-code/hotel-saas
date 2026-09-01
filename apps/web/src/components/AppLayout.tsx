@@ -222,7 +222,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     // footer doim ko'rinadi, faqat o'rtadagi `main` tarkibi mustaqil aylanadi.
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* OPERA Cloud uslubidagi yuqori panel: hamburger, logotip, moliyaviy sana, foydalanuvchi, sozlamalar */}
-      <header className="shrink-0 h-14 bg-slate-800 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
+      <header className="shrink-0 h-14 bg-slate-700 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -240,12 +240,17 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
         </div>
         <div className="flex items-center gap-4 sm:gap-6 shrink-0">
           {property && (
-            <p className="hidden sm:block text-xs text-white/80">{formatBusinessDate(property.businessDate)}</p>
+            <>
+              <p className="hidden sm:block text-xs text-white/80">{formatBusinessDate(property.businessDate)}</p>
+              {/* OPERA'dagi kabi bo'limlar orasidagi ingichka ajratuvchi chiziq */}
+              <span className="hidden sm:block h-5 w-px bg-white/25" aria-hidden="true" />
+            </>
           )}
           <div className="hidden md:flex items-center gap-1.5 text-xs text-white/80 min-w-0">
             <UserIcon />
             <span className="truncate max-w-[160px]">{user?.fullName || user?.email}</span>
           </div>
+          <span className="hidden md:block h-5 w-px bg-white/25" aria-hidden="true" />
           <Link
             to="/staff"
             aria-label="Sozlamalar"
