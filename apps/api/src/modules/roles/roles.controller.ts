@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { PermissionsService } from './permissions.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -7,7 +16,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PermissionAction, PermissionModule } from '../../common/enums/permission.enum';
+import {
+  PermissionAction,
+  PermissionModule,
+} from '../../common/enums/permission.enum';
 import type { AuthenticatedUser } from '../../common/interfaces/jwt-payload.interface';
 
 @Controller()
@@ -31,8 +43,15 @@ export class RolesController {
 
   @Post('roles')
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.CREATE)
-  createRole(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateRoleDto) {
-    return this.rolesService.createCustomRole(user.tenantId!, dto.name, dto.permissionIds);
+  createRole(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateRoleDto,
+  ) {
+    return this.rolesService.createCustomRole(
+      user.tenantId!,
+      dto.name,
+      dto.permissionIds,
+    );
   }
 
   @Patch('roles/:id/permissions')
@@ -42,12 +61,25 @@ export class RolesController {
     @Param('id') roleId: string,
     @Body('permissionIds') permissionIds: string[],
   ) {
-    return this.rolesService.updateRolePermissions(user.tenantId!, roleId, permissionIds);
+    return this.rolesService.updateRolePermissions(
+      user.tenantId!,
+      roleId,
+      permissionIds,
+    );
+  }
+
+  @Get('user-roles')
+  @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.VIEW)
+  listUserRoles(@CurrentUser() user: AuthenticatedUser) {
+    return this.rolesService.listUserRoleAssignments(user.tenantId!);
   }
 
   @Post('user-roles')
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
-  assignRole(@CurrentUser() user: AuthenticatedUser, @Body() dto: AssignRoleDto) {
+  assignRole(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: AssignRoleDto,
+  ) {
     return this.rolesService.assignRoleToUser(
       user.tenantId!,
       dto.userId,

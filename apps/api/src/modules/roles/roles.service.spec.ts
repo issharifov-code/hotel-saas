@@ -501,6 +501,32 @@ describe('RolesService', () => {
     });
   });
 
+  describe('listUserRoleAssignments', () => {
+    it("faqat berilgan tenant'ga tegishli tayinlashlarni qaytaradi", async () => {
+      const { service, saved } = createService();
+      saved.UserRole.push(
+        {
+          id: 'ur1',
+          tenantId: 't1',
+          userId: 'u1',
+          roleId: 'r1',
+          propertyId: null,
+        },
+        {
+          id: 'ur2',
+          tenantId: 't2',
+          userId: 'u2',
+          roleId: 'r2',
+          propertyId: null,
+        },
+      );
+
+      const assignments = await service.listUserRoleAssignments('t1');
+
+      expect(assignments.map((a) => a.id)).toEqual(['ur1']);
+    });
+  });
+
   describe('findRolesByIds', () => {
     it("bo'sh massiv uchun tranzaksiya ochmasdan bo'sh natija qaytaradi", async () => {
       const { service, roleRepo } = createService();

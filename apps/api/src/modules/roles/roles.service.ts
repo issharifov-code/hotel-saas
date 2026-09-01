@@ -241,4 +241,13 @@ export class RolesService {
       manager.getRepository(Role).find({ where: { tenantId, id: In(ids) } }),
     );
   }
+
+  // Xodimlar sahifasida har bir foydalanuvchiga qaysi rol(lar) tayinlanganini
+  // ko'rsatish uchun — frontend buni allaqachon yuklangan `roles` ro'yxati bilan
+  // (roleId orqali) birlashtiradi, shuning uchun bu yerda relation kerak emas.
+  async listUserRoleAssignments(tenantId: string): Promise<UserRole[]> {
+    return this.withTenantContext(tenantId, (manager) =>
+      manager.getRepository(UserRole).find({ where: { tenantId } }),
+    );
+  }
 }
