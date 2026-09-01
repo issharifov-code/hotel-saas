@@ -111,4 +111,15 @@ export class RatePlanRestrictionsService {
       );
     }
   }
+
+  // Bitta (ratePlanId, date) juftligi uchun cheklovni qaytaradi (topilmasa
+  // null) — Channel Manager sinxronlashda Stop Sell holatini tekshirish
+  // uchun ishlatiladi (agar shu sanada Stop Sell qo'yilgan bo'lsa, kanalga
+  // 0 ta bo'sh xona yuboriladi, haqiqiy sondan qat'i nazar).
+  async getForDate(
+    ratePlanId: string,
+    date: string,
+  ): Promise<RatePlanRestriction | null> {
+    return this.restrictionRepo.findOneBy({ ratePlanId, date });
+  }
 }
