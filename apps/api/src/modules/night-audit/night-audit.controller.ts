@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { NightAuditService } from './night-audit.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -9,6 +9,7 @@ import {
   PermissionAction,
   PermissionModule,
 } from '../../common/enums/permission.enum';
+import { parsePagination } from '../../common/utils/pagination.util';
 
 // Night Audit ("kunni yopish") — Front Desk modulining permission darajasidan
 // foydalanadi. Alohida yangi PermissionModule qo'shish Postgres
@@ -35,8 +36,14 @@ export class NightAuditController {
   history(
     @CurrentUser() user: AuthenticatedUser,
     @Param('propertyId') propertyId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.nightAuditService.history(user.tenantId!, propertyId);
+    return this.nightAuditService.history(
+      user.tenantId!,
+      propertyId,
+      parsePagination(page, pageSize, 30),
+    );
   }
 
   @Post('run')

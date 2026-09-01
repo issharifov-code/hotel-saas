@@ -15,6 +15,10 @@ import {
   RatePlan,
 } from '../rooms/entities/rate-plan.entity';
 import { InvoicingService } from '../invoicing/invoicing.service';
+import {
+  PaginatedResult,
+  PaginationParams,
+} from '../../common/utils/pagination.util';
 
 export interface NightAuditStatusDto {
   businessDate: string;
@@ -103,11 +107,20 @@ export class NightAuditService {
   async history(
     tenantId: string,
     propertyId: string,
-  ): Promise<NightAuditRun[]> {
-    return this.runRepo.find({
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<NightAuditRun>> {
+    const [items, total] = await this.runRepo.findAndCount({
       where: { tenantId, propertyId },
       order: { auditDate: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
+    return {
+      items,
+      total,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
   }
 
   async run(
