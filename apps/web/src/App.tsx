@@ -7,6 +7,7 @@ import { RegisterTenantPage } from './pages/RegisterTenantPage';
 import { PublicBookingPage } from './pages/PublicBookingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomsPage } from './pages/RoomsPage';
+import { ChannelManagerPage } from './pages/ChannelManagerPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { MessagingPage } from './pages/MessagingPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
@@ -77,6 +78,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <RoomsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/channel-manager"
+            element={
+              <ProtectedRoute>
+                <ChannelManagerPage />
               </ProtectedRoute>
             }
           />
