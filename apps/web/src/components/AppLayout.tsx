@@ -137,6 +137,16 @@ function GearIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <circle cx="10" cy="10" r="8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.6 7.6a2.4 2.4 0 1 1 3.5 2.14c-.68.37-1.1.8-1.1 1.56v.3" />
+      <circle cx="10" cy="14" r="0.15" fill="currentColor" stroke="currentColor" strokeWidth={1.2} />
+    </svg>
+  );
+}
+
 const WEEKDAY_FULL = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 
 // OPERA'dagi yuqori panelda ko'rsatilgan "Tuesday, 01 Sep, 2026" uslubidagi
@@ -251,6 +261,14 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             <span className="truncate max-w-[160px]">{user?.fullName || user?.email}</span>
           </div>
           <span className="hidden md:block h-5 w-px bg-white/25" aria-hidden="true" />
+          <Link
+            to="/help"
+            aria-label="Yordam"
+            title="Yordam"
+            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
+          >
+            <HelpIcon />
+          </Link>
           <Link
             to="/staff"
             aria-label="Sozlamalar"
