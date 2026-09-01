@@ -12,12 +12,25 @@ interface CurrentUser {
   isPlatformAdmin: boolean;
 }
 
+export interface TenantOption {
+  subdomain: string;
+  name: string;
+}
+
+// Login sahifasi qayta dizayni (2026-09): Subdomain maydoni endi ko'rsatilmaydi —
+// backend email orqali tenant'ni avtomatik aniqlaydi. Agar bir xil email+parol
+// bir nechta mehmonxonada ishlab qolsa (kamdan-kam), backend token o'rniga
+// tanlash ro'yxatini qaytaradi — shu holatni LoginResult orqali aniq ifodalaymiz.
+export type LoginResult =
+  | { status: 'success'; user: CurrentUser }
+  | { status: 'select-tenant'; tenants: TenantOption[] };
+
 interface AuthContextValue {
   user: CurrentUser | null;
   property: PropertyDto | null;
   permissions: string[];
   loading: boolean;
-  login: (params: { subdomain?: string; email: string; password: string }) => Promise<CurrentUser>;
+  login: (params: { subdomain?: string; email: string; password: string }) => Promise<LoginResult>;
   logout: () => void;
   refresh: () => Promise<void>;
   can: (moduleKey: string, action: string) => boolean;
@@ -73,17 +86,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login: AuthContextValue['login'] = async (params) => {
-    const res = await apiFetch<{ accessToken: string; user: CurrentUser }>('/auth/login', {
+    const res = await apiFetch<
+      | { accessToken: string; user: CurrentUser }
+      | { requiresTenantSelection: true; tenants: TenantOption[] }
+    >('/auth/login', {
       method: 'POST',
       auth: false,
       body: JSON.stringify(params),
     });
+
+    if ('requiresTenantSelection' in res) {
+      return { status: 'select-tenant', tenants: res.tenants };
+    }
+
     setToken(res.accessToken);
     setUser(res.user);
     if (res.user.tenantId) {
       await loadTenantContext();
     }
-    return res.user;
+    return { status: 'success', user: res.user };
   };
 
   const logout = () => {
