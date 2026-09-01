@@ -739,6 +739,31 @@ export interface ReportsOverviewDto {
   loyaltyDistribution: { tier: LoyaltyTier; count: number }[];
 }
 
+export interface SegmentPerformanceDto {
+  periodDays: number;
+  bySegment: {
+    segment: MarketSegment;
+    bookingCount: number;
+    roomNights: number;
+    revenue: number;
+    adr: number;
+  }[];
+  bySource: { source: BookingSource; bookingCount: number; revenue: number }[];
+  byAgency: {
+    agencyId: string;
+    agencyName: string;
+    bookingCount: number;
+    revenue: number;
+    commissionOwed: number;
+  }[];
+  byCorporateAccount: {
+    corporateAccountId: string;
+    name: string;
+    bookingCount: number;
+    revenue: number;
+  }[];
+}
+
 // --- Channel Manager (OTA distribution — Booking.com, Airbnb va h.k.) ---
 
 export type ChannelProvider = 'booking_com' | 'airbnb' | 'agoda' | 'expedia' | 'other';
