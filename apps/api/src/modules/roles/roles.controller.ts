@@ -37,6 +37,7 @@ export class RolesController {
   }
 
   @Get('roles')
+  @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.VIEW)
   listRoles(@CurrentUser() user: AuthenticatedUser) {
     return this.rolesService.listRolesForTenant(user.tenantId!);
   }
