@@ -21,6 +21,7 @@ import {
   PermissionAction,
   PermissionModule,
 } from '../../common/enums/permission.enum';
+import { parsePagination } from '../../common/utils/pagination.util';
 
 // Mehmonlarga xabar yuborish (email/SMS, mock provayder orqali) — yangi
 // PermissionModule qiymati qo'shilmadi, mavjud GUEST_CRM qayta ishlatildi
@@ -90,11 +91,15 @@ export class MessagingController {
     @Param('propertyId') propertyId: string,
     @Query('guestId') guestId?: string,
     @Query('bookingId') bookingId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.messagingService.listLogs(user.tenantId!, propertyId, {
-      guestId,
-      bookingId,
-    });
+    return this.messagingService.listLogs(
+      user.tenantId!,
+      propertyId,
+      { guestId, bookingId },
+      parsePagination(page, pageSize, 50),
+    );
   }
 
   @Post('messages/send')

@@ -18,6 +18,10 @@ import {
   Guest,
   CommunicationPreference,
 } from '../guests/entities/guest.entity';
+import {
+  PaginatedResult,
+  PaginationParams,
+} from '../../common/utils/pagination.util';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Property } from '../properties/entities/property.entity';
@@ -197,8 +201,9 @@ export class MessagingService {
     tenantId: string,
     propertyId: string,
     filters: { guestId?: string; bookingId?: string } = {},
-  ): Promise<MessageLog[]> {
-    return this.logRepo.find({
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<MessageLog>> {
+    const [items, total] = await this.logRepo.findAndCount({
       where: {
         tenantId,
         propertyId,
@@ -207,7 +212,15 @@ export class MessagingService {
       },
       relations: { guest: true },
       order: { createdAt: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
+    return {
+      items,
+      total,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
   }
 
   // ---------- Yordamchi metodlar ----------
