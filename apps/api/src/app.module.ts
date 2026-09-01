@@ -52,6 +52,7 @@ import { CorporateAccount } from './modules/city-ledger/entities/corporate-accou
 import { Channel } from './modules/channel-manager/entities/channel.entity';
 import { ChannelRoomTypeMapping } from './modules/channel-manager/entities/channel-room-type-mapping.entity';
 import { ChannelSyncLog } from './modules/channel-manager/entities/channel-sync-log.entity';
+import { DemoRequest } from './modules/marketing/entities/demo-request.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -142,6 +143,7 @@ import { ChannelManagerModule } from './modules/channel-manager/channel-manager.
           Channel,
           ChannelRoomTypeMapping,
           ChannelSyncLog,
+          DemoRequest,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
