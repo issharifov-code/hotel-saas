@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/agencies', label: 'Agentliklar', moduleKey: 'booking' },
   { to: '/function-spaces', label: 'Tadbir zallari', moduleKey: 'booking' },
   { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
+  { to: '/channel-manager', label: 'Channel Manager', moduleKey: 'booking' },
   { to: '/night-audit', label: 'Kunni yopish', moduleKey: 'front_desk' },
   { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
   { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
