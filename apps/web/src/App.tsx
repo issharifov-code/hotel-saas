@@ -26,6 +26,7 @@ import { SegmentReportsPage } from './pages/SegmentReportsPage';
 import { GuestRegistrationReportPage } from './pages/GuestRegistrationReportPage';
 import { BillingPage } from './pages/BillingPage';
 import { StaffPage } from './pages/StaffPage';
+import { HelpPage } from './pages/HelpPage';
 import { AdminPage } from './pages/AdminPage';
 
 function App() {
@@ -201,6 +202,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <StaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute>
+                <HelpPage />
               </ProtectedRoute>
             }
           />
