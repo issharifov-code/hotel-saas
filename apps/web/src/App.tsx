@@ -23,6 +23,7 @@ import { InvoicingPage } from './pages/InvoicingPage';
 import { CityLedgerPage } from './pages/CityLedgerPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { SegmentReportsPage } from './pages/SegmentReportsPage';
+import { GuestRegistrationReportPage } from './pages/GuestRegistrationReportPage';
 import { BillingPage } from './pages/BillingPage';
 import { AdminPage } from './pages/AdminPage';
 
@@ -175,6 +176,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SegmentReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/guest-registration-report"
+            element={
+              <ProtectedRoute>
+                <GuestRegistrationReportPage />
               </ProtectedRoute>
             }
           />
