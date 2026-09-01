@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { SystemRoleKey } from '../../common/enums/permission.enum';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { Tenant } from '../tenants/entities/tenant.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -86,30 +87,81 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    let tenant: Tenant | null = null;
-
     if (dto.subdomain) {
-      tenant = await this.tenantsService.findBySubdomain(dto.subdomain);
+      const tenant = await this.tenantsService.findBySubdomain(dto.subdomain);
       if (!tenant)
         throw new UnauthorizedException('Mehmonxona (subdomain) topilmadi');
+
+      const user = await this.usersService.findByEmailAndTenant(
+        dto.email,
+        tenant.id,
+      );
+      if (!user) throw new UnauthorizedException("Email yoki parol noto'g'ri");
+
+      const valid = await this.usersService.validatePassword(
+        user,
+        dto.password,
+      );
+      if (!valid) throw new UnauthorizedException("Email yoki parol noto'g'ri");
+
+      return this.buildLoginResponse(user, tenant);
     }
 
-    const user = await this.usersService.findByEmailAndTenant(
-      dto.email,
-      tenant?.id ?? null,
-    );
-    if (!user) throw new UnauthorizedException("Email yoki parol noto'g'ri");
+    return this.loginWithoutSubdomain(dto);
+  }
 
-    const valid = await this.usersService.validatePassword(user, dto.password);
-    if (!valid) throw new UnauthorizedException("Email yoki parol noto'g'ri");
-
-    // Booking Engine (jonli bron widget'i) havolasini frontend'da ko'rsatish
-    // uchun — subdomain login paytida berilmagan bo'lsa ham, foydalanuvchining
-    // o'z tenant'i orqali qidiriladi.
-    if (!tenant && user.tenantId) {
-      tenant = await this.tenantsService.findById(user.tenantId);
+  // Login sahifasi qayta dizayni (2026-09): Subdomain maydoni frontend'dan
+  // olib tashlandi — foydalanuvchi faqat email+parol kiritadi. Email bir
+  // tenant ichida unique, lekin turli tenant'larda bir xil email bo'lishi
+  // mumkin (LoginDto izohiga qarang), shuning uchun avval barcha mos
+  // foydalanuvchilarni topib, ULARNING HAR BIRIGA parolni tekshiramiz —
+  // faqat to'g'ri parolga ega bo'lganlar "nomzod" hisoblanadi:
+  //  - 0 ta to'g'ri nomzod  -> odatiy 401 (email topilmadimi, parol
+  //    noto'g'rimi — buni ataylab bir xil xabar bilan yashiramiz).
+  //  - 1 ta to'g'ri nomzod  -> to'g'ridan-to'g'ri shu foydalanuvchi sifatida
+  //    kiradi (aksariyat holat — email amalda faqat bitta tenant'da bor).
+  //  - 1 dan ortiq to'g'ri nomzod -> bir xil email+parol bir nechta
+  //    mehmonxonada ishlaydi (kamdan-kam, lekin nazariy jihatdan mumkin) —
+  //    frontend'ga mehmonxona tanlash ro'yxatini qaytaramiz, token
+  //    berilmaydi; foydalanuvchi tanlagandan so'ng `subdomain` bilan qayta
+  //    so'rov yuboradi (yuqoridagi filial orqali).
+  private async loginWithoutSubdomain(dto: LoginDto) {
+    const candidates = await this.usersService.findAllByEmail(dto.email);
+    const validUsers: User[] = [];
+    for (const candidate of candidates) {
+      if (await this.usersService.validatePassword(candidate, dto.password)) {
+        validUsers.push(candidate);
+      }
     }
 
+    if (validUsers.length === 0) {
+      throw new UnauthorizedException("Email yoki parol noto'g'ri");
+    }
+
+    if (validUsers.length > 1) {
+      const tenantUsers = validUsers.filter((u) => u.tenantId);
+      const tenants = await Promise.all(
+        tenantUsers.map((u) => this.tenantsService.findById(u.tenantId!)),
+      );
+      if (tenants.length > 1) {
+        return {
+          requiresTenantSelection: true as const,
+          tenants: tenants.map((t) => ({
+            subdomain: t.subdomain,
+            name: t.name,
+          })),
+        };
+      }
+    }
+
+    const user = validUsers.find((u) => u.tenantId) ?? validUsers[0];
+    const tenant = user.tenantId
+      ? await this.tenantsService.findById(user.tenantId)
+      : null;
+    return this.buildLoginResponse(user, tenant);
+  }
+
+  private buildLoginResponse(user: User, tenant: Tenant | null) {
     const token = this.issueToken({
       sub: user.id,
       tenantId: user.tenantId,
@@ -117,7 +169,11 @@ export class AuthService {
     });
 
     return {
-      user: this.publicUser(user, tenant?.subdomain ?? null, tenant?.hasSampleData ?? false),
+      user: this.publicUser(
+        user,
+        tenant?.subdomain ?? null,
+        tenant?.hasSampleData ?? false,
+      ),
       ...token,
     };
   }
