@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ChannelManagerService } from './channel-manager.service';
@@ -21,6 +22,7 @@ import {
   PermissionAction,
   PermissionModule,
 } from '../../common/enums/permission.enum';
+import { parsePagination } from '../../common/utils/pagination.util';
 
 // Channel Manager — City Ledger/Rate Plan Restrictions'dagi kabi, yangi
 // PermissionModule qiymati qo'shilmadi: bu inventar/mavjudlik-distribution
@@ -122,11 +124,14 @@ export class ChannelManagerController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('propertyId') propertyId: string,
     @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     return this.channelManagerService.listSyncLogs(
       user.tenantId!,
       propertyId,
       id,
+      parsePagination(page, pageSize, 30),
     );
   }
 

@@ -13,6 +13,10 @@ import {
   ChannelSyncStatus,
 } from './entities/channel-sync-log.entity';
 import { CreateChannelDto } from './dto/create-channel.dto';
+import {
+  PaginatedResult,
+  PaginationParams,
+} from '../../common/utils/pagination.util';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { UpsertChannelMappingDto } from './dto/upsert-channel-mapping.dto';
 import { RoomTypesService } from '../rooms/room-types.service';
@@ -162,12 +166,21 @@ export class ChannelManagerService {
     tenantId: string,
     propertyId: string,
     channelId: string,
-  ): Promise<ChannelSyncLog[]> {
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<ChannelSyncLog>> {
     await this.findChannelById(tenantId, propertyId, channelId);
-    return this.syncLogRepo.find({
+    const [items, total] = await this.syncLogRepo.findAndCount({
       where: { channelId },
       order: { syncedAt: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
+    return {
+      items,
+      total,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
   }
 
   // Kanalga bog'langan barcha faol xona turlari uchun keyingi SYNC_DAYS kun
