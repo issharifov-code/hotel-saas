@@ -878,3 +878,14 @@ export interface ChannelSyncLogDto {
   providerRef: string | null;
   failureReason: string | null;
 }
+
+// --- Demo so'rovlar (login sahifasidagi "Demo so'rash" formasi, 2026-09) ---
+export interface DemoRequestDto {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  note: string | null;
+  contacted: boolean;
+  createdAt: string;
+}
