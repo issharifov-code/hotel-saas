@@ -17,6 +17,7 @@ import {
 import { Guest, LoyaltyTier } from '../guests/entities/guest.entity';
 import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
+import { PaginationParams } from '../../common/utils/pagination.util';
 
 export interface ReportsOverviewDto {
   asOfDate: string;
@@ -92,6 +93,8 @@ export interface GuestRegistrationReportDto {
   totalStays: number;
   missingDocumentCount: number;
   stays: GuestRegistrationStayDto[];
+  page: number;
+  pageSize: number;
 }
 
 const TREND_DAYS = 14;
@@ -452,20 +455,43 @@ export class ReportsService {
     tenantId: string,
     propertyId: string,
     periodDays: number,
+    pagination: PaginationParams,
   ): Promise<GuestRegistrationReportDto> {
     const periodStartDate = new Date();
     periodStartDate.setDate(periodStartDate.getDate() - periodDays);
     const periodStart = isoDate(periodStartDate);
 
-    const bookings = await this.bookingRepo.find({
-      where: {
-        tenantId,
-        propertyId,
-        checkIn: MoreThanOrEqual(periodStart),
-        status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
-      },
+    const baseWhere = {
+      tenantId,
+      propertyId,
+      checkIn: MoreThanOrEqual(periodStart),
+      status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+    };
+
+    // `totalStays` va `missingDocumentCount` — davr bo'yicha TO'LIQ (sahifalashdan
+    // mustaqil) agregatlar, shuning uchun `stays`ni sahifalab olishdan oldin
+    // alohida (yengil, faqat COUNT) so'rovlar bilan hisoblanadi. Agar buni
+    // faqat joriy sahifadagi qatorlardan hisoblasak, hisobot kartalari
+    // (masalan "hujjati yo'q mehmonlar soni") noto'g'ri, sahifaga bog'liq
+    // qiymat ko'rsatgan bo'lardi.
+    const missingDocumentCount = await this.bookingRepo
+      .createQueryBuilder('booking')
+      .innerJoin('booking.guest', 'guest')
+      .where('booking.tenantId = :tenantId', { tenantId })
+      .andWhere('booking.propertyId = :propertyId', { propertyId })
+      .andWhere('booking.checkIn >= :periodStart', { periodStart })
+      .andWhere('booking.status IN (:...statuses)', {
+        statuses: [BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT],
+      })
+      .andWhere('(guest.documentType IS NULL OR guest.documentNumber IS NULL)')
+      .getCount();
+
+    const [bookings, totalStays] = await this.bookingRepo.findAndCount({
+      where: baseWhere,
       relations: { room: true, guest: true },
       order: { checkIn: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     const stays: GuestRegistrationStayDto[] = bookings.map((b) => {
@@ -487,9 +513,11 @@ export class ReportsService {
 
     return {
       periodDays,
-      totalStays: stays.length,
-      missingDocumentCount: stays.filter((s) => s.missingDocument).length,
+      totalStays,
+      missingDocumentCount,
       stays,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 }

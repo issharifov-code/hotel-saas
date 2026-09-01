@@ -106,6 +106,20 @@ describe('ReportsService', () => {
             );
           },
         ),
+      findAndCount: jest.fn().mockImplementation(() => {
+        const rows = opts.registrationBookings ?? [];
+        return Promise.resolve([rows, rows.length]);
+      }),
+      createQueryBuilder: jest.fn().mockReturnValue(
+        (() => {
+          const missingDocCount = (opts.registrationBookings ?? []).filter(
+            (b) => !b.guest.documentType || !b.guest.documentNumber,
+          ).length;
+          const qb = createQbMock([]);
+          qb.getCount = jest.fn().mockResolvedValue(missingDocCount);
+          return qb;
+        })(),
+      ),
     };
     const invoiceRepo = {
       find: jest.fn().mockResolvedValue(opts.outstandingInvoices ?? []),
@@ -382,7 +396,12 @@ describe('ReportsService', () => {
           },
         ],
       });
-      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30, {
+        page: 1,
+        pageSize: 50,
+        skip: 0,
+        take: 50,
+      });
       expect(result.totalStays).toBe(1);
       expect(result.missingDocumentCount).toBe(0);
       expect(result.stays[0]).toEqual({
@@ -433,7 +452,12 @@ describe('ReportsService', () => {
           },
         ],
       });
-      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30, {
+        page: 1,
+        pageSize: 50,
+        skip: 0,
+        take: 50,
+      });
       expect(result.totalStays).toBe(2);
       expect(result.missingDocumentCount).toBe(2);
       expect(result.stays.every((s) => s.missingDocument)).toBe(true);
@@ -441,12 +465,19 @@ describe('ReportsService', () => {
 
     it("bron bo'lmasa bo'sh ro'yxat va nol hisoblagichlar qaytaradi", async () => {
       const service = createService({ registrationBookings: [] });
-      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30, {
+        page: 1,
+        pageSize: 50,
+        skip: 0,
+        take: 50,
+      });
       expect(result).toEqual({
         periodDays: 30,
         totalStays: 0,
         missingDocumentCount: 0,
         stays: [],
+        page: 1,
+        pageSize: 50,
       });
     });
   });

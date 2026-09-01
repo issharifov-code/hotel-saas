@@ -9,6 +9,7 @@ import {
   PermissionAction,
   PermissionModule,
 } from '../../common/enums/permission.enum';
+import { parsePagination } from '../../common/utils/pagination.util';
 
 @Controller('properties/:propertyId/reports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -55,6 +56,8 @@ export class ReportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('propertyId') propertyId: string,
     @Query('days') days?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const parsed = days ? parseInt(days, 10) : 30;
     const periodDays =
@@ -63,6 +66,7 @@ export class ReportsController {
       user.tenantId!,
       propertyId,
       periodDays,
+      parsePagination(page, pageSize, 50),
     );
   }
 }
