@@ -16,6 +16,10 @@ import { AddPaymentDto } from './dto/add-payment.dto';
 import { Booking } from '../bookings/entities/booking.entity';
 import { AccountingService } from '../accounting/accounting.service';
 import { LoyaltyService } from '../guests/loyalty.service';
+import {
+  PaginatedResult,
+  PaginationParams,
+} from '../../common/utils/pagination.util';
 
 // InvoicePaymentMethod -> Accounting hisob-kitobi system key (Kassa/Bank/Karta kliringi).
 // ONLINE (to'lov shlyuzi) uchun alohida hisob hali ochilmagan — Payme/Click
@@ -172,15 +176,24 @@ export class InvoicingService {
   async listByProperty(
     tenantId: string,
     propertyId: string,
-    status?: InvoiceStatus,
-  ): Promise<Invoice[]> {
-    return this.invoiceRepo.find({
+    status: InvoiceStatus | undefined,
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<Invoice>> {
+    const [items, total] = await this.invoiceRepo.findAndCount({
       where: status
         ? { tenantId, propertyId, status }
         : { tenantId, propertyId },
       relations: { booking: { room: true }, guest: true },
       order: { createdAt: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
+    return {
+      items,
+      total,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
   }
 
   async findById(

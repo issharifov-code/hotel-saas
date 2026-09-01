@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { InvoicingService } from './invoicing.service';
 import { AddInvoiceLineDto } from './dto/add-invoice-line.dto';
 import { AddPaymentDto } from './dto/add-payment.dto';
@@ -8,7 +16,11 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/interfaces/jwt-payload.interface';
-import { PermissionAction, PermissionModule } from '../../common/enums/permission.enum';
+import {
+  PermissionAction,
+  PermissionModule,
+} from '../../common/enums/permission.enum';
+import { parsePagination } from '../../common/utils/pagination.util';
 
 @Controller('properties/:propertyId')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -21,13 +33,24 @@ export class InvoicingController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('propertyId') propertyId: string,
     @Query('status') status?: InvoiceStatus,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.invoicingService.listByProperty(user.tenantId!, propertyId, status);
+    return this.invoicingService.listByProperty(
+      user.tenantId!,
+      propertyId,
+      status,
+      parsePagination(page, pageSize, 25),
+    );
   }
 
   @Get('invoices/:id')
   @RequirePermission(PermissionModule.INVOICING, PermissionAction.VIEW)
-  get(@CurrentUser() user: AuthenticatedUser, @Param('propertyId') propertyId: string, @Param('id') id: string) {
+  get(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+  ) {
     return this.invoicingService.findById(user.tenantId!, propertyId, id);
   }
 
@@ -38,7 +61,11 @@ export class InvoicingController {
     @Param('propertyId') propertyId: string,
     @Param('bookingId') bookingId: string,
   ) {
-    return this.invoicingService.findByBooking(user.tenantId!, propertyId, bookingId);
+    return this.invoicingService.findByBooking(
+      user.tenantId!,
+      propertyId,
+      bookingId,
+    );
   }
 
   @Post('invoices/:id/lines')
@@ -60,12 +87,22 @@ export class InvoicingController {
     @Param('id') id: string,
     @Body() dto: AddPaymentDto,
   ) {
-    return this.invoicingService.addPayment(user.tenantId!, propertyId, id, dto, user.userId);
+    return this.invoicingService.addPayment(
+      user.tenantId!,
+      propertyId,
+      id,
+      dto,
+      user.userId,
+    );
   }
 
   @Post('invoices/:id/cancel')
   @RequirePermission(PermissionModule.INVOICING, PermissionAction.EDIT)
-  cancel(@CurrentUser() user: AuthenticatedUser, @Param('propertyId') propertyId: string, @Param('id') id: string) {
+  cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+  ) {
     return this.invoicingService.cancel(user.tenantId!, propertyId, id);
   }
 }
