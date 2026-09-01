@@ -764,6 +764,27 @@ export interface SegmentPerformanceDto {
   }[];
 }
 
+export interface GuestRegistrationStayDto {
+  bookingId: string;
+  guestFullName: string;
+  nationality: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
+  dateOfBirth: string | null;
+  roomNumber: string;
+  checkIn: string;
+  checkOut: string;
+  status: BookingStatus;
+  missingDocument: boolean;
+}
+
+export interface GuestRegistrationReportDto {
+  periodDays: number;
+  totalStays: number;
+  missingDocumentCount: number;
+  stays: GuestRegistrationStayDto[];
+}
+
 // --- Channel Manager (OTA distribution — Booking.com, Airbnb va h.k.) ---
 
 export type ChannelProvider = 'booking_com' | 'airbnb' | 'agoda' | 'expedia' | 'other';
