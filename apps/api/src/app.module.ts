@@ -70,6 +70,7 @@ import { AccountingModule } from './modules/accounting/accounting.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { PublicModule } from './modules/public/public.module';
+import { MarketingModule } from './modules/marketing/marketing.module';
 import { SampleDataModule } from './modules/sample-data/sample-data.module';
 import { NightAuditModule } from './modules/night-audit/night-audit.module';
 import { AgenciesModule } from './modules/agencies/agencies.module';
@@ -171,6 +172,7 @@ import { ChannelManagerModule } from './modules/channel-manager/channel-manager.
     ReportsModule,
     BillingModule,
     PublicModule,
+    MarketingModule,
     SampleDataModule,
     NightAuditModule,
     AgenciesModule,
