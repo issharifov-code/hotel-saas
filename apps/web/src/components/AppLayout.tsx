@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SampleDataBanner } from './SampleDataBanner';
 import folioOneLogo from '../assets/folio-one-logo.png';
@@ -104,9 +104,17 @@ function BackChevronIcon() {
   );
 }
 
+// Sahifa ilk marta ochilganda (yangi tab, to'g'ridan-to'g'ri URL) brauzer
+// tarixida ortga qaytadigan joy yo'q — shu holatda "Orqaga" havolasini
+// ko'rsatmaymiz (SPA ichidan chiqib ketmaslik uchun).
+function canGoBackInHistory() {
+  return typeof window !== 'undefined' && window.history.length > 1;
+}
+
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Brauzer tab sarlavhasi (2026-09): har bir sahifa AppLayout'ga o'z
   // `title` propini uzatadi — shu qiymatdan foydalanib sarlavhani markazlashtirib
@@ -145,7 +153,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     });
   };
 
-  const onDashboard = location.pathname === '/dashboard';
+  const showBack = canGoBackInHistory();
 
   return (
     // h-screen + overflow-hidden (2026-09): sahifa o'zi scroll bo'lmaydi — chap
@@ -154,13 +162,13 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     // uzun jadval/ro'yxatli sahifalarda chap menyu ko'zdan yo'qolib qolardi.
     <div className="h-screen bg-slate-50 flex overflow-hidden">
       <div className="h-1 w-full bg-brand-gold fixed top-0 left-0 z-10" aria-hidden="true" />
-      <aside className="w-60 shrink-0 h-full overflow-y-auto flex flex-col bg-brand-navy">
-        <div className="px-5 py-5 border-b border-white/10 mt-1">
+      <aside className="w-60 shrink-0 h-full overflow-y-auto flex flex-col bg-white border-r border-slate-200">
+        <div className="px-5 py-5 bg-brand-navy mt-1">
           <div className="flex items-center gap-2">
             <img src={folioOneLogo} alt="Folio One" className="h-6 w-6" />
             <p className="font-semibold text-white">Folio One</p>
           </div>
-          {property && <p className="text-xs text-white/50 mt-0.5">{property.name}</p>}
+          {property && <p className="text-xs text-white/60 mt-0.5">{property.name}</p>}
         </div>
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           {visibleSections.map((section) =>
@@ -169,7 +177,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 <button
                   type="button"
                   onClick={() => toggleGroup(section.key)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white/40 hover:text-white/70"
+                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-brand-navy"
                 >
                   <span>{section.label}</span>
                   <ChevronIcon open={expanded.has(section.key)} />
@@ -181,8 +189,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         key={item.to}
                         to={item.to}
                         className={({ isActive }) =>
-                          `block rounded-md px-3 py-2 pl-6 text-sm font-medium ${
-                            isActive ? 'bg-brand-gold text-brand-navy-dark' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          `block rounded-md border-l-2 px-3 py-2 pl-5 text-sm font-medium ${
+                            isActive
+                              ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
+                              : 'border-transparent text-slate-600 hover:bg-slate-100'
                           }`
                         }
                       >
@@ -198,8 +208,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `block rounded-md px-3 py-2 text-sm font-medium ${
-                      isActive ? 'bg-brand-gold text-brand-navy-dark' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    `block rounded-md border-l-2 px-3 py-2 pl-2.5 text-sm font-medium ${
+                      isActive
+                        ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
+                        : 'border-transparent text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -209,9 +221,9 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             ),
           )}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10">
-          <p className="text-xs text-white/50 truncate">{user?.email}</p>
-          <button onClick={logout} className="mt-1 text-xs text-white/70 hover:text-white underline">
+        <div className="px-5 py-4 border-t border-slate-100">
+          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          <button onClick={logout} className="mt-1 text-xs text-slate-600 hover:text-brand-navy underline">
             Chiqish
           </button>
         </div>
@@ -219,14 +231,15 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
       <div className="flex-1 min-w-0 h-full flex flex-col">
         <header className="shrink-0 bg-white border-b border-slate-200 px-8 py-4">
-          {!onDashboard && (
-            <Link
-              to="/dashboard"
+          {showBack && (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
               className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-navy mb-1"
             >
               <BackChevronIcon />
-              Bosh sahifa
-            </Link>
+              Orqaga
+            </button>
           )}
           <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
         </header>
