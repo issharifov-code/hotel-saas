@@ -21,10 +21,14 @@ export class DemoRequest {
   @Column({ length: 50 })
   phone: string;
 
-  @Column({ length: 255, nullable: true })
+  // `string | null` union tip bilan reflect-metadata dizayn-vaqtida `Object`
+  // deb aniqlaydi (TypeORM'ning maʼlum cheklovi), shuning uchun `type: 'varchar'`
+  // aniq ko'rsatilishi shart — aks holda `DataTypeNotSupportedError` bilan
+  // ilova ishga tushmay qoladi.
+  @Column({ type: 'varchar', length: 255, nullable: true })
   email: string | null;
 
-  @Column({ length: 1000, nullable: true })
+  @Column({ type: 'varchar', length: 1000, nullable: true })
   note: string | null;
 
   @Column({ name: 'contacted', type: 'boolean', default: false })
