@@ -1,3 +1,12 @@
+// Cheksiz o'sadigan ro'yxatlar (invoyslar, xabar loglari, night-audit tarixi,
+// channel-manager sinxronlash loglari va h.k.) uchun umumiy sahifalangan javob shakli.
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface RoomTypeDto {
   id: string;
   tenantId: string;
@@ -783,6 +792,8 @@ export interface GuestRegistrationReportDto {
   totalStays: number;
   missingDocumentCount: number;
   stays: GuestRegistrationStayDto[];
+  page: number;
+  pageSize: number;
 }
 
 // --- Xodimlar va ruxsatlar (Staff & Roles/Permissions, 2026-09) ---
