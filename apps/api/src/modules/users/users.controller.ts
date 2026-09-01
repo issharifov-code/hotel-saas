@@ -1,12 +1,26 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/interfaces/jwt-payload.interface';
-import { PermissionAction, PermissionModule } from '../../common/enums/permission.enum';
+import {
+  PermissionAction,
+  PermissionModule,
+} from '../../common/enums/permission.enum';
 
 // Xodim (tenant foydalanuvchisi) yaratish/ro'yxatini ko'rish — Role Management modulining
 // bir qismi: avval foydalanuvchi yaratiladi, keyin unga rol biriktiriladi (POST /user-roles).
@@ -31,7 +45,10 @@ export class UsersController {
 
   @Post()
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.CREATE)
-  async create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateUserDto) {
+  async create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateUserDto,
+  ) {
     const created = await this.usersService.createUser({
       tenantId: user.tenantId!,
       email: dto.email,
@@ -44,5 +61,40 @@ export class UsersController {
       fullName: created.fullName,
       status: created.status,
     };
+  }
+
+  // Interim parol tiklash: "Parolni unutdingizmi?" bosilganda Login sahifasi
+  // xodimni administratorga murojaat qilishga yo'naltiradi (email orqali
+  // o'z-o'zini xizmat ko'rsatish hali yo'q) — administrator shu yerdan yangi
+  // parol o'rnatadi.
+  @Patch(':id/reset-password')
+  @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
+  async resetPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+  ) {
+    await this.usersService.resetPassword(user.tenantId!, id, dto.newPassword);
+    return { success: true };
+  }
+
+  @Patch(':id/status')
+  @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
+  async updateStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    if (id === user.userId) {
+      throw new ForbiddenException(
+        "O'zingizning holatingizni o'zgartira olmaysiz",
+      );
+    }
+    const updated = await this.usersService.updateStatus(
+      user.tenantId!,
+      id,
+      dto.status,
+    );
+    return { id: updated.id, status: updated.status };
   }
 }
