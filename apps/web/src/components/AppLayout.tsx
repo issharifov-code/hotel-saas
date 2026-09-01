@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SampleDataBanner } from './SampleDataBanner';
@@ -31,10 +31,18 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/segment-reports', label: 'Daromad tahlili', moduleKey: 'reports' },
   { to: '/guest-registration-report', label: "Ro'yxatga olish hisoboti", moduleKey: 'reports' },
   { to: '/billing', label: 'Obuna va to\'lovlar', moduleKey: 'billing' },
+  { to: '/staff', label: 'Xodimlar va ruxsatlar', moduleKey: 'users_roles' },
 ];
 
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
   const { user, property, logout, can } = useAuth();
+
+  // Brauzer tab sarlavhasi (2026-09): har bir sahifa AppLayout'ga o'z
+  // `title` propini uzatadi — shu qiymatdan foydalanib sarlavhani markazlashtirib
+  // qo'yamiz, alohida sahifalarga qo'lda tegish shart emas.
+  useEffect(() => {
+    document.title = `Folio One | ${title}`;
+  }, [title]);
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.moduleKey || can(item.moduleKey, 'view'));
 
