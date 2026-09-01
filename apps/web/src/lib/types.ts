@@ -785,6 +785,60 @@ export interface GuestRegistrationReportDto {
   stays: GuestRegistrationStayDto[];
 }
 
+// --- Xodimlar va ruxsatlar (Staff & Roles/Permissions, 2026-09) ---
+
+export type UserStatus = 'active' | 'invited' | 'disabled';
+
+export interface StaffUserDto {
+  id: string;
+  email: string;
+  fullName: string;
+  status: UserStatus;
+  createdAt: string;
+}
+
+export type PermissionModuleKey =
+  | 'booking'
+  | 'front_desk'
+  | 'housekeeping'
+  | 'warehouse'
+  | 'pos'
+  | 'guest_crm'
+  | 'invoicing'
+  | 'accounting'
+  | 'reports'
+  | 'billing'
+  | 'users_roles'
+  | 'tenant_settings';
+
+export type PermissionActionKey = 'view' | 'create' | 'edit' | 'delete' | 'approve';
+
+export interface PermissionDto {
+  id: string;
+  module: PermissionModuleKey;
+  action: PermissionActionKey;
+  description: string | null;
+}
+
+export interface RoleDto {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  systemKey: string | null;
+  isSystem: boolean;
+  permissions: PermissionDto[];
+  createdAt: string;
+}
+
+export interface UserRoleAssignmentDto {
+  id: string;
+  tenantId: string;
+  userId: string;
+  roleId: string;
+  propertyId: string | null;
+  createdAt: string;
+}
+
 // --- Channel Manager (OTA distribution — Booking.com, Airbnb va h.k.) ---
 
 export type ChannelProvider = 'booking_com' | 'airbnb' | 'agoda' | 'expedia' | 'other';
