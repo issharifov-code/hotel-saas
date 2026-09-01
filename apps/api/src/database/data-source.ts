@@ -41,6 +41,9 @@ import { MaintenanceTicket } from '../modules/maintenance/entities/maintenance-t
 import { MessageTemplate } from '../modules/messaging/entities/message-template.entity';
 import { MessageLog } from '../modules/messaging/entities/message-log.entity';
 import { CorporateAccount } from '../modules/city-ledger/entities/corporate-account.entity';
+import { Channel } from '../modules/channel-manager/entities/channel.entity';
+import { ChannelRoomTypeMapping } from '../modules/channel-manager/entities/channel-room-type-mapping.entity';
+import { ChannelSyncLog } from '../modules/channel-manager/entities/channel-sync-log.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -93,6 +96,9 @@ export const AppDataSource = new DataSource({
     MessageTemplate,
     MessageLog,
     CorporateAccount,
+    Channel,
+    ChannelRoomTypeMapping,
+    ChannelSyncLog,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
