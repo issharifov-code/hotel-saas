@@ -66,6 +66,34 @@ export interface SegmentPerformanceDto {
   }[];
 }
 
+// Mehmonlarni ro'yxatga olish (statutory guest registration) hisoboti —
+// Guest.documentType/documentNumber/nationality/dateOfBirth ustunlarini
+// (Guest entity izohida "front_desk moduli keyinchalik davlat tizimiga
+// hisobot berishda shundan foydalanadi" deb qoldirilgan, lekin hech qanday
+// hisobot ularni birgalikda o'qimasdi) birinchi marta haqiqiy hisobotga
+// bog'laydi. O'zbekistonda mehmonxonalar, ayniqsa xorijiy fuqarolarni,
+// migratsiya/politsiya organlariga ro'yxatga olib borishi talab qilinadi.
+export interface GuestRegistrationStayDto {
+  bookingId: string;
+  guestFullName: string;
+  nationality: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
+  dateOfBirth: string | null;
+  roomNumber: string;
+  checkIn: string;
+  checkOut: string;
+  status: BookingStatus;
+  missingDocument: boolean;
+}
+
+export interface GuestRegistrationReportDto {
+  periodDays: number;
+  totalStays: number;
+  missingDocumentCount: number;
+  stays: GuestRegistrationStayDto[];
+}
+
 const TREND_DAYS = 14;
 const ALL_LOYALTY_TIERS = [
   LoyaltyTier.BRONZE,
@@ -418,5 +446,50 @@ export class ReportsService {
       .sort((a, b) => b.revenue - a.revenue);
 
     return { periodDays, bySegment, bySource, byAgency, byCorporateAccount };
+  }
+
+  async getGuestRegistrationReport(
+    tenantId: string,
+    propertyId: string,
+    periodDays: number,
+  ): Promise<GuestRegistrationReportDto> {
+    const periodStartDate = new Date();
+    periodStartDate.setDate(periodStartDate.getDate() - periodDays);
+    const periodStart = isoDate(periodStartDate);
+
+    const bookings = await this.bookingRepo.find({
+      where: {
+        tenantId,
+        propertyId,
+        checkIn: MoreThanOrEqual(periodStart),
+        status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+      },
+      relations: { room: true, guest: true },
+      order: { checkIn: 'DESC' },
+    });
+
+    const stays: GuestRegistrationStayDto[] = bookings.map((b) => {
+      const missingDocument = !b.guest.documentType || !b.guest.documentNumber;
+      return {
+        bookingId: b.id,
+        guestFullName: b.guest.fullName,
+        nationality: b.guest.nationality,
+        documentType: b.guest.documentType,
+        documentNumber: b.guest.documentNumber,
+        dateOfBirth: b.guest.dateOfBirth,
+        roomNumber: b.room.roomNumber,
+        checkIn: b.checkIn,
+        checkOut: b.checkOut,
+        status: b.status,
+        missingDocument,
+      };
+    });
+
+    return {
+      periodDays,
+      totalStays: stays.length,
+      missingDocumentCount: stays.filter((s) => s.missingDocument).length,
+      stays,
+    };
   }
 }
