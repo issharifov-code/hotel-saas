@@ -37,6 +37,10 @@ function addMonthIso(iso: string) {
 type Tab = 'tenants' | 'billing';
 
 export function AdminPage() {
+  useEffect(() => {
+    document.title = 'Folio One | Platforma boshqaruvi';
+  }, []);
+
   const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>('tenants');
   const [tenants, setTenants] = useState<TenantDto[]>([]);

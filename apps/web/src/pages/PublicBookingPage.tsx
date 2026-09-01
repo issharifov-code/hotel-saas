@@ -16,6 +16,10 @@ import type {
 export function PublicBookingPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
 
+  useEffect(() => {
+    document.title = 'Folio One | Xona band qilish';
+  }, []);
+
   const [properties, setProperties] = useState<PublicPropertyDto[]>([]);
   const [propertyId, setPropertyId] = useState('');
   const [loadingProperties, setLoadingProperties] = useState(true);

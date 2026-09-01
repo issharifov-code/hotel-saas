@@ -1,9 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch, setToken, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export function RegisterTenantPage() {
+  useEffect(() => {
+    document.title = "Folio One | Ro'yxatdan o'tish";
+  }, []);
+
   const navigate = useNavigate();
   const { refresh } = useAuth();
   const [form, setForm] = useState({
