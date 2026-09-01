@@ -1,19 +1,65 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResult, type TenantOption } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import folioOneLogo from '../assets/folio-one-logo.png';
+import { LoginIllustration } from '../components/LoginIllustration';
 
-// Login sahifasi qayta dizayni (2026-09): split-screen (chap — brend/xususiyatlar
-// paneli, o'ng — forma), Subdomain maydoni olib tashlandi (tenant email orqali
-// avtomatik aniqlanadi — AuthContext.login), "Parolni unutdingizmi?" (interim:
-// administratorga murojaat), "Demo so'rash" endi sahifa ichidagi forma, footer.
+// Login sahifasi qayta dizayni (2026-09): split-screen (chap — yengil/och fon
+// ustida illyustratsiya va xususiyatlar ro'yxati, o'ng — forma), Subdomain
+// maydoni olib tashlandi (tenant email orqali avtomatik aniqlanadi —
+// AuthContext.login), "Parolni unutdingizmi?" (interim: administratorga
+// murojaat), "Demo so'rash" sahifa ichidagi forma, footer.
+//
+// 2026-09-01: sodda/yengil (soft-illustration) uslubga yangilandi — och ko'k
+// fon, yumaloq (pill) input/tugmalar, ikonkali maydonlar. Global `.input` /
+// `.btn-primary` klasslariga tegilmadi (ular butun ilova bo'ylab ishlatiladi);
+// bu yerdagi pill uslubi to'liq mustaqil Tailwind util klasslari bilan
+// yozilgan, shu sahifaga xos.
 
 const FEATURES = [
   { title: 'Bronlar va xonalar', desc: 'Bron taqvimi, Channel Manager, real vaqtda bandlik' },
   { title: 'Front Desk va hisobotlar', desc: "Check-in/out, kunni yopish, moliyaviy tahlil" },
   { title: 'Xodimlar va ruxsatlar', desc: 'Har bir xodim uchun aniq belgilangan huquqlar' },
 ];
+
+const pillInput =
+  'w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-navy';
+
+const pillInputNoIcon =
+  'w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 px-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-navy';
+
+const pillPrimaryBtn =
+  'w-full rounded-full bg-brand-navy py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40';
+
+const pillSecondaryBtn =
+  'rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-navy transition-colors hover:bg-slate-50 disabled:opacity-40';
+
+function FieldIcon({ children }: { children: ReactNode }) {
+  return (
+    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+      {children}
+    </span>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="5" width="18" height="14" rx="3" />
+      <path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="5" y="11" width="14" height="9" rx="2.5" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 type LoginStep = 'credentials' | 'select-tenant';
 
@@ -70,31 +116,36 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col md:flex-row">
-        <div className="hidden md:flex md:w-1/2 bg-brand-navy text-white flex-col justify-between p-12">
+        <div className="hidden md:flex md:w-1/2 flex-col justify-between bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex items-center gap-2">
-            <img src={folioOneLogo} alt="Folio One" className="h-8 w-8 rounded bg-white p-1" />
+            <img src={folioOneLogo} alt="Folio One" className="h-8 w-8 rounded bg-white p-1 shadow-sm" />
             <span className="text-xl font-semibold">Folio One</span>
           </div>
-          <div className="space-y-8 max-w-sm">
-            <h2 className="text-3xl font-semibold leading-tight">
-              Mehmonxonangizni bitta joydan boshqaring
-            </h2>
-            <ul className="space-y-5">
-              {FEATURES.map((f) => (
-                <li key={f.title} className="flex gap-3">
-                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-gold" />
-                  <div>
-                    <p className="font-medium">{f.title}</p>
-                    <p className="text-sm text-white/70">{f.desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+
+          <div className="flex flex-col items-center gap-8">
+            <LoginIllustration className="h-64 w-64" />
+            <div className="max-w-sm space-y-6">
+              <h2 className="text-center text-2xl font-semibold leading-tight text-brand-navy">
+                Mehmonxonangizni bitta joydan boshqaring
+              </h2>
+              <ul className="space-y-4">
+                {FEATURES.map((f) => (
+                  <li key={f.title} className="flex gap-3">
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-gold" />
+                    <div>
+                      <p className="font-medium text-slate-800">{f.title}</p>
+                      <p className="text-sm text-slate-500">{f.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <p className="text-xs text-white/50">© {new Date().getFullYear()} Folio One</p>
+
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Folio One</p>
         </div>
 
-        <div className="flex-1 flex items-center justify-center bg-slate-50 px-6 py-12">
+        <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
           <div className="w-full max-w-sm">
             <div className="mb-6 flex items-center gap-2 md:hidden">
               <img src={folioOneLogo} alt="Folio One" className="h-8 w-8" />
@@ -103,20 +154,25 @@ export function LoginPage() {
 
             {step === 'credentials' && (
               <>
-                <h1 className="mb-1 text-xl font-semibold text-slate-900">Tizimga kirish</h1>
-                <p className="mb-6 text-sm text-slate-500">Email va parolingizni kiriting</p>
+                <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
+                <p className="mb-6 text-sm text-slate-500">Tizimga kirish uchun email va parolingizni kiriting</p>
 
                 <form onSubmit={onSubmit} className="space-y-4">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-                    <input
-                      type="email"
-                      required
-                      autoFocus
-                      className="input"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                    <div className="relative">
+                      <FieldIcon>
+                        <MailIcon />
+                      </FieldIcon>
+                      <input
+                        type="email"
+                        required
+                        autoFocus
+                        className={pillInput}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div>
                     <div className="mb-1 flex items-center justify-between">
@@ -124,22 +180,27 @@ export function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowForgot((v) => !v)}
-                        className="text-xs font-medium text-brand-navy underline"
+                        className="text-xs font-medium text-brand-navy hover:underline"
                       >
                         Parolni unutdingizmi?
                       </button>
                     </div>
-                    <input
-                      type="password"
-                      required
-                      className="input"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <div className="relative">
+                      <FieldIcon>
+                        <LockIcon />
+                      </FieldIcon>
+                      <input
+                        type="password"
+                        required
+                        className={pillInput}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   {showForgot && (
-                    <p className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
+                    <p className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
                       Hozircha parolni faqat mehmonxonangiz administratori "Xodimlar" bo'limidan
                       tiklashi mumkin — administratoringizga murojaat qiling.
                     </p>
@@ -147,14 +208,14 @@ export function LoginPage() {
 
                   {error && <p className="text-sm text-rose-600">{error}</p>}
 
-                  <button type="submit" disabled={loading} className="btn-primary w-full py-2">
+                  <button type="submit" disabled={loading} className={pillPrimaryBtn}>
                     {loading ? 'Kirilmoqda...' : 'Kirish'}
                   </button>
                 </form>
 
-                <p className="mt-4 text-center text-sm text-slate-500">
+                <p className="mt-5 text-center text-sm text-slate-500">
                   Yangi mehmonxonami?{' '}
-                  <Link to="/register" className="font-medium text-brand-navy underline">
+                  <Link to="/register" className="font-medium text-brand-navy hover:underline">
                     Ro'yxatdan o'ting
                   </Link>
                 </p>
@@ -163,7 +224,7 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowDemoForm((v) => !v)}
-                    className="text-sm font-medium text-brand-navy underline"
+                    className="text-sm font-medium text-brand-navy hover:underline"
                   >
                     Demo so'rash
                   </button>
@@ -211,7 +272,7 @@ function TenantSelectStep({
 }) {
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-slate-900">Mehmonxonani tanlang</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-slate-900">Mehmonxonani tanlang</h1>
       <p className="mb-6 text-sm text-slate-500">
         Bu email bir nechta mehmonxonada ro'yxatdan o'tgan — qaysi biriga kirmoqchisiz?
       </p>
@@ -222,7 +283,7 @@ function TenantSelectStep({
             type="button"
             disabled={loading}
             onClick={() => onSelect(t.subdomain)}
-            className="w-full rounded-lg border border-slate-300 px-4 py-3 text-left text-sm hover:border-brand-navy hover:bg-brand-navy-light disabled:opacity-50"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm transition-colors hover:border-brand-navy hover:bg-brand-navy-light disabled:opacity-50"
           >
             <p className="font-medium text-slate-900">{t.name}</p>
             <p className="text-xs text-slate-500">{t.subdomain}</p>
@@ -230,7 +291,7 @@ function TenantSelectStep({
         ))}
       </div>
       {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
-      <button type="button" onClick={onBack} className="mt-4 text-sm text-slate-500 underline">
+      <button type="button" onClick={onBack} className="mt-4 text-sm text-slate-500 hover:underline">
         Orqaga
       </button>
     </div>
@@ -265,23 +326,28 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
 
   if (sent) {
     return (
-      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         Rahmat! Tez orada siz bilan bog'lanamiz.
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+    <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-700">Ismingiz</label>
-        <input required className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <input
+          required
+          className={pillInputNoIcon}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-700">Telefon</label>
         <input
           required
-          className="input"
+          className={pillInputNoIcon}
           placeholder="+998 90 123 45 67"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -293,17 +359,17 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
         </label>
         <input
           type="email"
-          className="input"
+          className={pillInputNoIcon}
           value={demoEmail}
           onChange={(e) => setDemoEmail(e.target.value)}
         />
       </div>
       {demoError && <p className="text-xs text-rose-600">{demoError}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={submitting} className="btn-primary flex-1 py-2 text-sm">
+        <button type="submit" disabled={submitting} className={`${pillPrimaryBtn} flex-1`}>
           {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
         </button>
-        <button type="button" onClick={onClose} className="btn-secondary py-2 text-sm">
+        <button type="button" onClick={onClose} className={pillSecondaryBtn}>
           Bekor qilish
         </button>
       </div>
