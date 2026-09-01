@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { Pagination } from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type {
@@ -8,9 +9,12 @@ import type {
   ChannelProvider,
   ChannelRoomTypeMappingDto,
   ChannelSyncLogDto,
+  PaginatedResult,
   RatePlanDto,
   RoomTypeDto,
 } from '../lib/types';
+
+const SYNC_LOGS_PAGE_SIZE = 20;
 
 const PROVIDER_LABELS: Record<ChannelProvider, string> = {
   booking_com: 'Booking.com',
@@ -237,22 +241,34 @@ function ChannelDetailModal({
   const [ratePlans, setRatePlans] = useState<RatePlanDto[]>([]);
   const [mappings, setMappings] = useState<ChannelRoomTypeMappingDto[]>([]);
   const [syncLogs, setSyncLogs] = useState<ChannelSyncLogDto[]>([]);
+  const [syncLogsTotal, setSyncLogsTotal] = useState(0);
+  const [syncLogsPage, setSyncLogsPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
   const load = async () => {
     try {
-      const [rt, rp, m, logs] = await Promise.all([
+      const [rt, rp, m] = await Promise.all([
         apiFetch<RoomTypeDto[]>(`/properties/${propertyId}/room-types`),
         apiFetch<RatePlanDto[]>(`/properties/${propertyId}/rate-plans`),
         apiFetch<ChannelRoomTypeMappingDto[]>(`/properties/${propertyId}/channels/${channel.id}/mappings`),
-        apiFetch<ChannelSyncLogDto[]>(`/properties/${propertyId}/channels/${channel.id}/sync-logs`),
       ]);
       setRoomTypes(rt);
       setRatePlans(rp);
       setMappings(m);
-      setSyncLogs(logs);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
+    }
+  };
+
+  const loadSyncLogs = async () => {
+    try {
+      const result = await apiFetch<PaginatedResult<ChannelSyncLogDto>>(
+        `/properties/${propertyId}/channels/${channel.id}/sync-logs?page=${syncLogsPage}&pageSize=${SYNC_LOGS_PAGE_SIZE}`,
+      );
+      setSyncLogs(result.items);
+      setSyncLogsTotal(result.total);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
     }
@@ -262,6 +278,11 @@ function ChannelDetailModal({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id]);
+
+  useEffect(() => {
+    loadSyncLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id, syncLogsPage]);
 
   const runSync = async () => {
     setSyncing(true);
@@ -278,7 +299,8 @@ function ChannelDetailModal({
           : `Sinxronlash muvaffaqiyatsiz: ${log.failureReason ?? "Noma'lum xato"}`,
       );
       onChanged();
-      load();
+      setSyncLogsPage(1);
+      loadSyncLogs();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
     } finally {
@@ -368,6 +390,12 @@ function ChannelDetailModal({
               </table>
             </div>
           )}
+          <Pagination
+            page={syncLogsPage}
+            pageSize={SYNC_LOGS_PAGE_SIZE}
+            total={syncLogsTotal}
+            onPageChange={setSyncLogsPage}
+          />
         </div>
       </div>
     </Modal>

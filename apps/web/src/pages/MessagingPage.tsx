@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { Pagination } from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type {
@@ -9,7 +10,10 @@ import type {
   MessageLogDto,
   MessageTemplateDto,
   MessageTriggerType,
+  PaginatedResult,
 } from '../lib/types';
+
+const LOGS_PAGE_SIZE = 50;
 
 const CHANNEL_LABELS: Record<MessageChannel, string> = {
   email: 'Email',
@@ -40,6 +44,8 @@ export function MessagingPage() {
   const [tab, setTab] = useState<Tab>('logs');
   const [templates, setTemplates] = useState<MessageTemplateDto[]>([]);
   const [logs, setLogs] = useState<MessageLogDto[]>([]);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [logsPage, setLogsPage] = useState(1);
   const [guests, setGuests] = useState<GuestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,13 +60,16 @@ export function MessagingPage() {
     setLoading(true);
     setError(null);
     try {
-      const [templateList, logList, guestList] = await Promise.all([
+      const [templateList, logResult, guestList] = await Promise.all([
         apiFetch<MessageTemplateDto[]>(`/properties/${property.id}/message-templates`),
-        apiFetch<MessageLogDto[]>(`/properties/${property.id}/message-logs`),
+        apiFetch<PaginatedResult<MessageLogDto>>(
+          `/properties/${property.id}/message-logs?page=${logsPage}&pageSize=${LOGS_PAGE_SIZE}`,
+        ),
         apiFetch<GuestDto[]>('/guests'),
       ]);
       setTemplates(templateList);
-      setLogs(logList);
+      setLogs(logResult.items);
+      setLogsTotal(logResult.total);
       setGuests(guestList);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
@@ -72,7 +81,7 @@ export function MessagingPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property?.id]);
+  }, [property?.id, logsPage]);
 
   return (
     <AppLayout title="Xabarlar">
@@ -115,37 +124,40 @@ export function MessagingPage() {
         logs.length === 0 ? (
           <p className="text-sm text-slate-500">Hali xabar yuborilmagan.</p>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                <tr>
-                  <th className="text-left px-4 py-2">Mehmon</th>
-                  <th className="text-left px-4 py-2">Kanal</th>
-                  <th className="text-left px-4 py-2">Mavzu / matn</th>
-                  <th className="text-left px-4 py-2">Holat</th>
-                  <th className="text-left px-4 py-2">Yuborilgan vaqti</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((l) => (
-                  <tr key={l.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 font-medium text-slate-900">{l.guest?.fullName ?? l.guestId}</td>
-                    <td className="px-4 py-3 text-slate-600">{CHANNEL_LABELS[l.channel]}</td>
-                    <td className="px-4 py-3 text-slate-600 max-w-sm truncate">{l.subject ?? l.body}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[l.status]}`}>
-                        {STATUS_LABELS[l.status]}
-                      </span>
-                      {l.status === 'failed' && l.failureReason && (
-                        <span className="block text-xs text-rose-500 mt-0.5">{l.failureReason}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{new Date(l.createdAt).toLocaleString('uz-UZ')}</td>
+          <>
+            <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                  <tr>
+                    <th className="text-left px-4 py-2">Mehmon</th>
+                    <th className="text-left px-4 py-2">Kanal</th>
+                    <th className="text-left px-4 py-2">Mavzu / matn</th>
+                    <th className="text-left px-4 py-2">Holat</th>
+                    <th className="text-left px-4 py-2">Yuborilgan vaqti</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {logs.map((l) => (
+                    <tr key={l.id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-medium text-slate-900">{l.guest?.fullName ?? l.guestId}</td>
+                      <td className="px-4 py-3 text-slate-600">{CHANNEL_LABELS[l.channel]}</td>
+                      <td className="px-4 py-3 text-slate-600 max-w-sm truncate">{l.subject ?? l.body}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[l.status]}`}>
+                          {STATUS_LABELS[l.status]}
+                        </span>
+                        {l.status === 'failed' && l.failureReason && (
+                          <span className="block text-xs text-rose-500 mt-0.5">{l.failureReason}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">{new Date(l.createdAt).toLocaleString('uz-UZ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination page={logsPage} pageSize={LOGS_PAGE_SIZE} total={logsTotal} onPageChange={setLogsPage} />
+          </>
         )
       ) : templates.length === 0 ? (
         <p className="text-sm text-slate-500">Hali xabar shabloni yo'q.</p>

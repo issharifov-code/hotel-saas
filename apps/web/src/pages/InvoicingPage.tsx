@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { Pagination } from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { InvoiceDto, InvoicePaymentMethod, InvoiceStatus, PaymentProviderDto } from '../lib/types';
+import type {
+  InvoiceDto,
+  InvoicePaymentMethod,
+  InvoiceStatus,
+  PaginatedResult,
+  PaymentProviderDto,
+} from '../lib/types';
+
+const PAGE_SIZE = 25;
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   open: 'Ochiq',
@@ -41,6 +50,8 @@ const PROVIDER_LABELS: Record<string, string> = {
 export function InvoicingPage() {
   const { property, can } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -50,8 +61,11 @@ export function InvoicingPage() {
     setLoading(true);
     setError(null);
     try {
-      const list = await apiFetch<InvoiceDto[]>(`/properties/${property.id}/invoices`);
-      setInvoices(list);
+      const result = await apiFetch<PaginatedResult<InvoiceDto>>(
+        `/properties/${property.id}/invoices?page=${page}&pageSize=${PAGE_SIZE}`,
+      );
+      setInvoices(result.items);
+      setTotal(result.total);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
     } finally {
@@ -62,7 +76,7 @@ export function InvoicingPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property?.id]);
+  }, [property?.id, page]);
 
   const canCreate = can('invoicing', 'create');
   const canEdit = can('invoicing', 'edit');
@@ -110,6 +124,8 @@ export function InvoicingPage() {
           })}
         </div>
       )}
+
+      {!loading && <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />}
 
       {detailId && property && (
         <InvoiceDetailModal

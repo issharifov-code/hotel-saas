@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { Pagination } from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { NightAuditRunDto, NightAuditStatusDto } from '../lib/types';
+import type { NightAuditRunDto, NightAuditStatusDto, PaginatedResult } from '../lib/types';
+
+const HISTORY_PAGE_SIZE = 30;
 
 function money(n: string, currency: string): string {
   return `${Number(n).toLocaleString('uz-UZ')} ${currency}`;
@@ -26,6 +29,8 @@ export function NightAuditPage() {
 
   const [status, setStatus] = useState<NightAuditStatusDto | null>(null);
   const [history, setHistory] = useState<NightAuditRunDto[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [running, setRunning] = useState(false);
@@ -38,16 +43,17 @@ export function NightAuditPage() {
       apiFetch<NightAuditStatusDto>(
         `/properties/${property.id}/night-audit/status`,
       ),
-      apiFetch<NightAuditRunDto[]>(
-        `/properties/${property.id}/night-audit/history`,
+      apiFetch<PaginatedResult<NightAuditRunDto>>(
+        `/properties/${property.id}/night-audit/history?page=${historyPage}&pageSize=${HISTORY_PAGE_SIZE}`,
       ),
     ])
       .then(([s, h]) => {
         setStatus(s);
-        setHistory(h);
+        setHistory(h.items);
+        setHistoryTotal(h.total);
       })
       .catch(() => setError('Ma\'lumotlarni yuklashda xatolik yuz berdi'));
-  }, [property, canView]);
+  }, [property, canView, historyPage]);
 
   useEffect(() => {
     load();
@@ -150,6 +156,7 @@ export function NightAuditPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={historyPage} pageSize={HISTORY_PAGE_SIZE} total={historyTotal} onPageChange={setHistoryPage} />
           </section>
         </div>
       )}

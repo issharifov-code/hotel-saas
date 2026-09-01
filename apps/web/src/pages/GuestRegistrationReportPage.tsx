@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../components/AppLayout';
+import { Pagination } from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type { GuestRegistrationReportDto } from '../lib/types';
+
+const STAYS_PAGE_SIZE = 50;
 
 // Guest.documentType/documentNumber/nationality/dateOfBirth ustunlari
 // (O'zbekistonda mehmonlarni, ayniqsa xorijiy fuqarolarni, migratsiya/politsiya
@@ -35,19 +38,27 @@ function documentTypeLabel(type: string | null): string {
 export function GuestRegistrationReportPage() {
   const { property } = useAuth();
   const [days, setDays] = useState(30);
+  const [page, setPage] = useState(1);
   const [data, setData] = useState<GuestRegistrationReportDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Davr (kunlar soni) o'zgarganda, joriy sahifa raqami eski davr uchun
+  // bo'lishi mumkin (masalan 90 kunda 3-sahifada turib, 7 kunga o'tsa,
+  // 3-sahifa endi mavjud bo'lmasligi mumkin) — shuning uchun 1-sahifaga qaytariladi.
+  useEffect(() => {
+    setPage(1);
+  }, [days]);
 
   useEffect(() => {
     if (!property) return;
     setError(null);
     apiFetch<GuestRegistrationReportDto>(
-      `/properties/${property.id}/reports/guest-registration?days=${days}`,
+      `/properties/${property.id}/reports/guest-registration?days=${days}&page=${page}&pageSize=${STAYS_PAGE_SIZE}`,
     )
       .then(setData)
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Hisobotni yuklashda xatolik yuz berdi'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property?.id, days]);
+  }, [property?.id, days, page]);
 
   return (
     <AppLayout title="Mehmonlarni ro'yxatga olish hisoboti">
@@ -133,6 +144,8 @@ export function GuestRegistrationReportPage() {
               </div>
             )}
           </div>
+
+          <Pagination page={data.page} pageSize={data.pageSize} total={data.totalStays} onPageChange={setPage} />
         </div>
       )}
     </AppLayout>
