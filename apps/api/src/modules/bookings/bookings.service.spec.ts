@@ -307,22 +307,29 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     ];
     const conflictByRoomId = params.conflictByRoomId ?? {};
 
-    let currentRoomId: string | undefined;
-    // `where()` o'zining natijasiga (query builder'ning o'ziga) qaytishi
-    // kerak — `mockReturnThis()` ishlatiladi (avvalgi describe blokidagi kabi),
-    // roomId esa alohida `mockImplementation` orqali ushlab qolinadi.
+    // `listAvailableRoomsOfType` endi HAR BIR nomzod xona uchun alohida
+    // `getOne` so'rovi o'rniga, barcha nomzod xonalarning id'larini BITTA
+    // `where('room_id IN (...)')` + `getRawMany()` so'rovi bilan tekshiradi
+    // (N+1 tuzatish, 2026-09-01 sayqal auditi). Shuning uchun mock endi
+    // `where()`da ushlangan `roomIds` massivini `conflictByRoomId` bilan
+    // solishtirib, to'qnashuvchi (conflict qiymati null bo'lmagan) id'larni
+    // qaytaradi — natija xuddi avvalgi per-room simulyatsiya bilan bir xil.
+    let capturedRoomIds: string[] = [];
     const bookingQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
-      getOne: jest.fn(() =>
+      getRawMany: jest.fn(() =>
         Promise.resolve(
-          currentRoomId ? (conflictByRoomId[currentRoomId] ?? null) : null,
+          capturedRoomIds
+            .filter((id) => conflictByRoomId[id])
+            .map((id) => ({ roomId: id })),
         ),
       ),
     };
     bookingQueryBuilder.where.mockImplementation(
       (_sql: unknown, args: unknown) => {
-        currentRoomId = (args as { roomId: string }).roomId;
+        capturedRoomIds = (args as { roomIds: string[] }).roomIds;
         return bookingQueryBuilder;
       },
     );
@@ -576,6 +583,27 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     );
     expect(count).toBe(2); // room-2 out_of_order bo'lgani uchun hisoblanmaydi
   });
+
+  it("N+1 tuzatish: to'qnashuv so'rovi nomzod xonalar soniga qaramay FAQAT BIR MARTA chaqiriladi", async () => {
+    // Sayqal auditi (2026-09-01) topilmasi: avval har bir nomzod xona uchun
+    // alohida so'rov yuborilardi (N+1) — bu test aynan shu regressiyaning
+    // oldini oladi: 12 ta xona bo'lsa ham `createQueryBuilder` bir marta
+    // chaqirilishi kerak, 12 marta emas.
+    const manyRooms = Array.from({ length: 12 }, (_, i) => ({
+      id: `room-${i + 1}`,
+      status: RoomStatus.AVAILABLE,
+    }));
+    const { service, bookingRepo } = createWebsiteService({ rooms: manyRooms });
+    const count = await service.countAvailableRoomsOfType(
+      't1',
+      'p1',
+      'rt-1',
+      '2026-10-01',
+      '2026-10-03',
+    );
+    expect(count).toBe(12);
+    expect(bookingRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+  });
 });
 
 // Guruh/blok bron — `createGroup`/`addRoomToGroup`/`listGroups`/`findGroupById`
@@ -592,10 +620,14 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     const rooms = params.rooms ?? [
       { id: 'room-1', status: RoomStatus.AVAILABLE },
     ];
+    // `listAvailableRoomsOfType` bitta batched `getRawMany()` so'rov bilan
+    // to'qnashuvlarni tekshiradi (N+1 tuzatish) — bo'sh massiv qaytarish
+    // "hech qanday to'qnashuv yo'q" degani (avvalgi `getOne: null` bilan bir xil).
     const bookingQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
-      getOne: jest.fn().mockResolvedValue(null), // hech qanday to'qnashuv yo'q
+      getRawMany: jest.fn().mockResolvedValue([]),
     };
     const bookingRepo = {
       createQueryBuilder: jest.fn(() => bookingQueryBuilder),
@@ -699,6 +731,22 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     expect(created1.marketSegment).toBe('group');
     expect(created1.guestId).toBe('guest-1');
     expect(created2.guestId).toBe('guest-2');
+  });
+
+  it("N+1 tuzatish: har bir xona qatori uchun to'qnashuv so'rovi nomzod xonalar soniga qarab ko'paymaydi", async () => {
+    // 10 ta nomzod xona bo'lsa ham, guruhdagi har bir qator (bu yerda 2 ta)
+    // uchun `listAvailableRoomsOfType` bitta batched so'rov qiladi — jami
+    // `createQueryBuilder` chaqiruvi qatorlar soniga teng bo'lishi kerak
+    // (2), 2×10 emas.
+    const manyRooms = Array.from({ length: 10 }, (_, i) => ({
+      id: `room-${i + 1}`,
+      status: RoomStatus.AVAILABLE,
+    }));
+    const { service, bookingRepo } = createGroupService({ rooms: manyRooms });
+
+    await service.createGroup('t1', 'p1', 'user-1', groupDto);
+
+    expect(bookingRepo.createQueryBuilder).toHaveBeenCalledTimes(2);
   });
 
   it("shu turdagi bo'sh xona qolmasa ConflictException tashlaydi (guruh baribir yaratilib bo'lgan bo'ladi, lekin so'rov transaksiya ichida bo'lgani uchun chaqiruvchi tomonda rollback bo'ladi)", async () => {

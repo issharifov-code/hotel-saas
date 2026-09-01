@@ -613,16 +613,30 @@ export class BookingsService {
     const candidates = rooms.filter(
       (r) => r.status !== RoomStatus.OUT_OF_ORDER,
     );
-    const free: Room[] = [];
-    for (const room of candidates) {
-      const conflict = await this.findConflictingBooking(
-        room.id,
-        checkIn,
-        checkOut,
-      );
-      if (!conflict) free.push(room);
-    }
-    return free;
+    if (candidates.length === 0) return [];
+
+    // Sayqal auditi (2026-09-01) topilmasi: avval har bir nomzod xona uchun
+    // ALOHIDA `findConflictingBooking` so'rovi yuborilardi (N+1) — bitta
+    // guruh bron (N xona) yoki autentifikatsiyasiz ochiq booking widget
+    // (`getAvailability`, har bir xona turi uchun) N×M ketma-ket DB
+    // so'roviga olib kelardi. Endi barcha nomzod xonalar uchun to'qnashuvchi
+    // bronlar BITTA so'rov bilan olinadi, so'ng natija xotirada (Set) bilan
+    // filtrlanadi — natija (mantiq) bir xil qoladi, faqat so'rovlar soni
+    // endi nomzod xonalar soniga bog'liq emas.
+    const roomIds = candidates.map((r) => r.id);
+    const conflicts = await this.bookingRepo
+      .createQueryBuilder('booking')
+      .select('booking.room_id', 'roomId')
+      .where('booking.room_id IN (:...roomIds)', { roomIds })
+      .andWhere('booking.status IN (:...statuses)', {
+        statuses: BLOCKING_STATUSES,
+      })
+      .andWhere('booking.check_in < :checkOut', { checkOut })
+      .andWhere('booking.check_out > :checkIn', { checkIn })
+      .getRawMany<{ roomId: string }>();
+    const conflictingRoomIds = new Set(conflicts.map((c) => c.roomId));
+
+    return candidates.filter((r) => !conflictingRoomIds.has(r.id));
   }
 
   // Jonli bron widget'i uchun — mavjud bo'sh xonalar sonini qaytaradi
