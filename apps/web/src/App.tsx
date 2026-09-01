@@ -25,6 +25,7 @@ import { AccountingPage } from './pages/AccountingPage';
 import { SegmentReportsPage } from './pages/SegmentReportsPage';
 import { GuestRegistrationReportPage } from './pages/GuestRegistrationReportPage';
 import { BillingPage } from './pages/BillingPage';
+import { StaffPage } from './pages/StaffPage';
 import { AdminPage } from './pages/AdminPage';
 
 function App() {
@@ -192,6 +193,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BillingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute>
+                <StaffPage />
               </ProtectedRoute>
             }
           />
