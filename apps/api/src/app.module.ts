@@ -49,6 +49,9 @@ import { MaintenanceTicket } from './modules/maintenance/entities/maintenance-ti
 import { MessageTemplate } from './modules/messaging/entities/message-template.entity';
 import { MessageLog } from './modules/messaging/entities/message-log.entity';
 import { CorporateAccount } from './modules/city-ledger/entities/corporate-account.entity';
+import { Channel } from './modules/channel-manager/entities/channel.entity';
+import { ChannelRoomTypeMapping } from './modules/channel-manager/entities/channel-room-type-mapping.entity';
+import { ChannelSyncLog } from './modules/channel-manager/entities/channel-sync-log.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -74,6 +77,7 @@ import { FunctionSpacesModule } from './modules/function-spaces/function-spaces.
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
+import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
 
 @Module({
   imports: [
@@ -134,6 +138,9 @@ import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
           MessageTemplate,
           MessageLog,
           CorporateAccount,
+          Channel,
+          ChannelRoomTypeMapping,
+          ChannelSyncLog,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -171,6 +178,7 @@ import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
     MaintenanceModule,
     MessagingModule,
     CityLedgerModule,
+    ChannelManagerModule,
   ],
   controllers: [AppController],
   providers: [
