@@ -48,4 +48,21 @@ export class ReportsController {
       periodDays,
     );
   }
+
+  @Get('guest-registration')
+  @RequirePermission(PermissionModule.REPORTS, PermissionAction.VIEW)
+  guestRegistration(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Query('days') days?: string,
+  ) {
+    const parsed = days ? parseInt(days, 10) : 30;
+    const periodDays =
+      Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
+    return this.reportsService.getGuestRegistrationReport(
+      user.tenantId!,
+      propertyId,
+      periodDays,
+    );
+  }
 }
