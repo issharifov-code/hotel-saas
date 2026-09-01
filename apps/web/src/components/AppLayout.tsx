@@ -222,7 +222,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     // footer doim ko'rinadi, faqat o'rtadagi `main` tarkibi mustaqil aylanadi.
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* OPERA Cloud uslubidagi yuqori panel: hamburger, logotip, moliyaviy sana, foydalanuvchi, sozlamalar */}
-      <header className="shrink-0 h-14 bg-slate-700 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
+      <header className="shrink-0 h-14 bg-gray-600 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
