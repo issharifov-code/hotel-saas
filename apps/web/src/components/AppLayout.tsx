@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
+import { NavLink, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SampleDataBanner } from './SampleDataBanner';
 import { formatDayLabel } from '../lib/dates';
@@ -21,8 +21,12 @@ interface NavSection {
   items: NavItem[];
 }
 
+// "Bosh sahifa" endi standalone nav-item emas — chap menyu yuqorisidagi
+// Folio One logotipi shu vazifani bajaradi (bosilganda /dashboard'ga olib
+// boradi). "Xodimlar va ruxsatlar" ham bu yerdan olib tashlandi — endi
+// faqat yuqori paneldagi Sozlamalar (gear) tugmasi orqali ochiladi, ikki
+// joyda takrorlanmasligi uchun.
 const NAV_SECTIONS: NavSection[] = [
-  { key: 'home', items: [{ to: '/dashboard', label: 'Bosh sahifa' }] },
   {
     key: 'client-relations',
     label: 'Mehmonlar bilan aloqalar',
@@ -76,7 +80,6 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/guest-registration-report', label: "Ro'yxatga olish hisoboti", moduleKey: 'reports' },
     ],
   },
-  { key: 'staff', items: [{ to: '/staff', label: 'Xodimlar va ruxsatlar', moduleKey: 'users_roles' }] },
 ];
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -97,14 +100,6 @@ function isRouteActive(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
-function BackChevronIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12.5 4.5L7 10l5.5 5.5" />
-    </svg>
-  );
-}
-
 function HamburgerIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -122,24 +117,24 @@ function UserIcon() {
   );
 }
 
+// Haqiqiy tishli g'ildirakka o'xshasin deb aniq "cog" shakli ishlatildi —
+// avvalgi versiya (doira + 8 ta to'g'ri chiziq) "kun/quyosh" ikonkasiga
+// o'xshab qolgan edi.
 function GearIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx="10" cy="10" r="2.6" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M10 2.8v1.6M10 15.6v1.6M17.2 10h-1.6M4.4 10H2.8M15.1 4.9l-1.13 1.13M6.03 13.97L4.9 15.1M15.1 15.1l-1.13-1.13M6.03 6.03L4.9 4.9"
-      />
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
-}
-
-// Sahifa ilk marta ochilganda (yangi tab, to'g'ridan-to'g'ri URL) brauzer
-// tarixida ortga qaytadigan joy yo'q — shu holatda "Orqaga" havolasini
-// ko'rsatmaymiz (SPA ichidan chiqib ketmaslik uchun).
-function canGoBackInHistory() {
-  return typeof window !== 'undefined' && window.history.length > 1;
 }
 
 const WEEKDAY_FULL = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
@@ -159,7 +154,6 @@ const SIDEBAR_COLLAPSE_KEY = 'folioOne.sidebarCollapsed';
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Brauzer tab sarlavhasi (2026-09): har bir sahifa AppLayout'ga o'z
   // `title` propini uzatadi — shu qiymatdan foydalanib sarlavhani markazlashtirib
@@ -197,8 +191,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       return next;
     });
   };
-
-  const showBack = canGoBackInHistory();
 
   // Chap menyuni yig'ish (2026-09, OPERA'dagi hamburger tugmasi kabi): har bir
   // sahifa o'z AppLayout nusxasini alohida mount qiladi (umumiy Outlet-layout
@@ -241,11 +233,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           >
             <HamburgerIcon />
           </button>
-          <img src={folioOneLogo} alt="Folio One" className="h-6 w-6 shrink-0" />
-          <div className="leading-tight min-w-0">
-            <p className="text-sm font-semibold truncate">Folio One</p>
-            {property && <p className="text-[11px] text-white/60 truncate">{property.name}</p>}
-          </div>
+          {/* Mehmonxonaning o'z nomi (OPERA'da ham yuqori panelda PMS logotipi
+              o'rniga mulkning o'z brendi ko'rsatiladi) — Folio One logotipi esa
+              endi chap menyu yuqorisida (pastga qarang). */}
+          <p className="text-sm font-semibold truncate">{property?.name ?? 'Folio One'}</p>
         </div>
         <div className="flex items-center gap-4 sm:gap-6 shrink-0">
           {property && (
@@ -272,6 +263,19 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             collapsed ? 'w-0 overflow-hidden border-r-0' : 'w-60'
           }`}
         >
+          {/* Folio One logotipi = "Bosh sahifa" havolasi (avvalgi matnli
+              nav-item o'rnida) — bosilganda /dashboard'ga olib boradi. */}
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-4 border-b border-slate-100 w-60 ${
+                isActive ? 'bg-brand-navy-light' : 'hover:bg-slate-50'
+              }`
+            }
+          >
+            <img src={folioOneLogo} alt="Folio One" className="h-7 w-7 shrink-0" />
+            <span className="text-sm font-semibold text-brand-navy">Folio One</span>
+          </NavLink>
           <nav className="flex-1 px-3 py-4 space-y-0.5 w-60">
             {visibleSections.map((section) =>
               section.label ? (
@@ -333,16 +337,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
         <div className="flex-1 min-w-0 h-full flex flex-col">
           <header className="shrink-0 bg-white border-b border-slate-200 px-8 py-4">
-            {showBack && (
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-navy mb-1"
-              >
-                <BackChevronIcon />
-                Orqaga
-              </button>
-            )}
             <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
           </header>
           <main className="flex-1 overflow-y-auto px-8 py-6">
