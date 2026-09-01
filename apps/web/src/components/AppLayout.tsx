@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/city-ledger', label: 'City Ledger', moduleKey: 'invoicing' },
   { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
   { to: '/segment-reports', label: 'Daromad tahlili', moduleKey: 'reports' },
+  { to: '/guest-registration-report', label: "Ro'yxatga olish hisoboti", moduleKey: 'reports' },
   { to: '/billing', label: 'Obuna va to\'lovlar', moduleKey: 'billing' },
 ];
 
