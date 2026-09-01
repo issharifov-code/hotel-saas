@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import type { AdminSubscriptionInvoiceDto, PlanPricingDto, TenantDto, TenantStatus } from '../lib/types';
+import type {
+  AdminSubscriptionInvoiceDto,
+  DemoRequestDto,
+  PlanPricingDto,
+  TenantDto,
+  TenantStatus,
+} from '../lib/types';
 import folioOneLogo from '../assets/folio-one-logo.png';
 
 const TENANT_STATUS_LABELS: Record<TenantStatus, string> = {
@@ -34,7 +40,7 @@ function addMonthIso(iso: string) {
   return d.toISOString().slice(0, 10);
 }
 
-type Tab = 'tenants' | 'billing';
+type Tab = 'tenants' | 'billing' | 'demo-requests';
 
 export function AdminPage() {
   useEffect(() => {
@@ -46,6 +52,7 @@ export function AdminPage() {
   const [tenants, setTenants] = useState<TenantDto[]>([]);
   const [invoices, setInvoices] = useState<AdminSubscriptionInvoiceDto[]>([]);
   const [plans, setPlans] = useState<PlanPricingDto[]>([]);
+  const [demoRequests, setDemoRequests] = useState<DemoRequestDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [filterTenantId, setFilterTenantId] = useState('');
@@ -79,6 +86,29 @@ export function AdminPage() {
     if (tab === 'billing') loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, filterTenantId, filterStatus]);
+
+  const loadDemoRequests = () =>
+    apiFetch<DemoRequestDto[]>('/admin/demo-requests')
+      .then(setDemoRequests)
+      .catch(() => setError("Demo so'rovlarni yuklashda xatolik"));
+
+  useEffect(() => {
+    if (tab === 'demo-requests') loadDemoRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const toggleContacted = async (req: DemoRequestDto) => {
+    setError(null);
+    try {
+      await apiFetch(`/admin/demo-requests/${req.id}/contacted`, {
+        method: 'PATCH',
+        body: JSON.stringify({ contacted: !req.contacted }),
+      });
+      await loadDemoRequests();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Holatni belgilashda xatolik");
+    }
+  };
 
   const changeTenantStatus = async (tenantId: string, status: TenantStatus) => {
     setError(null);
@@ -147,7 +177,7 @@ export function AdminPage() {
 
       <div className="px-8 py-6">
         <div className="flex gap-2 mb-6">
-          {(['tenants', 'billing'] as Tab[]).map((t) => (
+          {(['tenants', 'billing', 'demo-requests'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -155,7 +185,7 @@ export function AdminPage() {
                 tab === t ? 'bg-brand-navy text-white' : 'bg-white text-slate-600 border border-slate-200'
               }`}
             >
-              {t === 'tenants' ? 'Tenantlar' : 'Billing'}
+              {t === 'tenants' ? 'Tenantlar' : t === 'billing' ? 'Billing' : "Demo so'rovlar"}
             </button>
           ))}
         </div>
@@ -307,6 +337,43 @@ export function AdminPage() {
               ))}
               {invoices.length === 0 && <p className="p-4 text-sm text-slate-400">Hisob-fakturalar mavjud emas</p>}
             </div>
+          </div>
+        )}
+
+        {tab === 'demo-requests' && (
+          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+            {demoRequests.map((req) => (
+              <div key={req.id} className="p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-slate-900">{req.fullName}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {req.phone}
+                    {req.email && <> · {req.email}</>}
+                    {' · '}
+                    {new Date(req.createdAt).toLocaleString('uz-UZ')}
+                  </p>
+                  {req.note && <p className="text-xs text-slate-500 mt-1">{req.note}</p>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      req.contacted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {req.contacted ? "Bog'lanildi" : "Kutilmoqda"}
+                  </span>
+                  <button
+                    onClick={() => toggleContacted(req)}
+                    className="rounded-md border border-slate-300 text-xs font-medium px-3 py-1.5 hover:bg-slate-100"
+                  >
+                    {req.contacted ? "Kutilmoqda deb belgilash" : "Bog'lanildi deb belgilash"}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {demoRequests.length === 0 && (
+              <p className="p-4 text-sm text-slate-400">Demo so'rovlar mavjud emas</p>
+            )}
           </div>
         )}
       </div>
