@@ -1,6 +1,10 @@
 import { ReportsService } from './reports.service';
 import { RoomStatus } from '../rooms/entities/room.entity';
 import { LoyaltyTier } from '../guests/entities/guest.entity';
+import {
+  BookingSource,
+  MarketSegment,
+} from '../bookings/entities/booking.entity';
 
 // Bu testlar ReportsService'ning eng nozik qismlarini tekshiradi: pul/foiz
 // hisob-kitoblari (ADR/RevPAR/bandlik), 0ga bo'lishdan himoya, to'lanmagan
@@ -35,6 +39,17 @@ describe('ReportsService', () => {
     outstandingInvoices?: { totalAmount: string; paidAmount: string }[];
     housekeepingPending?: number;
     loyaltyRows?: { tier: LoyaltyTier; count: string }[];
+    segmentBookings?: {
+      checkIn: string;
+      checkOut: string;
+      totalAmount: string;
+      marketSegment: MarketSegment;
+      source: BookingSource;
+      agencyId: string | null;
+      corporateAccountId: string | null;
+    }[];
+    agencies?: { id: string; name: string; commissionPct: string }[];
+    corporateAccounts?: { id: string; name: string }[];
   }) {
     const roomRepo = {
       count: jest
@@ -57,7 +72,16 @@ describe('ReportsService', () => {
             return Promise.resolve(opts.todayDepartures ?? 0);
           return Promise.resolve(opts.inHouseBookings ?? 0);
         }),
-      find: jest.fn().mockResolvedValue(opts.periodBookings ?? []),
+      find: jest
+        .fn()
+        .mockImplementation(
+          ({ select }: { select?: Record<string, unknown> }) =>
+            Promise.resolve(
+              select && 'marketSegment' in select
+                ? (opts.segmentBookings ?? [])
+                : (opts.periodBookings ?? []),
+            ),
+        ),
     };
     const invoiceRepo = {
       find: jest.fn().mockResolvedValue(opts.outstandingInvoices ?? []),
@@ -73,6 +97,12 @@ describe('ReportsService', () => {
     const guestRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(guestQb),
     };
+    const agencyRepo = {
+      find: jest.fn().mockResolvedValue(opts.agencies ?? []),
+    };
+    const corporateAccountRepo = {
+      find: jest.fn().mockResolvedValue(opts.corporateAccounts ?? []),
+    };
 
     return new ReportsService(
       roomRepo as never,
@@ -81,6 +111,8 @@ describe('ReportsService', () => {
       paymentRepo as never,
       hkRepo as never,
       guestRepo as never,
+      agencyRepo as never,
+      corporateAccountRepo as never,
     );
   }
 
@@ -128,9 +160,10 @@ describe('ReportsService', () => {
     // Bandlik foizi ham xuddi shu davr (5 kecha / (10 xona * 30 kun)) asosida:
     expect(result.occupancy.occupancyRatePct).toBe(1.67);
     // RevPAR = ADR x Bandlik% identifikatsiyasi (yaxlitlash xatoligi ichida) saqlanadi:
-    expect(
-      (result.adr * result.occupancy.occupancyRatePct) / 100,
-    ).toBeCloseTo(result.revPar, 1);
+    expect((result.adr * result.occupancy.occupancyRatePct) / 100).toBeCloseTo(
+      result.revPar,
+      1,
+    );
   });
 
   it("daromad tendensiyasini 14 kunga to'liq to'ldiradi (bo'sh kunlar 0)", async () => {
@@ -172,5 +205,136 @@ describe('ReportsService', () => {
       { tier: LoyaltyTier.GOLD, count: 3 },
       { tier: LoyaltyTier.PLATINUM, count: 0 },
     ]);
+  });
+
+  describe('getSegmentPerformance', () => {
+    it("barcha MarketSegment/BookingSource qiymatlarini qatnashtiradi, DB'da yo'qlari 0 bilan", async () => {
+      const service = createService({ segmentBookings: [] });
+      const result = await service.getSegmentPerformance('t1', 'p1', 30);
+      expect(result.bySegment).toHaveLength(
+        Object.values(MarketSegment).length,
+      );
+      expect(result.bySource).toHaveLength(Object.values(BookingSource).length);
+      expect(result.bySegment.every((s) => s.bookingCount === 0)).toBe(true);
+      expect(result.byAgency).toEqual([]);
+      expect(result.byCorporateAccount).toEqual([]);
+    });
+
+    it("segment bo'yicha daromad/ADR'ni to'g'ri jamlaydi", async () => {
+      const service = createService({
+        segmentBookings: [
+          {
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-04',
+            totalAmount: '300.00',
+            marketSegment: MarketSegment.CORPORATE,
+            source: BookingSource.DIRECT,
+            agencyId: null,
+            corporateAccountId: null,
+          },
+          {
+            checkIn: '2026-08-05',
+            checkOut: '2026-08-06',
+            totalAmount: '100.00',
+            marketSegment: MarketSegment.CORPORATE,
+            source: BookingSource.WEBSITE,
+            agencyId: null,
+            corporateAccountId: null,
+          },
+        ],
+      });
+      const result = await service.getSegmentPerformance('t1', 'p1', 30);
+      const corporate = result.bySegment.find(
+        (s) => s.segment === MarketSegment.CORPORATE,
+      );
+      expect(corporate).toEqual({
+        segment: MarketSegment.CORPORATE,
+        bookingCount: 2,
+        roomNights: 4,
+        revenue: 400,
+        adr: 100,
+      });
+      const direct = result.bySource.find(
+        (s) => s.source === BookingSource.DIRECT,
+      );
+      expect(direct).toEqual({
+        source: BookingSource.DIRECT,
+        bookingCount: 1,
+        revenue: 300,
+      });
+    });
+
+    it("agentlik bo'yicha daromad va komissiya qarzini to'g'ri hisoblaydi, nomini agentlik jadvalidan oladi", async () => {
+      const service = createService({
+        segmentBookings: [
+          {
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-03',
+            totalAmount: '200.00',
+            marketSegment: MarketSegment.TRAVEL_AGENT,
+            source: BookingSource.DIRECT,
+            agencyId: 'ag1',
+            corporateAccountId: null,
+          },
+        ],
+        agencies: [
+          { id: 'ag1', name: 'Test Agentligi', commissionPct: '10.00' },
+        ],
+      });
+      const result = await service.getSegmentPerformance('t1', 'p1', 30);
+      expect(result.byAgency).toEqual([
+        {
+          agencyId: 'ag1',
+          agencyName: 'Test Agentligi',
+          bookingCount: 1,
+          revenue: 200,
+          commissionOwed: 20,
+        },
+      ]);
+    });
+
+    it("korporativ hisob bo'yicha daromadni to'g'ri hisoblaydi va daromad bo'yicha kamayish tartibida saralaydi", async () => {
+      const service = createService({
+        segmentBookings: [
+          {
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-02',
+            totalAmount: '50.00',
+            marketSegment: MarketSegment.CORPORATE,
+            source: BookingSource.DIRECT,
+            agencyId: null,
+            corporateAccountId: 'ca1',
+          },
+          {
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-02',
+            totalAmount: '500.00',
+            marketSegment: MarketSegment.CORPORATE,
+            source: BookingSource.DIRECT,
+            agencyId: null,
+            corporateAccountId: 'ca2',
+          },
+        ],
+        corporateAccounts: [
+          { id: 'ca1', name: 'Kichik MChJ' },
+          { id: 'ca2', name: 'Katta MChJ' },
+        ],
+      });
+      const result = await service.getSegmentPerformance('t1', 'p1', 30);
+      expect(result.byCorporateAccount).toEqual([
+        {
+          corporateAccountId: 'ca2',
+          name: 'Katta MChJ',
+          bookingCount: 1,
+          revenue: 500,
+        },
+        {
+          corporateAccountId: 'ca1',
+          name: 'Kichik MChJ',
+          bookingCount: 1,
+          revenue: 50,
+        },
+      ]);
+    });
   });
 });

@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
-import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
+import {
+  Booking,
+  BookingSource,
+  BookingStatus,
+  MarketSegment,
+} from '../bookings/entities/booking.entity';
 import { Invoice, InvoiceStatus } from '../invoicing/entities/invoice.entity';
 import { InvoicePayment } from '../invoicing/entities/invoice-payment.entity';
 import {
@@ -10,6 +15,8 @@ import {
   HousekeepingTaskStatus,
 } from '../housekeeping/entities/housekeeping-task.entity';
 import { Guest, LoyaltyTier } from '../guests/entities/guest.entity';
+import { Agency } from '../agencies/entities/agency.entity';
+import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
 
 export interface ReportsOverviewDto {
   asOfDate: string;
@@ -30,6 +37,35 @@ export interface ReportsOverviewDto {
   loyaltyDistribution: { tier: string; count: number }[];
 }
 
+// Segment/kanal/agentlik/korporativ hisob bo'yicha daromad taqsimoti —
+// mavjud Booking.marketSegment/source/agencyId/corporateAccountId ustunlarini
+// (yozish yo'li allaqachon bor, lekin hech qanday hisobot ularni o'qimasdi)
+// birinchi marta haqiqiy tahlilga bog'laydi.
+export interface SegmentPerformanceDto {
+  periodDays: number;
+  bySegment: {
+    segment: MarketSegment;
+    bookingCount: number;
+    roomNights: number;
+    revenue: number;
+    adr: number;
+  }[];
+  bySource: { source: BookingSource; bookingCount: number; revenue: number }[];
+  byAgency: {
+    agencyId: string;
+    agencyName: string;
+    bookingCount: number;
+    revenue: number;
+    commissionOwed: number;
+  }[];
+  byCorporateAccount: {
+    corporateAccountId: string;
+    name: string;
+    bookingCount: number;
+    revenue: number;
+  }[];
+}
+
 const TREND_DAYS = 14;
 const ALL_LOYALTY_TIERS = [
   LoyaltyTier.BRONZE,
@@ -37,6 +73,8 @@ const ALL_LOYALTY_TIERS = [
   LoyaltyTier.GOLD,
   LoyaltyTier.PLATINUM,
 ];
+const ALL_MARKET_SEGMENTS = Object.values(MarketSegment);
+const ALL_BOOKING_SOURCES = Object.values(BookingSource);
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -68,6 +106,9 @@ export class ReportsService {
     @InjectRepository(HousekeepingTask)
     private readonly hkRepo: Repository<HousekeepingTask>,
     @InjectRepository(Guest) private readonly guestRepo: Repository<Guest>,
+    @InjectRepository(Agency) private readonly agencyRepo: Repository<Agency>,
+    @InjectRepository(CorporateAccount)
+    private readonly corporateAccountRepo: Repository<CorporateAccount>,
   ) {}
 
   async getOverview(
@@ -235,5 +276,147 @@ export class ReportsService {
       housekeepingPending,
       loyaltyDistribution,
     };
+  }
+
+  // Bozor segmenti (MarketSegment) va kanal (BookingSource) bo'yicha daromad
+  // taqsimoti, hamda agentlik/korporativ hisob bo'yicha "kim qancha daromad
+  // keltirmoqda" reytingi. getOverview'dagi bilan bir xil davr/ADR hisoblash
+  // mantig'i (davr boshlanishi, faqat CHECKED_IN/CHECKED_OUT bronlar) qayta
+  // ishlatiladi — faqat-o'qish, hech qanday yozish yo'q.
+  async getSegmentPerformance(
+    tenantId: string,
+    propertyId: string,
+    periodDays: number,
+  ): Promise<SegmentPerformanceDto> {
+    const periodStartDate = new Date();
+    periodStartDate.setDate(periodStartDate.getDate() - periodDays);
+    const periodStart = isoDate(periodStartDate);
+
+    const [bookings, agencies, corporateAccounts] = await Promise.all([
+      this.bookingRepo.find({
+        where: {
+          tenantId,
+          propertyId,
+          checkIn: MoreThanOrEqual(periodStart),
+          status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+        },
+        select: {
+          checkIn: true,
+          checkOut: true,
+          totalAmount: true,
+          marketSegment: true,
+          source: true,
+          agencyId: true,
+          corporateAccountId: true,
+        },
+      }),
+      this.agencyRepo.find({ where: { tenantId, propertyId } }),
+      this.corporateAccountRepo.find({ where: { tenantId, propertyId } }),
+    ]);
+
+    const agencyById = new Map(agencies.map((a) => [a.id, a]));
+    const corporateAccountById = new Map(
+      corporateAccounts.map((c) => [c.id, c]),
+    );
+
+    const segmentAgg = new Map<
+      MarketSegment,
+      { count: number; nights: number; revenue: number }
+    >();
+    const sourceAgg = new Map<
+      BookingSource,
+      { count: number; revenue: number }
+    >();
+    const agencyAgg = new Map<string, { count: number; revenue: number }>();
+    const corpAgg = new Map<string, { count: number; revenue: number }>();
+
+    for (const b of bookings) {
+      const nights = daysBetween(b.checkIn, b.checkOut);
+      const amount = Number(b.totalAmount);
+
+      const seg = segmentAgg.get(b.marketSegment) ?? {
+        count: 0,
+        nights: 0,
+        revenue: 0,
+      };
+      seg.count += 1;
+      seg.nights += nights;
+      seg.revenue += amount;
+      segmentAgg.set(b.marketSegment, seg);
+
+      const src = sourceAgg.get(b.source) ?? { count: 0, revenue: 0 };
+      src.count += 1;
+      src.revenue += amount;
+      sourceAgg.set(b.source, src);
+
+      if (b.agencyId) {
+        const a = agencyAgg.get(b.agencyId) ?? { count: 0, revenue: 0 };
+        a.count += 1;
+        a.revenue += amount;
+        agencyAgg.set(b.agencyId, a);
+      }
+
+      if (b.corporateAccountId) {
+        const c = corpAgg.get(b.corporateAccountId) ?? {
+          count: 0,
+          revenue: 0,
+        };
+        c.count += 1;
+        c.revenue += amount;
+        corpAgg.set(b.corporateAccountId, c);
+      }
+    }
+
+    const bySegment = ALL_MARKET_SEGMENTS.map((segment) => {
+      const agg = segmentAgg.get(segment) ?? {
+        count: 0,
+        nights: 0,
+        revenue: 0,
+      };
+      return {
+        segment,
+        bookingCount: agg.count,
+        roomNights: agg.nights,
+        revenue: round2(agg.revenue),
+        adr: agg.nights > 0 ? round2(agg.revenue / agg.nights) : 0,
+      };
+    });
+
+    const bySource = ALL_BOOKING_SOURCES.map((source) => {
+      const agg = sourceAgg.get(source) ?? { count: 0, revenue: 0 };
+      return {
+        source,
+        bookingCount: agg.count,
+        revenue: round2(agg.revenue),
+      };
+    });
+
+    const byAgency = [...agencyAgg.entries()]
+      .map(([agencyId, agg]) => {
+        const agency = agencyById.get(agencyId);
+        const commissionPct = agency ? Number(agency.commissionPct) : 0;
+        return {
+          agencyId,
+          agencyName: agency?.name ?? "Noma'lum agentlik",
+          bookingCount: agg.count,
+          revenue: round2(agg.revenue),
+          commissionOwed: round2((agg.revenue * commissionPct) / 100),
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
+
+    const byCorporateAccount = [...corpAgg.entries()]
+      .map(([corporateAccountId, agg]) => {
+        const account = corporateAccountById.get(corporateAccountId);
+        return {
+          corporateAccountId,
+          name: account?.name ?? "Noma'lum hisob",
+          bookingCount: agg.count,
+          revenue: round2(agg.revenue),
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return { periodDays, bySegment, bySource, byAgency, byCorporateAccount };
   }
 }

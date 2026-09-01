@@ -31,4 +31,21 @@ export class ReportsController {
       periodDays,
     );
   }
+
+  @Get('segment-performance')
+  @RequirePermission(PermissionModule.REPORTS, PermissionAction.VIEW)
+  segmentPerformance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Query('days') days?: string,
+  ) {
+    const parsed = days ? parseInt(days, 10) : 30;
+    const periodDays =
+      Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
+    return this.reportsService.getSegmentPerformance(
+      user.tenantId!,
+      propertyId,
+      periodDays,
+    );
+  }
 }

@@ -5,6 +5,8 @@ import { Invoice } from '../invoicing/entities/invoice.entity';
 import { InvoicePayment } from '../invoicing/entities/invoice-payment.entity';
 import { HousekeepingTask } from '../housekeeping/entities/housekeeping-task.entity';
 import { Guest } from '../guests/entities/guest.entity';
+import { Agency } from '../agencies/entities/agency.entity';
+import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { RolesModule } from '../roles/roles.module';
@@ -23,6 +25,8 @@ import { RlsModule } from '../../common/rls/rls.module';
       InvoicePayment,
       HousekeepingTask,
       Guest,
+      Agency,
+      CorporateAccount,
     ]),
     RolesModule,
   ],
