@@ -22,6 +22,7 @@ import { MaintenancePage } from './pages/MaintenancePage';
 import { InvoicingPage } from './pages/InvoicingPage';
 import { CityLedgerPage } from './pages/CityLedgerPage';
 import { AccountingPage } from './pages/AccountingPage';
+import { SegmentReportsPage } from './pages/SegmentReportsPage';
 import { BillingPage } from './pages/BillingPage';
 import { AdminPage } from './pages/AdminPage';
 
@@ -166,6 +167,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AccountingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/segment-reports"
+            element={
+              <ProtectedRoute>
+                <SegmentReportsPage />
               </ProtectedRoute>
             }
           />
