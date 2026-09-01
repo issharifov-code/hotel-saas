@@ -409,12 +409,13 @@ export function DashboardPage() {
   const [overview, setOverview] = useState<ReportsOverviewDto | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user?.tenantId) return;
-    apiFetch<Role[]>('/roles').then(setRoles).catch(() => {});
-  }, [user?.tenantId]);
-
   const hasAccess = (moduleKey: string) => permissions.some((p) => p.startsWith(`${moduleKey}:`));
+
+  useEffect(() => {
+    if (!user?.tenantId || !hasAccess('users_roles')) return;
+    apiFetch<Role[]>('/roles').then(setRoles).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.tenantId, permissions]);
 
   useEffect(() => {
     if (!property || !hasAccess('reports')) return;
@@ -552,21 +553,23 @@ export function DashboardPage() {
             </div>
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-slate-900 mb-3">Rollar ({roles.length})</h2>
-            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-              {roles.map((r) => (
-                <div key={r.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{r.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {r.isSystem ? 'Standart rol' : 'Custom rol'} · {r.permissions.length} ta ruxsat
-                    </p>
+          {hasAccess('users_roles') && (
+            <section>
+              <h2 className="text-lg font-semibold text-slate-900 mb-3">Rollar ({roles.length})</h2>
+              <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+                {roles.map((r) => (
+                  <div key={r.id} className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">{r.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {r.isSystem ? 'Standart rol' : 'Custom rol'} · {r.permissions.length} ta ruxsat
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
