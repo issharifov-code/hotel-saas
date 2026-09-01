@@ -63,7 +63,7 @@ export function BillingPage() {
   return (
     <AppLayout title="Obuna va to'lovlar">
       <div className="space-y-6">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-rose-600">{error}</p>}
 
         {subscription && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

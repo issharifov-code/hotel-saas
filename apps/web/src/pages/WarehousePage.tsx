@@ -329,7 +329,7 @@ function StockLevelsSection({
   onAction: (row: StockLevelDto) => void;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
       {levels.length === 0 ? (
         <p className="p-4 text-sm text-slate-500">
           Hali tovar yo'q — avval "Tovarlar" bo'limidan tovar qo'shing.

@@ -82,7 +82,7 @@ export function NightAuditPage() {
 
       {canView && (
         <div className="space-y-6">
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-rose-600">{error}</p>}
 
           <section className="rounded-lg border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -163,7 +163,7 @@ export function NightAuditPage() {
               belgilanadi, shu kecha uchun bandlik/ADR/RevPAR audit yozuvi sifatida saqlanadi, va
               biznes sanasi ertasi kunga suriladi.
             </p>
-            {runError && <p className="text-sm text-red-600">{runError}</p>}
+            {runError && <p className="text-sm text-rose-600">{runError}</p>}
             <div className="flex justify-end gap-2">
               <button
                 className="btn-secondary"

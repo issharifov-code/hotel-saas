@@ -55,7 +55,7 @@ export function CityLedgerPage() {
       ) : accounts.length === 0 ? (
         <p className="text-sm text-slate-500">Hali korporativ hisob qo'shilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -182,7 +182,7 @@ function CorporateAccountDetailModal({
               {statement.lines.length === 0 ? (
                 <p className="text-sm text-slate-500">Hali hisob-faktura yo'q.</p>
               ) : (
-                <div className="border border-slate-200 rounded-md overflow-hidden">
+                <div className="border border-slate-200 rounded-md overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50 text-slate-500 uppercase">
                       <tr>

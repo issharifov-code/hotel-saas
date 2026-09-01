@@ -190,7 +190,7 @@ export function AdminPage() {
           ))}
         </div>
 
-        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+        {error && <p className="text-sm text-rose-600 mb-4">{error}</p>}
 
         {tab === 'tenants' && (
           <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
@@ -301,7 +301,7 @@ export function AdminPage() {
                     <p className="text-xs text-slate-500 mt-0.5">
                       {inv.periodStart} — {inv.periodEnd} · Muddat: {inv.dueDate}
                       {inv.isOverdue && inv.status === 'pending' && (
-                        <span className="text-red-600 font-medium"> · muddati o'tgan</span>
+                        <span className="text-rose-600 font-medium"> · muddati o'tgan</span>
                       )}
                     </p>
                   </div>

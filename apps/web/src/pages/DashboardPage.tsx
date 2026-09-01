@@ -220,7 +220,7 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
       .catch(() => setError("Housekeeping ma'lumotlarini yuklashda xatolik yuz berdi"));
   }, [propertyId]);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (error) return <p className="text-sm text-rose-600">{error}</p>;
   if (!rooms || !tasks || !openTickets) return <p className="text-sm text-slate-400">Yuklanmoqda...</p>;
 
   const hkCounts = countByField(rooms.map((r) => r.housekeepingStatus));
@@ -340,7 +340,7 @@ function MoliyaviyTab({
           />
         </div>
       )}
-      {overviewError && <p className="text-sm text-red-600 mt-3">{overviewError}</p>}
+      {overviewError && <p className="text-sm text-rose-600 mt-3">{overviewError}</p>}
       {!overview && !overviewError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
 
       {canAccounting && (
@@ -351,7 +351,7 @@ function MoliyaviyTab({
               {from} — {to}
             </p>
           </div>
-          {incomeError && <p className="text-sm text-red-600">{incomeError}</p>}
+          {incomeError && <p className="text-sm text-rose-600">{incomeError}</p>}
           {!income && !incomeError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
           {income && (
             <>
@@ -467,7 +467,7 @@ export function DashboardPage() {
                   </p>
                 )}
               </div>
-              {overviewError && <p className="text-sm text-red-600">{overviewError}</p>}
+              {overviewError && <p className="text-sm text-rose-600">{overviewError}</p>}
               {!overview && !overviewError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
               {overview && (
                 <>

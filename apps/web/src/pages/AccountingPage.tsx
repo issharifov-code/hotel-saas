@@ -454,7 +454,7 @@ function TrialBalanceView({ propertyId }: { propertyId: string }) {
       ) : error ? (
         <p className="text-sm text-rose-600">{error}</p>
       ) : (
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-xs text-slate-500 uppercase">

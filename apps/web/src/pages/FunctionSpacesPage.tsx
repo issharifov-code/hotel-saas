@@ -98,7 +98,7 @@ export function FunctionSpacesPage() {
         spaces.length === 0 ? (
           <p className="text-sm text-slate-500">Hali tadbir zali qo'shilmagan.</p>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                 <tr>
@@ -136,7 +136,7 @@ export function FunctionSpacesPage() {
       ) : bookings.length === 0 ? (
         <p className="text-sm text-slate-500">Hali tadbir bron qilinmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
