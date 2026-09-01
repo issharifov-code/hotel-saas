@@ -3,6 +3,7 @@ import { RoomStatus } from '../rooms/entities/room.entity';
 import { LoyaltyTier } from '../guests/entities/guest.entity';
 import {
   BookingSource,
+  BookingStatus,
   MarketSegment,
 } from '../bookings/entities/booking.entity';
 
@@ -50,6 +51,20 @@ describe('ReportsService', () => {
     }[];
     agencies?: { id: string; name: string; commissionPct: string }[];
     corporateAccounts?: { id: string; name: string }[];
+    registrationBookings?: {
+      id: string;
+      checkIn: string;
+      checkOut: string;
+      status: BookingStatus;
+      guest: {
+        fullName: string;
+        nationality: string | null;
+        documentType: string | null;
+        documentNumber: string | null;
+        dateOfBirth: string | null;
+      };
+      room: { roomNumber: string };
+    }[];
   }) {
     const roomRepo = {
       count: jest
@@ -75,12 +90,21 @@ describe('ReportsService', () => {
       find: jest
         .fn()
         .mockImplementation(
-          ({ select }: { select?: Record<string, unknown> }) =>
-            Promise.resolve(
+          ({
+            select,
+            relations,
+          }: {
+            select?: Record<string, unknown>;
+            relations?: Record<string, unknown>;
+          }) => {
+            if (relations)
+              return Promise.resolve(opts.registrationBookings ?? []);
+            return Promise.resolve(
               select && 'marketSegment' in select
                 ? (opts.segmentBookings ?? [])
                 : (opts.periodBookings ?? []),
-            ),
+            );
+          },
         ),
     };
     const invoiceRepo = {
@@ -335,6 +359,95 @@ describe('ReportsService', () => {
           revenue: 50,
         },
       ]);
+    });
+  });
+
+  describe('getGuestRegistrationReport', () => {
+    it("hujjat ma'lumotlari to'liq bo'lgan mehmonni missingDocument:false bilan qaytaradi", async () => {
+      const service = createService({
+        registrationBookings: [
+          {
+            id: 'b1',
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-04',
+            status: BookingStatus.CHECKED_OUT,
+            guest: {
+              fullName: 'John Smith',
+              nationality: 'USA',
+              documentType: 'passport',
+              documentNumber: 'AB1234567',
+              dateOfBirth: '1990-01-01',
+            },
+            room: { roomNumber: '101' },
+          },
+        ],
+      });
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      expect(result.totalStays).toBe(1);
+      expect(result.missingDocumentCount).toBe(0);
+      expect(result.stays[0]).toEqual({
+        bookingId: 'b1',
+        guestFullName: 'John Smith',
+        nationality: 'USA',
+        documentType: 'passport',
+        documentNumber: 'AB1234567',
+        dateOfBirth: '1990-01-01',
+        roomNumber: '101',
+        checkIn: '2026-08-01',
+        checkOut: '2026-08-04',
+        status: BookingStatus.CHECKED_OUT,
+        missingDocument: false,
+      });
+    });
+
+    it("hujjat raqami yoki turi yo'q mehmonlarni missingDocument:true deb belgilaydi va sanaydi", async () => {
+      const service = createService({
+        registrationBookings: [
+          {
+            id: 'b1',
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-02',
+            status: BookingStatus.CHECKED_IN,
+            guest: {
+              fullName: 'No Doc Guest',
+              nationality: null,
+              documentType: null,
+              documentNumber: null,
+              dateOfBirth: null,
+            },
+            room: { roomNumber: '102' },
+          },
+          {
+            id: 'b2',
+            checkIn: '2026-08-01',
+            checkOut: '2026-08-02',
+            status: BookingStatus.CHECKED_IN,
+            guest: {
+              fullName: 'Partial Doc Guest',
+              nationality: 'UZ',
+              documentType: 'passport',
+              documentNumber: null,
+              dateOfBirth: null,
+            },
+            room: { roomNumber: '103' },
+          },
+        ],
+      });
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      expect(result.totalStays).toBe(2);
+      expect(result.missingDocumentCount).toBe(2);
+      expect(result.stays.every((s) => s.missingDocument)).toBe(true);
+    });
+
+    it("bron bo'lmasa bo'sh ro'yxat va nol hisoblagichlar qaytaradi", async () => {
+      const service = createService({ registrationBookings: [] });
+      const result = await service.getGuestRegistrationReport('t1', 'p1', 30);
+      expect(result).toEqual({
+        periodDays: 30,
+        totalStays: 0,
+        missingDocumentCount: 0,
+        stays: [],
+      });
     });
   });
 });
