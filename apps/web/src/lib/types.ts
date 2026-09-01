@@ -738,3 +738,43 @@ export interface ReportsOverviewDto {
   housekeepingPending: number;
   loyaltyDistribution: { tier: LoyaltyTier; count: number }[];
 }
+
+// --- Channel Manager (OTA distribution — Booking.com, Airbnb va h.k.) ---
+
+export type ChannelProvider = 'booking_com' | 'airbnb' | 'agoda' | 'expedia' | 'other';
+
+export interface ChannelDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  provider: ChannelProvider;
+  externalPropertyId: string | null;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  createdAt: string;
+}
+
+export interface ChannelRoomTypeMappingDto {
+  id: string;
+  channelId: string;
+  roomTypeId: string;
+  ratePlanId: string | null;
+  externalRoomTypeId: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type ChannelSyncStatus = 'success' | 'failed';
+
+export interface ChannelSyncLogDto {
+  id: string;
+  channelId: string;
+  syncedAt: string;
+  status: ChannelSyncStatus;
+  roomTypesSynced: number;
+  daysSynced: number;
+  summary: string;
+  providerRef: string | null;
+  failureReason: string | null;
+}
