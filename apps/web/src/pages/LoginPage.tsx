@@ -68,7 +68,10 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // markazda, mutlaq pozitsiyalangan holda ko'rsatiladi (faqat md+ ekranlarda —
 // mobil'da panellar ustma-ust joylashgani uchun chegara yo'q, mobil header
 // logotipi o'zgarishsiz qoldi). Shu bilan birga biroz kattalashtirildi
-// (h-11→h-14, ~27%).
+// (h-11→h-14, ~27%). Logotip endi oq fonli (bg-white), yumaloq burchakli,
+// yengil soyali qutichada — chegaraning ko'k tomonida ham aniq o'qilishi
+// uchun (shaffof logotip to'g'ridan-to'g'ri ko'k fon ustida past kontrastli
+// edi).
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -220,7 +223,9 @@ export function LoginPage() {
             (faqat md+; mobil'da panellar ustma-ust bo'lgani uchun chegara
             yo'q, o'sha holat uchun pastdagi mobil header logotipi bor). */}
         <div className="pointer-events-none absolute left-1/2 top-10 z-10 hidden -translate-x-1/2 md:block">
-          <img src={folioOneLogoFull} alt="Folio One" className="h-14 w-auto drop-shadow-sm" />
+          <div className="rounded-2xl bg-white px-5 py-3 shadow-md ring-1 ring-slate-100">
+            <img src={folioOneLogoFull} alt="Folio One" className="h-14 w-auto" />
+          </div>
         </div>
 
         <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
