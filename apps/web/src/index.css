@@ -9,12 +9,16 @@
   --color-brand-gold-dark: #c98a1f;
 }
 
+/* 2026-09: fade + yengil pastdan-yuqoriga siljish — sof opacity-fade
+   o'rniga "yumshoqroq" his qildiradigan, lekin baribir yengil (8px) harakat. */
 @keyframes folio-carousel-fade {
   from {
     opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
