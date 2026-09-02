@@ -1,15 +1,27 @@
 const TOKEN_KEY = 'hotel_saas_token';
 
+// 2026-09-02: "Meni tizimda saqlab qol" (kirish sahifasi) uchun — `remember`
+// true bo'lsa token localStorage'da (brauzer yopilgandan keyin ham saqlanadi),
+// false bo'lsa faqat sessionStorage'da (shu tab yopilishi bilan o'chadi).
+// getToken ikkalasini ham tekshiradi, shuning uchun qaysi rejimda kirilganidan
+// qat'iy nazar ishlayveradi.
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setToken(token: string, remember: boolean = true) {
+  if (remember) {
+    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.removeItem(TOKEN_KEY);
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
