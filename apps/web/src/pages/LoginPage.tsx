@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResult, type TenantOption } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import folioOneLogoFull from '../assets/folio-one-logo-full.png';
 import folioOneLogo from '../assets/folio-one-logo.png';
 import { LoginIllustration } from '../components/LoginIllustration';
 import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
@@ -112,6 +111,30 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // faqat sarlavha/tavsif/dots, `LoginCarousel.tsx`dagi yangi `compact` prop
 // orqali) — carousel matni endi mobil'da ham forma tepasida ko'rinadi,
 // avtoplay/pauza/reduced-motion xatti-harakati o'zgarishsiz.
+//
+// 2026-09-02 (7-tur — faqat logo/footer/input focus, sahifa qayta
+// ishlanmadi): (1) O'ng forma panelida "Xush kelibsiz!" sarlavhasi ustiga
+// kichik F1 belgi (icon-only, `folio-one-logo.png`) qo'shildi — oq
+// fonli, yengil soyali kvadrat badge ichida, gorizontal markazda, HAR
+// IKKALA breakpoint'da (avvalgi mobil'ga xos to'liq lockup logotip
+// (`folio-one-logo-full.png`) shu badge bilan almashtirildi — mobil
+// compact carousel hero o'zgarishsiz qoldi, faqat undan keyingi logotip
+// almashdi). Badge dekorativ (`aria-hidden`), CTA'dan ko'ra kichik/yengil.
+// (2) Footer: markazdan chapga (`md:justify-start`, `md:pl-16`) o'tkazildi
+// (mobil'da hamon markazlashgan va kerak bo'lsa ikki qatorga wrap
+// bo'ladi); F1 ikonka o'lchami kattalashtirildi (h-4→h-5, ~20px);
+// havola matni endi faqat ikonkaning o'zida (`aria-label` bilan), qo'shni
+// oddiy matn "© {yil} Folio One — barcha huquqlar himoyalangan" ko'rinishida
+// birlashtirildi — havola xatti-harakati (`folioone.uz`, yangi tab)
+// o'zgarishsiz saqlandi.
+// (3) Input focus: fokus halqasi yumshatildi — `ring-brand-navy` (to'liq
+// tiniqlik) o'rniga `ring-brand-navy/20` (juda yengil halqa), chegara
+// `border-brand-navy/70` (avvalgi to'liq to'q navy o'rniga nozikroq).
+// Xato holati ham ozroq yumshatildi (`ring-rose-400`→`ring-rose-300`),
+// lekin normal fokusdan hamon aniqroq ajralib turadi. Barcha pill
+// inputlarga `hover:` (chegara ozgina to'qlashadi) va `disabled:`
+// (kulrang fon, kursor, xiralik) holatlari ham qo'shildi — normal/hover/
+// fokus/xato/disabled endi bir-biridan vizual jihatdan aniq ajraladi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -137,16 +160,16 @@ const SLIDES: LoginCarouselSlide[] = [
 // yashirish tugmasi uchun o'ng tarafda qo'shimcha joy (pr-11) ochadi.
 function pillInputClass({ hasError = false, trailingIcon = false } = {}) {
   return [
-    'w-full rounded-full border bg-slate-50 py-4 pl-11 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:bg-white focus:outline-none focus:ring-2',
+    'w-full rounded-full border bg-slate-50 py-4 pl-11 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:bg-white focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60',
     trailingIcon ? 'pr-11' : 'pr-4',
     hasError
-      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-400'
-      : 'border-slate-200 focus:border-brand-navy focus:ring-brand-navy',
+      ? 'border-rose-300 hover:border-rose-400 focus:border-rose-500 focus:ring-rose-300'
+      : 'border-slate-200 hover:border-slate-300 focus:border-brand-navy/70 focus:ring-brand-navy/20',
   ].join(' ');
 }
 
 const pillInputNoIcon =
-  'w-full rounded-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy';
+  'w-full rounded-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60';
 
 const pillPrimaryBtn =
   'w-full rounded-full bg-brand-navy py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40';
@@ -267,12 +290,16 @@ export function LoginPage() {
         <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
           <div className="w-full max-w-sm">
             <div className="mb-5 md:hidden">
-              <img src={folioOneLogoFull} alt="Folio One" className="mb-4 h-8 w-auto" />
               <LoginCarousel slides={SLIDES} compact />
             </div>
 
             {step === 'credentials' && (
               <>
+                <div className="mb-7 flex justify-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                    <img src={folioOneLogo} alt="" aria-hidden="true" className="h-7 w-7" />
+                  </div>
+                </div>
                 <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
                 <p className="mb-5 text-sm text-slate-600">Tizimga kirish uchun email va parolingizni kiriting</p>
 
@@ -410,17 +437,17 @@ export function LoginPage() {
         </div>
       </div>
 
-      <footer className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-slate-200 bg-white px-6 py-4 text-xs text-slate-500">
+      <footer className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-slate-200 bg-white px-6 py-4 text-xs text-slate-500 md:justify-start md:pl-16">
         <a
           href="https://folioone.uz"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded font-medium text-slate-600 transition-colors hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
+          aria-label="Folio One — folioone.uz saytiga o'tish"
+          className="flex items-center rounded transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
         >
-          <img src={folioOneLogo} alt="" aria-hidden="true" className="h-4 w-4" />
-          Folio One
+          <img src={folioOneLogo} alt="" aria-hidden="true" className="h-5 w-5" />
         </a>
-        <span>© {new Date().getFullYear()} — barcha huquqlar himoyalangan</span>
+        <span>© {new Date().getFullYear()} Folio One — barcha huquqlar himoyalangan</span>
       </footer>
     </div>
   );
