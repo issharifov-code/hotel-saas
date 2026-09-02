@@ -61,6 +61,14 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // avvalgi w-6), crossfade yumshoqroq va sekinroq (480ms, avvalgi 350ms) +
 // yengil pastdan-yuqoriga siljish qo'shildi (`index.css`dagi
 // `folio-carousel-fade`).
+//
+// 2026-09-02 (4-tur, qo'lda chizilgan skrinshot izohi asosida): logotip
+// endi chap (ko'k) panel ichida emas — ikki panelni (ko'k va oq fon)
+// "bog'lovchi" element sifatida ularning chegarasi (seam) ustida, gorizontal
+// markazda, mutlaq pozitsiyalangan holda ko'rsatiladi (faqat md+ ekranlarda —
+// mobil'da panellar ustma-ust joylashgani uchun chegara yo'q, mobil header
+// logotipi o'zgarishsiz qoldi). Shu bilan birga biroz kattalashtirildi
+// (h-11→h-14, ~27%).
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -206,10 +214,16 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="flex-1 flex flex-col md:flex-row">
-        <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
-          <img src={folioOneLogoFull} alt="Folio One" className="h-11 w-auto self-center" />
+      <div className="relative flex-1 flex flex-col md:flex-row">
+        {/* Ko'k va oq panellarni bog'lovchi logotip — ularning chegarasi
+            (seam) ustida, gorizontal markazda mutlaq pozitsiyalangan
+            (faqat md+; mobil'da panellar ustma-ust bo'lgani uchun chegara
+            yo'q, o'sha holat uchun pastdagi mobil header logotipi bor). */}
+        <div className="pointer-events-none absolute left-1/2 top-10 z-10 hidden -translate-x-1/2 md:block">
+          <img src={folioOneLogoFull} alt="Folio One" className="h-14 w-auto drop-shadow-sm" />
+        </div>
 
+        <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
           </div>
