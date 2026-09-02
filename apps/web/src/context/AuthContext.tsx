@@ -30,7 +30,12 @@ interface AuthContextValue {
   property: PropertyDto | null;
   permissions: string[];
   loading: boolean;
-  login: (params: { subdomain?: string; email: string; password: string }) => Promise<LoginResult>;
+  login: (params: {
+    subdomain?: string;
+    email: string;
+    password: string;
+    remember?: boolean;
+  }) => Promise<LoginResult>;
   logout: () => void;
   refresh: () => Promise<void>;
   can: (moduleKey: string, action: string) => boolean;
@@ -85,21 +90,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login: AuthContextValue['login'] = async (params) => {
+  // `remember` faqat frontend'da token qayerda saqlanishini boshqaradi
+  // (localStorage vs sessionStorage — pastdagi setToken chaqiruviga qarang);
+  // backend DTO'sida bunday maydon yo'q va `forbidNonWhitelisted: true`
+  // tufayli so'rov tanasiga qo'shilsa 400 xato beradi — shuning uchun
+  // `credentials`dan ajratib olinadi va backend'ga yuborilmaydi.
+  const login: AuthContextValue['login'] = async ({ remember = true, ...credentials }) => {
     const res = await apiFetch<
       | { accessToken: string; user: CurrentUser }
       | { requiresTenantSelection: true; tenants: TenantOption[] }
     >('/auth/login', {
       method: 'POST',
       auth: false,
-      body: JSON.stringify(params),
+      body: JSON.stringify(credentials),
     });
 
     if ('requiresTenantSelection' in res) {
       return { status: 'select-tenant', tenants: res.tenants };
     }
 
-    setToken(res.accessToken);
+    setToken(res.accessToken, remember);
     setUser(res.user);
     if (res.user.tenantId) {
       await loadTenantContext();
