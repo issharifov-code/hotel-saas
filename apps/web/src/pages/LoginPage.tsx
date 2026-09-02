@@ -80,6 +80,38 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // ko'rsatiladi). Kichik ikonka-versiya (`folio-one-logo.png`, AppLayout'da
 // ishlatiladigan xuddi o'sha fayl) endi umumiy footer'da "Folio One" matni
 // bilan yonma-yon, copyright qatoridan oldin ko'rsatiladi.
+//
+// 2026-09-02 (6-tur, keng qamrovli visual/UX polish — qayta dizayn EMAS,
+// authentication/carousel/link/button xatti-harakati o'zgarmadi):
+// (1) Layout: chap carousel guruhi (illyustratsiya+sarlavha+dots) ichki
+// bo'shlig'i ixchamlashtirildi (gap-8→gap-6, LoginCarousel.tsx), o'ng forma
+// blokidagi ba'zi bo'shliqlar ozroq siqildi (subtitle mb-6→mb-5, ro'yxatdan
+// o'tish qatori mt-5→mt-4) — ortiqcha vertikal bo'shliqni kamaytirish uchun.
+// Ikki panel atrofiga border/card qo'shilmadi (fon farqi yetarli).
+// (2) Copy: checkbox matni "Meni tizimda saqlab qol"dan farqli ravishda
+// "Tizimda eslab qolish"ga, 3-slayd tavsifidagi "tasklari"→"vazifalari"ga
+// o'zgartirildi. Checkbox qatoridagi qo'shimcha `pt-2.5` (3-turda qo'shilgan)
+// olib tashlandi — endi barcha forma elementlari orasidagi bo'shliq
+// `space-y-4` orqali izchil. "yoki" divider chiziqlari yanada ochroq
+// (bg-slate-200→bg-slate-100).
+// (3) Input/tipografiya: pill inputlar balandligi ~54px'ga oshirildi
+// (py-2.5→py-4, standart matn+border bilan 52-56px oralig'ida), fokus
+// halqasi ring-1→ring-2 (hamon navy, 2px chegarada), placeholder
+// kontrasti oshirildi (slate-400→500). Label'lar font-medium→font-semibold.
+// "Parolni unutdingizmi?" matni text-xs→text-sm (havolalar uchun min. 14px
+// talabiga mos). Subtitle/footer matn kontrasti biroz oshirildi
+// (slate-500→600 / slate-400→500).
+// (4) Footer: sahifa wrapper `min-h-screen`dan `min-h-[100dvh]`ga
+// o'tkazildi, footer'ga `shrink-0` qo'shildi (`position: fixed` ishlatilmadi
+// — flex-column + flex-1 asosiy kontent orqali footer tabiiy ravishda
+// pastda turadi). Footer'dagi "Folio One" matni endi bosilanadigan havola —
+// `folioone.uz` saytiga yangi tabda ochiladi (`target="_blank"`,
+// `rel="noopener noreferrer"`).
+// (5) Responsive: mobil'da endi kichik logotipdan keyin ixcham "compact"
+// carousel hero ko'rsatiladi (`LoginCarousel compact` — illyustratsiyasiz,
+// faqat sarlavha/tavsif/dots, `LoginCarousel.tsx`dagi yangi `compact` prop
+// orqali) — carousel matni endi mobil'da ham forma tepasida ko'rinadi,
+// avtoplay/pauza/reduced-motion xatti-harakati o'zgarishsiz.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -95,7 +127,7 @@ const SLIDES: LoginCarouselSlide[] = [
   {
     illustration: <LoginIllustrationStaff className="h-64 w-64" />,
     title: 'Xodimlar va nazorat',
-    desc: 'Aniq ruxsatlar, housekeeping tasklari va real vaqt hisobotlari',
+    desc: 'Aniq ruxsatlar, housekeeping vazifalari va real vaqt hisobotlari',
   },
 ];
 
@@ -105,7 +137,7 @@ const SLIDES: LoginCarouselSlide[] = [
 // yashirish tugmasi uchun o'ng tarafda qo'shimcha joy (pr-11) ochadi.
 function pillInputClass({ hasError = false, trailingIcon = false } = {}) {
   return [
-    'w-full rounded-full border bg-slate-50 py-2.5 pl-11 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-1',
+    'w-full rounded-full border bg-slate-50 py-4 pl-11 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:bg-white focus:outline-none focus:ring-2',
     trailingIcon ? 'pr-11' : 'pr-4',
     hasError
       ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-400'
@@ -114,7 +146,7 @@ function pillInputClass({ hasError = false, trailingIcon = false } = {}) {
 }
 
 const pillInputNoIcon =
-  'w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 px-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-navy';
+  'w-full rounded-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy';
 
 const pillPrimaryBtn =
   'w-full rounded-full bg-brand-navy py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40';
@@ -224,7 +256,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-[100dvh] flex-col">
       <div className="flex-1 flex flex-col md:flex-row">
         <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex flex-1 items-center justify-center">
@@ -234,18 +266,19 @@ export function LoginPage() {
 
         <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
           <div className="w-full max-w-sm">
-            <div className="mb-6 md:hidden">
-              <img src={folioOneLogoFull} alt="Folio One" className="h-10 w-auto" />
+            <div className="mb-5 md:hidden">
+              <img src={folioOneLogoFull} alt="Folio One" className="mb-4 h-8 w-auto" />
+              <LoginCarousel slides={SLIDES} compact />
             </div>
 
             {step === 'credentials' && (
               <>
                 <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
-                <p className="mb-6 text-sm text-slate-500">Tizimga kirish uchun email va parolingizni kiriting</p>
+                <p className="mb-5 text-sm text-slate-600">Tizimga kirish uchun email va parolingizni kiriting</p>
 
                 <form onSubmit={onSubmit} className="space-y-4">
                   <div>
-                    <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="login-email" className="mb-1 block text-sm font-semibold text-slate-700">
                       Email
                     </label>
                     <div className="relative">
@@ -266,7 +299,7 @@ export function LoginPage() {
                     </div>
                   </div>
                   <div>
-                    <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="login-password" className="mb-1 block text-sm font-semibold text-slate-700">
                       Parol
                     </label>
                     <div className="relative">
@@ -296,7 +329,7 @@ export function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowForgot((v) => !v)}
-                        className="text-xs font-medium text-brand-navy hover:underline"
+                        className="text-sm font-medium text-brand-navy hover:underline"
                       >
                         Parolni unutdingizmi?
                       </button>
@@ -310,7 +343,7 @@ export function LoginPage() {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-2 pt-2.5">
+                  <div className="flex items-center gap-2">
                     <input
                       id="remember-me"
                       type="checkbox"
@@ -319,7 +352,7 @@ export function LoginPage() {
                       className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-navy focus:ring-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
                     />
                     <label htmlFor="remember-me" className="cursor-pointer select-none text-sm text-slate-600">
-                      Meni tizimda eslab qol
+                      Tizimda eslab qolish
                     </label>
                   </div>
 
@@ -334,7 +367,7 @@ export function LoginPage() {
                   </button>
                 </form>
 
-                <p className="mt-5 text-center text-sm text-slate-500">
+                <p className="mt-4 text-center text-sm text-slate-500">
                   Yangi mehmonxonami?{' '}
                   <Link to="/register" className="font-medium text-brand-navy hover:underline">
                     Ro'yxatdan o'tish
@@ -342,9 +375,9 @@ export function LoginPage() {
                 </p>
 
                 <div className="mt-3 flex items-center gap-3" role="presentation">
-                  <span className="h-px flex-1 bg-slate-200" />
+                  <span className="h-px flex-1 bg-slate-100" />
                   <span className="text-xs text-slate-400">yoki</span>
-                  <span className="h-px flex-1 bg-slate-200" />
+                  <span className="h-px flex-1 bg-slate-100" />
                 </div>
 
                 <div className="mt-2 text-center">
@@ -377,12 +410,16 @@ export function LoginPage() {
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-center gap-2 border-t border-slate-200 bg-white px-6 py-4 text-xs text-slate-400">
-        <img src={folioOneLogo} alt="" aria-hidden="true" className="h-4 w-4" />
-        <span className="font-medium text-slate-500">Folio One</span>
-        <span aria-hidden="true" className="text-slate-300">
-          |
-        </span>
+      <footer className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-slate-200 bg-white px-6 py-4 text-xs text-slate-500">
+        <a
+          href="https://folioone.uz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded font-medium text-slate-600 transition-colors hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
+        >
+          <img src={folioOneLogo} alt="" aria-hidden="true" className="h-4 w-4" />
+          Folio One
+        </a>
         <span>© {new Date().getFullYear()} — barcha huquqlar himoyalangan</span>
       </footer>
     </div>
@@ -467,7 +504,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-700">Ismingiz</label>
+        <label className="mb-1 block text-xs font-semibold text-slate-700">Ismingiz</label>
         <input
           required
           className={pillInputNoIcon}
@@ -476,7 +513,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-700">Telefon</label>
+        <label className="mb-1 block text-xs font-semibold text-slate-700">Telefon</label>
         <input
           required
           className={pillInputNoIcon}
@@ -486,7 +523,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-700">
+        <label className="mb-1 block text-xs font-semibold text-slate-700">
           Email <span className="text-slate-400">(ixtiyoriy)</span>
         </label>
         <input
