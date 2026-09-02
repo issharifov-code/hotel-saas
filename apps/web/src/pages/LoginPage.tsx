@@ -24,6 +24,21 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // avtomatik aylanadigan 3-slaydli carousel'ga (`LoginCarousel`) almashtirildi
 // — har bir slayd o'z illyustratsiyasi bilan (bron taqvimi / front desk /
 // xodimlar-ruxsatlar). Batafsil xatti-harakat `LoginCarousel.tsx`da.
+//
+// 2026-09-02 (polish): foydalanuvchi fikr-mulohazasi asosida yana bir tur
+// tuzatish — (1) chap panel carousel endi logotipdan keyingi bo'sh joyda
+// vertikal markazlashtirilgan (avvalgi `justify-between` ortiqcha bo'sh joy
+// qoldirardi), (2) "Parolni unutdingizmi?" havolasi parol maydoni OSTIGA
+// ko'chirildi (label bilan bir qatorda zichlik muammosi bor edi), (3) email
+// maydoniga misol placeholder qo'shildi, (4) "Ro'yxatdan o'ting" (matn havola)
+// va "Demo so'rash" (endi yengil outline tugma) vizual jihatdan aniq
+// ajratildi, (5) ikki marta takrorlangan copyright — chap paneldagisi olib
+// tashlandi, faqat umumiy footer'dagisi qoldi, (6) accessibility: parol
+// ko'rsatish/yashirish tugmasi, "Meni tizimda saqlab qol" checkbox'i (haqiqiy
+// ta'sir bilan — localStorage vs sessionStorage, qarang `lib/api.ts`), xato
+// xabari uchun `role="alert"`/`aria-live` va maydonlarda `aria-invalid`, (7)
+// F1 logotipi atrofidagi ortiqcha oq to'rtburchak (`bg-white p-1 shadow-sm`)
+// olib tashlandi — logotip fayli o'zi shaffof, alohida oq fon shart emas edi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -43,8 +58,19 @@ const SLIDES: LoginCarouselSlide[] = [
   },
 ];
 
-const pillInput =
-  'w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-navy';
+// `hasError` bo'lsa maydon chegarasi/fokus rangi qizg'ishga o'tadi (umumiy
+// login xatosi — backend qaysi aniq maydon xato ekanini ajratmaydi, shuning
+// uchun ikkala maydon ham belgilanadi). `trailingIcon` parol ko'rsatish/
+// yashirish tugmasi uchun o'ng tarafda qo'shimcha joy (pr-11) ochadi.
+function pillInputClass({ hasError = false, trailingIcon = false } = {}) {
+  return [
+    'w-full rounded-full border bg-slate-50 py-2.5 pl-11 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-1',
+    trailingIcon ? 'pr-11' : 'pr-4',
+    hasError
+      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-400'
+      : 'border-slate-200 focus:border-brand-navy focus:ring-brand-navy',
+  ].join(' ');
+}
 
 const pillInputNoIcon =
   'w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 px-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-navy focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-navy';
@@ -81,6 +107,27 @@ function LockIcon() {
   );
 }
 
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path
+        d="M3 3l18 18M10.6 5.2A10.9 10.9 0 0 1 12 5c7 0 10.5 7 10.5 7a13.5 13.5 0 0 1-3.1 4.1M6.6 6.6C3.4 8.6 1.5 12 1.5 12s3.5 7 10.5 7c1.3 0 2.5-.2 3.6-.6M9.9 9.9a3 3 0 0 0 4.2 4.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type LoginStep = 'credentials' | 'select-tenant';
 
 export function LoginPage() {
@@ -98,6 +145,8 @@ export function LoginPage() {
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
   const [showForgot, setShowForgot] = useState(false);
   const [showDemoForm, setShowDemoForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleResult = (result: LoginResult) => {
     if (result.status === 'select-tenant') {
@@ -113,7 +162,7 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      handleResult(await login({ email, password }));
+      handleResult(await login({ email, password, remember: rememberMe }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Kirishda xatolik yuz berdi');
     } finally {
@@ -125,7 +174,7 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      handleResult(await login({ subdomain, email, password }));
+      handleResult(await login({ subdomain, email, password, remember: rememberMe }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Kirishda xatolik yuz berdi');
     } finally {
@@ -136,15 +185,15 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col md:flex-row">
-        <div className="hidden md:flex md:w-1/2 flex-col justify-between bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
+        <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex items-center gap-2">
-            <img src={folioOneLogo} alt="Folio One" className="h-8 w-8 rounded bg-white p-1 shadow-sm" />
+            <img src={folioOneLogo} alt="Folio One" className="h-8 w-8" />
             <span className="text-xl font-semibold">Folio One</span>
           </div>
 
-          <LoginCarousel slides={SLIDES} />
-
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Folio One</p>
+          <div className="flex flex-1 items-center justify-center">
+            <LoginCarousel slides={SLIDES} />
+          </div>
         </div>
 
         <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
@@ -161,24 +210,54 @@ export function LoginPage() {
 
                 <form onSubmit={onSubmit} className="space-y-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                    <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-slate-700">
+                      Email
+                    </label>
                     <div className="relative">
                       <FieldIcon>
                         <MailIcon />
                       </FieldIcon>
                       <input
+                        id="login-email"
                         type="email"
                         required
                         autoFocus
-                        className={pillInput}
+                        placeholder="email@hotel.uz"
+                        aria-invalid={!!error}
+                        className={pillInputClass({ hasError: !!error })}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                       />
                     </div>
                   </div>
                   <div>
-                    <div className="mb-1 flex items-center justify-between">
-                      <label className="block text-sm font-medium text-slate-700">Parol</label>
+                    <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-slate-700">
+                      Parol
+                    </label>
+                    <div className="relative">
+                      <FieldIcon>
+                        <LockIcon />
+                      </FieldIcon>
+                      <input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        placeholder="Parolingiz"
+                        aria-invalid={!!error}
+                        className={pillInputClass({ hasError: !!error, trailingIcon: true })}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                      >
+                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                    <div className="mt-1.5 flex justify-end">
                       <button
                         type="button"
                         onClick={() => setShowForgot((v) => !v)}
@@ -186,18 +265,6 @@ export function LoginPage() {
                       >
                         Parolni unutdingizmi?
                       </button>
-                    </div>
-                    <div className="relative">
-                      <FieldIcon>
-                        <LockIcon />
-                      </FieldIcon>
-                      <input
-                        type="password"
-                        required
-                        className={pillInput}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
                     </div>
                   </div>
 
@@ -208,7 +275,24 @@ export function LoginPage() {
                     </p>
                   )}
 
-                  {error && <p className="text-sm text-rose-600">{error}</p>}
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="remember-me"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-navy focus:ring-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                    />
+                    <label htmlFor="remember-me" className="cursor-pointer select-none text-sm text-slate-600">
+                      Meni tizimda saqlab qol
+                    </label>
+                  </div>
+
+                  {error && (
+                    <p role="alert" aria-live="polite" className="text-sm text-rose-600">
+                      {error}
+                    </p>
+                  )}
 
                   <button type="submit" disabled={loading} className={pillPrimaryBtn}>
                     {loading ? 'Kirilmoqda...' : 'Kirish'}
@@ -222,11 +306,11 @@ export function LoginPage() {
                   </Link>
                 </p>
 
-                <div className="mt-2 text-center">
+                <div className="mt-3 text-center">
                   <button
                     type="button"
                     onClick={() => setShowDemoForm((v) => !v)}
-                    className="text-sm font-medium text-brand-navy hover:underline"
+                    className="inline-flex items-center justify-center rounded-full border border-brand-navy/25 px-4 py-1.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
                   >
                     Demo so'rash
                   </button>
