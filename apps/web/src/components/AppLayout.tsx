@@ -137,6 +137,19 @@ function GearIcon() {
   );
 }
 
+// Platforma admin uchun "/admin" ga qaytish havolasi (sayqal auditi: AdminPage
+// ilova ichida hech qanday navigatsiya havolasi bilan bog'lanmagan edi). Login
+// paytida platforma admin to'g'ridan-to'g'ri /admin'ga yo'naltiriladi, lekin
+// keyinchalik boshqa (tenant) sahifaga o'tib qolsa, qaytish yo'li bo'lishi kerak.
+function AdminShieldIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 2.5l6 2.2v4.3c0 4-2.6 6.9-6 8.5-3.4-1.6-6-4.5-6-8.5V4.7l6-2.2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.2 10l1.9 1.9L12.8 8" />
+    </svg>
+  );
+}
+
 function HelpIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -209,10 +222,16 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   // qilib qo'yamiz.
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
+      const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
+      if (saved !== null) return saved === '1';
     } catch {
-      return false;
+      // localStorage mavjud bo'lmasa (masalan, maxfiy oynada) pastdagi sukut qiymatga o'tamiz
     }
+    // Saqlangan tanlov yo'q (birinchi tashrif) — tor ekranlarda (mobil/planshet,
+    // `lg:` breakpoint'idan tor) menyu boshida yopiq (drawer) bo'lsin, aks holda
+    // sidebar butun ekranni bosib, kontentni ko'rsatmay qo'yardi. Keng ekranda
+    // esa avvalgidek ochiq.
+    return typeof window !== 'undefined' && window.innerWidth < 1024;
   });
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -224,6 +243,17 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       }
       return next;
     });
+  };
+
+  // Mobil/planshetda sidebar overlay-drawer sifatida ishlaydi — havola bosilgach
+  // avtomatik yopilishi kerak (aks holda kontent ustida qolib, uni bekitib turadi).
+  // Bu localStorage'dagi foydalanuvchi tanlovini (desktop uchun) o'zgartirmaydi —
+  // faqat joriy holatni vaqtincha yopadi; keyingi sahifa mount'ida localStorage'dan
+  // qayta o'qiladi.
+  const closeMobileDrawer = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
   };
 
   return (
@@ -277,19 +307,40 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           >
             <GearIcon />
           </Link>
+          {user?.isPlatformAdmin && (
+            <Link
+              to="/admin"
+              aria-label="Platforma boshqaruvi"
+              title="Platforma boshqaruvi"
+              className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
+            >
+              <AdminShieldIcon />
+            </Link>
+          )}
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobil/planshetda (`lg:`dan tor) sidebar ochiq bo'lganda kontent ustidan
+            qoraytiruvchi fon — bosilsa menyuni yopadi. Desktopda hech qachon
+            ko'rsatilmaydi (sidebar u yerda kontentni surib qo'yadi, ustiga chiqmaydi). */}
+        {!collapsed && (
+          <div
+            className="fixed left-0 right-0 top-14 bottom-0 z-30 bg-slate-900/40 lg:hidden"
+            onClick={toggleCollapsed}
+            aria-hidden="true"
+          />
+        )}
         <aside
-          className={`shrink-0 h-full overflow-y-auto flex flex-col bg-white border-r border-slate-200 transition-[width] duration-150 ${
-            collapsed ? 'w-0 overflow-hidden border-r-0' : 'w-60'
+          className={`fixed left-0 top-14 bottom-0 z-40 w-60 flex flex-col overflow-y-auto bg-white border-r border-slate-200 transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:h-full lg:shrink-0 lg:transition-[width] lg:duration-150 lg:translate-x-0 ${
+            collapsed ? '-translate-x-full lg:translate-x-0 lg:w-0 lg:overflow-hidden lg:border-r-0' : 'translate-x-0 lg:w-60'
           }`}
         >
           {/* Folio One logotipi = "Bosh sahifa" havolasi (avvalgi matnli
               nav-item o'rnida) — bosilganda /dashboard'ga olib boradi. */}
           <NavLink
             to="/dashboard"
+            onClick={closeMobileDrawer}
             className={({ isActive }) =>
               `flex items-center gap-2 px-4 py-4 border-b border-slate-100 w-60 ${
                 isActive ? 'bg-brand-navy-light' : 'hover:bg-slate-50'
@@ -317,6 +368,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         <NavLink
                           key={item.to}
                           to={item.to}
+                          onClick={closeMobileDrawer}
                           className={({ isActive }) =>
                             `block rounded-md border-l-2 px-3 py-2 pl-5 text-sm font-medium ${
                               isActive
@@ -336,6 +388,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    onClick={closeMobileDrawer}
                     className={({ isActive }) =>
                       `block rounded-md border-l-2 px-3 py-2 pl-2.5 text-sm font-medium ${
                         isActive
@@ -359,10 +412,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
         </aside>
 
         <div className="flex-1 min-w-0 h-full flex flex-col">
-          <header className="shrink-0 bg-white border-b border-slate-200 px-8 py-4">
+          <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-4">
             <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
           </header>
-          <main className="flex-1 overflow-y-auto px-8 py-6">
+          <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
             <SampleDataBanner />
             {children}
           </main>
