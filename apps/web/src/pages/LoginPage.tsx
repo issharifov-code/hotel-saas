@@ -4,6 +4,9 @@ import { useAuth, type LoginResult, type TenantOption } from '../context/AuthCon
 import { apiFetch, ApiError } from '../lib/api';
 import folioOneLogo from '../assets/folio-one-logo.png';
 import { LoginIllustration } from '../components/LoginIllustration';
+import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
+import { LoginIllustrationStaff } from '../components/LoginIllustrationStaff';
+import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarousel';
 
 // Login sahifasi qayta dizayni (2026-09): split-screen (chap — yengil/och fon
 // ustida illyustratsiya va xususiyatlar ro'yxati, o'ng — forma), Subdomain
@@ -16,11 +19,28 @@ import { LoginIllustration } from '../components/LoginIllustration';
 // `.btn-primary` klasslariga tegilmadi (ular butun ilova bo'ylab ishlatiladi);
 // bu yerdagi pill uslubi to'liq mustaqil Tailwind util klasslari bilan
 // yozilgan, shu sahifaga xos.
+//
+// 2026-09-02: chap paneldagi statik illyustratsiya+xususiyatlar ro'yxati
+// avtomatik aylanadigan 3-slaydli carousel'ga (`LoginCarousel`) almashtirildi
+// — har bir slayd o'z illyustratsiyasi bilan (bron taqvimi / front desk /
+// xodimlar-ruxsatlar). Batafsil xatti-harakat `LoginCarousel.tsx`da.
 
-const FEATURES = [
-  { title: 'Bronlar va xonalar', desc: 'Bron taqvimi, Channel Manager, real vaqtda bandlik' },
-  { title: 'Front Desk va hisobotlar', desc: "Check-in/out, kunni yopish, moliyaviy tahlil" },
-  { title: 'Xodimlar va ruxsatlar', desc: 'Har bir xodim uchun aniq belgilangan huquqlar' },
+const SLIDES: LoginCarouselSlide[] = [
+  {
+    illustration: <LoginIllustrationBooking className="h-64 w-64" />,
+    title: 'Bronlar va xonalar',
+    desc: 'Bron taqvimi, Channel Manager va real vaqtdagi bandlik',
+  },
+  {
+    illustration: <LoginIllustration className="h-64 w-64" />,
+    title: 'Front Desk va moliya',
+    desc: "Tez check-in/out, folio, to'lovlar va kunni yopish",
+  },
+  {
+    illustration: <LoginIllustrationStaff className="h-64 w-64" />,
+    title: 'Xodimlar va nazorat',
+    desc: 'Aniq ruxsatlar, housekeeping tasklari va real-time hisobotlar',
+  },
 ];
 
 const pillInput =
@@ -122,25 +142,7 @@ export function LoginPage() {
             <span className="text-xl font-semibold">Folio One</span>
           </div>
 
-          <div className="flex flex-col items-center gap-8">
-            <LoginIllustration className="h-64 w-64" />
-            <div className="max-w-sm space-y-6">
-              <h2 className="text-center text-2xl font-semibold leading-tight text-brand-navy">
-                Mehmonxonangizni bitta joydan boshqaring
-              </h2>
-              <ul className="space-y-4">
-                {FEATURES.map((f) => (
-                  <li key={f.title} className="flex gap-3">
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-gold" />
-                    <div>
-                      <p className="font-medium text-slate-800">{f.title}</p>
-                      <p className="text-sm text-slate-500">{f.desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <LoginCarousel slides={SLIDES} />
 
           <p className="text-xs text-slate-400">© {new Date().getFullYear()} Folio One</p>
         </div>
