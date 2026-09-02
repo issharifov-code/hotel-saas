@@ -162,21 +162,21 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-        <div>
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <img src={folioOneLogo} alt="Folio One" className="h-6 w-6" />
-            <p className="font-semibold text-slate-900">Folio One — Platforma boshqaruvi</p>
+            <img src={folioOneLogo} alt="Folio One" className="h-6 w-6 shrink-0" />
+            <p className="font-semibold text-slate-900 truncate">Folio One — Platforma boshqaruvi</p>
           </div>
-          <p className="text-xs text-slate-500">{user?.email}</p>
+          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
         </div>
-        <button onClick={logout} className="text-sm text-slate-600 hover:text-slate-900 underline">
+        <button onClick={logout} className="shrink-0 text-sm text-slate-600 hover:text-slate-900 underline">
           Chiqish
         </button>
       </header>
 
-      <div className="px-8 py-6">
-        <div className="flex gap-2 mb-6">
+      <div className="px-4 sm:px-8 py-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           {(['tenants', 'billing', 'demo-requests'] as Tab[]).map((t) => (
             <button
               key={t}
@@ -195,10 +195,10 @@ export function AdminPage() {
         {tab === 'tenants' && (
           <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
             {tenants.map((t) => (
-              <div key={t.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-slate-900">{t.name}</p>
-                  <p className="text-xs text-slate-500">
+              <div key={t.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900 truncate">{t.name}</p>
+                  <p className="text-xs text-slate-500 truncate">
                     {t.subdomain} · {PLAN_LABELS[t.plan]} · {t.baseCurrency}
                   </p>
                 </div>
@@ -268,7 +268,7 @@ export function AdminPage() {
               )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <select
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={filterTenantId}
@@ -295,9 +295,9 @@ export function AdminPage() {
 
             <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
               {invoices.map((inv) => (
-                <div key={inv.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{inv.tenantName ?? inv.tenantId}</p>
+                <div key={inv.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 truncate">{inv.tenantName ?? inv.tenantId}</p>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {inv.periodStart} — {inv.periodEnd} · Muddat: {inv.dueDate}
                       {inv.isOverdue && inv.status === 'pending' && (
@@ -305,7 +305,7 @@ export function AdminPage() {
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <p className="font-semibold text-slate-900">{money(inv.amount, inv.currency)}</p>
                     {inv.status === 'pending' && (
                       <>
@@ -343,8 +343,8 @@ export function AdminPage() {
         {tab === 'demo-requests' && (
           <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
             {demoRequests.map((req) => (
-              <div key={req.id} className="p-4 flex items-center justify-between gap-4">
-                <div>
+              <div key={req.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="min-w-0">
                   <p className="font-medium text-slate-900">{req.fullName}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {req.phone}
