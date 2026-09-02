@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResult, type TenantOption } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
-import folioOneLogo from '../assets/folio-one-logo.png';
+import folioOneLogoFull from '../assets/folio-one-logo-full.png';
 import { LoginIllustration } from '../components/LoginIllustration';
 import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
 import { LoginIllustrationStaff } from '../components/LoginIllustrationStaff';
@@ -39,6 +39,17 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // xabari uchun `role="alert"`/`aria-live` va maydonlarda `aria-invalid`, (7)
 // F1 logotipi atrofidagi ortiqcha oq to'rtburchak (`bg-white p-1 shadow-sm`)
 // olib tashlandi — logotip fayli o'zi shaffof, alohida oq fon shart emas edi.
+//
+// 2026-09-02 (2-tur polish, qo'lda chizilgan skrinshot izohlari asosida):
+// (1) logotip foydalanuvchi bergan to'liq lockup (`folio-one-logo-full.png`,
+// F1 belgisi + "Folio One" so'zi bitta rasmda) bilan almashtirildi — endi
+// alohida `<span>Folio One</span>` matni kerak emas (faqat LoginPage'da;
+// AppLayout/AdminPage'dagi kichik ikonka-versiyasi o'zgarmadi), (2) "Meni
+// tizimda saqlab qol" → "Meni tizimda eslab qol", (3) "Ro'yxatdan o'ting" →
+// "Ro'yxatdan o'tish", (4) shu havola bilan "Demo so'rash" tugmasi orasiga
+// kichik "yoki" matni qo'shildi, (5)-(6) 2- va 3-slayd tavsiflari:
+// "Tez check-in/out..." → "Tezkor check-in/out...", "...real-time
+// hisobotlar" → "...real vaqt hisobotlari" (inglizcha so'z o'rniga o'zbekcha).
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -49,12 +60,12 @@ const SLIDES: LoginCarouselSlide[] = [
   {
     illustration: <LoginIllustration className="h-64 w-64" />,
     title: 'Front Desk va moliya',
-    desc: "Tez check-in/out, folio, to'lovlar va kunni yopish",
+    desc: "Tezkor check-in/out, folio, to'lovlar va kunni yopish",
   },
   {
     illustration: <LoginIllustrationStaff className="h-64 w-64" />,
     title: 'Xodimlar va nazorat',
-    desc: 'Aniq ruxsatlar, housekeeping tasklari va real-time hisobotlar',
+    desc: 'Aniq ruxsatlar, housekeeping tasklari va real vaqt hisobotlari',
   },
 ];
 
@@ -186,10 +197,7 @@ export function LoginPage() {
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col md:flex-row">
         <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
-          <div className="flex items-center gap-2">
-            <img src={folioOneLogo} alt="Folio One" className="h-8 w-8" />
-            <span className="text-xl font-semibold">Folio One</span>
-          </div>
+          <img src={folioOneLogoFull} alt="Folio One" className="h-10 w-auto self-start" />
 
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
@@ -198,9 +206,8 @@ export function LoginPage() {
 
         <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
           <div className="w-full max-w-sm">
-            <div className="mb-6 flex items-center gap-2 md:hidden">
-              <img src={folioOneLogo} alt="Folio One" className="h-8 w-8" />
-              <h1 className="text-xl font-semibold text-slate-900">Folio One</h1>
+            <div className="mb-6 md:hidden">
+              <img src={folioOneLogoFull} alt="Folio One" className="h-10 w-auto" />
             </div>
 
             {step === 'credentials' && (
@@ -284,7 +291,7 @@ export function LoginPage() {
                       className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-navy focus:ring-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
                     />
                     <label htmlFor="remember-me" className="cursor-pointer select-none text-sm text-slate-600">
-                      Meni tizimda saqlab qol
+                      Meni tizimda eslab qol
                     </label>
                   </div>
 
@@ -302,11 +309,13 @@ export function LoginPage() {
                 <p className="mt-5 text-center text-sm text-slate-500">
                   Yangi mehmonxonami?{' '}
                   <Link to="/register" className="font-medium text-brand-navy hover:underline">
-                    Ro'yxatdan o'ting
+                    Ro'yxatdan o'tish
                   </Link>
                 </p>
 
-                <div className="mt-3 text-center">
+                <p className="mt-2 text-center text-xs text-slate-400">yoki</p>
+
+                <div className="mt-2 text-center">
                   <button
                     type="button"
                     onClick={() => setShowDemoForm((v) => !v)}
