@@ -12,6 +12,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 //   mumkinligi aniq ko'rinishi uchun;
 // - illyustratsiya va matn orasida yumshoq fade + yengil pastdan-yuqoriga
 //   siljish (`folio-carousel-fade`, `index.css`da).
+//
+// 2026-09-02 (6-tur polish): ichki bo'shliqlar ixchamlashtirildi (gap-8→
+// gap-6) — illyustratsiya+sarlavha+dots endi vizual jihatdan bittaroq
+// markazlashgan guruh sifatida o'qiladi. Tavsif matni kontrasti oshirildi
+// (slate-500→600). Yangi `compact` prop qo'shildi — true bo'lsa
+// illyustratsiya ko'rsatilmaydi (kichikroq sarlavha/tavsif+dots'gina),
+// mobil'da forma tepasida ixcham "hero" sifatida ishlatish uchun; avtoplay/
+// pauza/reduced-motion xatti-harakati compact rejimda ham bir xil.
 export interface LoginCarouselSlide {
   illustration: ReactNode;
   title: string;
@@ -21,7 +29,7 @@ export interface LoginCarouselSlide {
 const AUTOPLAY_INTERVAL_MS = 7000;
 const FADE_MS = 480;
 
-export function LoginCarousel({ slides }: { slides: LoginCarouselSlide[] }) {
+export function LoginCarousel({ slides, compact = false }: { slides: LoginCarouselSlide[]; compact?: boolean }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -49,7 +57,7 @@ export function LoginCarousel({ slides }: { slides: LoginCarouselSlide[] }) {
 
   return (
     <div
-      className="flex flex-col items-center gap-8"
+      className={`flex flex-col items-center ${compact ? 'gap-3' : 'gap-6'}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -57,15 +65,21 @@ export function LoginCarousel({ slides }: { slides: LoginCarouselSlide[] }) {
     >
       <div
         key={index}
-        className="flex flex-col items-center gap-8"
+        className={`flex flex-col items-center ${compact ? 'gap-2' : 'gap-6'}`}
         style={{
           animation: reducedMotion ? undefined : `folio-carousel-fade ${FADE_MS}ms ease-out`,
         }}
       >
-        <div className="flex h-64 w-64 items-center justify-center">{active.illustration}</div>
-        <div className="min-h-[104px] max-w-sm space-y-2 text-center">
-          <h2 className="text-2xl font-semibold leading-tight text-brand-navy">{active.title}</h2>
-          <p className="text-sm text-slate-500">{active.desc}</p>
+        {!compact && (
+          <div className="flex h-64 w-64 items-center justify-center">{active.illustration}</div>
+        )}
+        <div
+          className={`text-center ${compact ? 'min-h-[64px] max-w-xs space-y-1' : 'min-h-[104px] max-w-sm space-y-2'}`}
+        >
+          <h2 className={`font-semibold leading-tight text-brand-navy ${compact ? 'text-base' : 'text-2xl'}`}>
+            {active.title}
+          </h2>
+          <p className={`text-slate-600 ${compact ? 'text-xs' : 'text-sm'}`}>{active.desc}</p>
         </div>
       </div>
 
