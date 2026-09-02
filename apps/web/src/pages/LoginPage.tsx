@@ -50,6 +50,17 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // kichik "yoki" matni qo'shildi, (5)-(6) 2- va 3-slayd tavsiflari:
 // "Tez check-in/out..." → "Tezkor check-in/out...", "...real-time
 // hisobotlar" → "...real vaqt hisobotlari" (inglizcha so'z o'rniga o'zbekcha).
+//
+// 2026-09-02 (3-tur polish): (1) logotip kattalashtirildi (h-10→h-11, ~10%)
+// va chap panelda gorizontal markazlashtirildi (`self-start`→`self-center`),
+// (2) "Meni tizimda eslab qol" checkbox qatoriga qo'shimcha bo'sh joy
+// (`pt-2.5`, ~10px) — parol maydoni ostidagi "Parolni unutdingizmi?"dan
+// nafas olishi uchun, (3) "yoki" endi ikki ingichka gorizontal chiziq
+// orasida (divider uslubi) ko'rsatiladi. Carousel'ning o'zidagi tuzatishlar
+// (`LoginCarousel.tsx`): faol nuqta-indikator sezilarli kattaroq (w-9,
+// avvalgi w-6), crossfade yumshoqroq va sekinroq (480ms, avvalgi 350ms) +
+// yengil pastdan-yuqoriga siljish qo'shildi (`index.css`dagi
+// `folio-carousel-fade`).
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -197,7 +208,7 @@ export function LoginPage() {
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col md:flex-row">
         <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
-          <img src={folioOneLogoFull} alt="Folio One" className="h-10 w-auto self-start" />
+          <img src={folioOneLogoFull} alt="Folio One" className="h-11 w-auto self-center" />
 
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
@@ -282,7 +293,7 @@ export function LoginPage() {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 pt-2.5">
                     <input
                       id="remember-me"
                       type="checkbox"
@@ -313,7 +324,11 @@ export function LoginPage() {
                   </Link>
                 </p>
 
-                <p className="mt-2 text-center text-xs text-slate-400">yoki</p>
+                <div className="mt-3 flex items-center gap-3" role="presentation">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  <span className="text-xs text-slate-400">yoki</span>
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
 
                 <div className="mt-2 text-center">
                   <button
