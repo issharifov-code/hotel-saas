@@ -46,7 +46,9 @@ describe('NightAuditService', () => {
       count: jest.fn().mockResolvedValue(opts.totalRooms ?? 10),
     };
     const ratePlansService = {
-      findById: jest.fn().mockResolvedValue(opts.ratePlan ?? null),
+      findByIds: jest
+        .fn()
+        .mockResolvedValue(opts.ratePlan ? [opts.ratePlan] : []),
     };
     const invoicingService = {
       createFeeInvoice: jest.fn().mockResolvedValue({ id: 'inv-1' }),
@@ -173,6 +175,79 @@ describe('NightAuditService', () => {
       { status: BookingStatus.NO_SHOW },
     );
     expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
+  });
+
+  it("narx rejalarini nechta no-show nomzod bo'lishidan qat'iy nazar BITTA (batched) so'rovda yuklaydi", async () => {
+    // Avval har bir nomzod bron uchun alohida `ratePlansService.findById`
+    // chaqirilardi (N ta bron = N ta ketma-ket so'rov) — endi bitta
+    // `findByIds` chaqiruviga yig'iladi, natijalar xotirada taqsimlanadi.
+    const candidates = Array.from({ length: 12 }, (_, i) => ({
+      id: `b${i}`,
+      ratePlanId: i % 3 === 0 ? 'rp-1' : 'rp-2',
+      status: BookingStatus.CONFIRMED,
+      checkIn: '2026-08-24',
+      totalAmount: '300.00',
+      currency: 'UZS',
+      guestId: `guest-${i}`,
+    }));
+    const { service, bookingRepo, ratePlansService } = createService({
+      noShowCandidates: candidates,
+    });
+    ratePlansService.findByIds = jest.fn().mockResolvedValue([
+      {
+        id: 'rp-1',
+        nightlyPrice: '100.00',
+        noShowFeeType: null,
+        noShowFeeValue: null,
+      },
+      {
+        id: 'rp-2',
+        nightlyPrice: '100.00',
+        noShowFeeType: null,
+        noShowFeeValue: null,
+      },
+    ]);
+
+    await service.run('t1', 'prop-1', 'user-1');
+
+    expect(ratePlansService.findByIds).toHaveBeenCalledTimes(1);
+    expect(ratePlansService.findByIds).toHaveBeenCalledWith(
+      't1',
+      'prop-1',
+      expect.arrayContaining(['rp-1', 'rp-2']),
+    );
+    // Barcha 12 ta nomzod — parallel (cheklangan concurrency) ishlanishiga
+    // qaramay — muvaffaqiyatli yangilanishi kerak.
+    expect(bookingRepo.update).toHaveBeenCalledTimes(12);
+    for (const c of candidates) {
+      expect(bookingRepo.update).toHaveBeenCalledWith(
+        { id: c.id },
+        { status: BookingStatus.NO_SHOW },
+      );
+    }
+  });
+
+  it("dangling ratePlanId (narx rejasi topilmasa) butun audit jarayonini to'xtatmaydi — jarimasiz no_show belgilanadi", async () => {
+    const { service, bookingRepo, ratePlansService } = createService({
+      noShowCandidates: [
+        {
+          id: 'b1',
+          ratePlanId: 'rp-yoq',
+          status: BookingStatus.CONFIRMED,
+          checkIn: '2026-08-24',
+          totalAmount: '300.00',
+          currency: 'UZS',
+          guestId: 'guest-1',
+        },
+      ],
+    });
+    ratePlansService.findByIds = jest.fn().mockResolvedValue([]); // topilmadi
+
+    await expect(service.run('t1', 'prop-1', 'user-1')).resolves.toBeDefined();
+    expect(bookingRepo.update).toHaveBeenCalledWith(
+      { id: 'b1' },
+      { status: BookingStatus.NO_SHOW },
+    );
   });
 
   it("bandlik/ADR/RevPAR/xona daromadini to'g'ri hisoblaydi va NightAuditRun saqlaydi", async () => {

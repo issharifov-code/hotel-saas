@@ -19,6 +19,12 @@ import {
   PaginatedResult,
   PaginationParams,
 } from '../../common/utils/pagination.util';
+import { mapWithConcurrency } from '../../common/utils/concurrency.util';
+
+// No-show bronlarni qayta ishlashda bir vaqtda nechta bron parallel
+// ishlanishi mumkinligi chegarasi — DB ulanish poolini (odatda ~10 ulanish)
+// katta mehmonxonada (100+ no-show) sarflab yubormaslik uchun.
+const NIGHT_AUDIT_NO_SHOW_CONCURRENCY = 8;
 
 export interface NightAuditStatusDto {
   businessDate: string;
@@ -149,45 +155,70 @@ export class NightAuditService {
         checkIn: LessThanOrEqual(auditDate),
       },
     });
-    for (const booking of noShowCandidates) {
-      // No-show jarimasi — muddat tekshirilmaydi (bekor qilishdan farqli
-      // o'laroq, no-show'ning o'zi allaqachon "kech" holat): agar narx
-      // rejasida noShowFeeType/Value sozlangan bo'lsa, jarima avtomatik
-      // hisoblanadi va mustaqil hisob-faktura sifatida yoziladi (bu bronlar
-      // ham hech qachon check-in qilinmagan, demak oddiy folio yo'q).
-      let feeAmount: string | null = null;
-      if (booking.ratePlanId) {
-        const ratePlan = await this.ratePlansService.findById(
-          tenantId,
-          propertyId,
-          booking.ratePlanId,
-        );
-        feeAmount = this.calcNoShowFee(booking, ratePlan);
-      }
+    // Kerakli narx rejalarini BITTA so'rovda oldindan yuklaymiz (avval har bir
+    // bron uchun alohida `findById` so'rovi yuborilardi — N ta bron uchun N ta
+    // ketma-ket so'rov). Topilmagan ID'lar (amalda narx rejalari o'chirilmaydi,
+    // shuning uchun bu holat kutilmagan) xatolik tashlamaydi — shunchaki
+    // "narx rejasi yo'q" deb talqin qilinadi, bitta bronning jarimasi
+    // hisoblanmasligi butun audit jarayonini to'xtatib qo'ymasligi uchun.
+    const ratePlanIds = Array.from(
+      new Set(
+        noShowCandidates
+          .map((b) => b.ratePlanId)
+          .filter((id): id is string => !!id),
+      ),
+    );
+    const ratePlans = await this.ratePlansService.findByIds(
+      tenantId,
+      propertyId,
+      ratePlanIds,
+    );
+    const ratePlanById = new Map(ratePlans.map((rp) => [rp.id, rp]));
 
-      if (feeAmount && Number(feeAmount) > 0) {
-        await this.bookingRepo.update(
-          { id: booking.id },
-          {
-            status: BookingStatus.NO_SHOW,
-            cancellationFeeAmount: feeAmount,
-          },
-        );
-        await this.invoicingService.createFeeInvoice(
-          tenantId,
-          propertyId,
-          { ...booking, cancellationFeeAmount: feeAmount },
-          `Kelmaslik (no-show) jarimasi — bron ${booking.id.slice(0, 8)}`,
-          feeAmount,
-          'cancellation_fee_revenue',
-        );
-      } else {
-        await this.bookingRepo.update(
-          { id: booking.id },
-          { status: BookingStatus.NO_SHOW },
-        );
-      }
-    }
+    // Har bir bronni yangilash/hisob-faktura yozish bir-biriga bog'liq emas
+    // (turli qatorlar, turli bookingId) — shuning uchun ketma-ket `for await`
+    // o'rniga cheklangan parallellik bilan ishlanadi. Katta mehmonxonada
+    // (ko'p no-show) bu kunni yopish jarayonini sezilarli tezlashtiradi.
+    await mapWithConcurrency(
+      noShowCandidates,
+      NIGHT_AUDIT_NO_SHOW_CONCURRENCY,
+      async (booking) => {
+        // No-show jarimasi — muddat tekshirilmaydi (bekor qilishdan farqli
+        // o'laroq, no-show'ning o'zi allaqachon "kech" holat): agar narx
+        // rejasida noShowFeeType/Value sozlangan bo'lsa, jarima avtomatik
+        // hisoblanadi va mustaqil hisob-faktura sifatida yoziladi (bu bronlar
+        // ham hech qachon check-in qilinmagan, demak oddiy folio yo'q).
+        const ratePlan = booking.ratePlanId
+          ? ratePlanById.get(booking.ratePlanId)
+          : undefined;
+        const feeAmount = ratePlan
+          ? this.calcNoShowFee(booking, ratePlan)
+          : null;
+
+        if (feeAmount && Number(feeAmount) > 0) {
+          await this.bookingRepo.update(
+            { id: booking.id },
+            {
+              status: BookingStatus.NO_SHOW,
+              cancellationFeeAmount: feeAmount,
+            },
+          );
+          await this.invoicingService.createFeeInvoice(
+            tenantId,
+            propertyId,
+            { ...booking, cancellationFeeAmount: feeAmount },
+            `Kelmaslik (no-show) jarimasi — bron ${booking.id.slice(0, 8)}`,
+            feeAmount,
+            'cancellation_fee_revenue',
+          );
+        } else {
+          await this.bookingRepo.update(
+            { id: booking.id },
+            { status: BookingStatus.NO_SHOW },
+          );
+        }
+      },
+    );
 
     // 2) Shu yopilayotgan kecha uchun bandlik/ADR/RevPAR/xona daromadi —
     // checkIn <= auditDate < checkOut bo'lgan, haqiqatan turgan/turgan bo'lgan
