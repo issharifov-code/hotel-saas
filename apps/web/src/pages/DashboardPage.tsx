@@ -221,7 +221,7 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
   }, [propertyId]);
 
   if (error) return <p className="text-sm text-rose-600">{error}</p>;
-  if (!rooms || !tasks || !openTickets) return <p className="text-sm text-slate-400">Yuklanmoqda...</p>;
+  if (!rooms || !tasks || !openTickets) return <p className="text-sm text-slate-500">Yuklanmoqda...</p>;
 
   const hkCounts = countByField(rooms.map((r) => r.housekeepingStatus));
   const roomStatusCounts = countByField(rooms.map((r) => r.status));
@@ -341,7 +341,7 @@ function MoliyaviyTab({
         </div>
       )}
       {overviewError && <p className="text-sm text-rose-600 mt-3">{overviewError}</p>}
-      {!overview && !overviewError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
+      {!overview && !overviewError && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
 
       {canAccounting && (
         <div className="mt-3">
@@ -352,7 +352,7 @@ function MoliyaviyTab({
             </p>
           </div>
           {incomeError && <p className="text-sm text-rose-600">{incomeError}</p>}
-          {!income && !incomeError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
+          {!income && !incomeError && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
           {income && (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -468,7 +468,7 @@ export function DashboardPage() {
                 )}
               </div>
               {overviewError && <p className="text-sm text-rose-600">{overviewError}</p>}
-              {!overview && !overviewError && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
+              {!overview && !overviewError && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
               {overview && (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -83,7 +83,7 @@ export function SegmentReportsPage() {
       </div>
 
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
-      {!data && !error && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
+      {!data && !error && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
 
       {data && (
         <div className="space-y-4">
@@ -140,7 +140,7 @@ export function SegmentReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionCard title="Turizm agentliklari bo'yicha">
               {data.byAgency.length === 0 ? (
-                <p className="text-sm text-slate-400">Tanlangan davrda agentlik orqali bron bo'lmagan.</p>
+                <p className="text-sm text-slate-500">Tanlangan davrda agentlik orqali bron bo'lmagan.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -169,7 +169,7 @@ export function SegmentReportsPage() {
 
             <SectionCard title="Korporativ hisoblar (City Ledger) bo'yicha">
               {data.byCorporateAccount.length === 0 ? (
-                <p className="text-sm text-slate-400">Tanlangan davrda korporativ hisob orqali bron bo'lmagan.</p>
+                <p className="text-sm text-slate-500">Tanlangan davrda korporativ hisob orqali bron bo'lmagan.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

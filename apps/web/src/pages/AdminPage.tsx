@@ -220,7 +220,7 @@ export function AdminPage() {
                 </div>
               </div>
             ))}
-            {tenants.length === 0 && <p className="p-4 text-sm text-slate-400">Tenantlar mavjud emas</p>}
+            {tenants.length === 0 && <p className="p-4 text-sm text-slate-500">Tenantlar mavjud emas</p>}
           </div>
         )}
 
@@ -335,7 +335,7 @@ export function AdminPage() {
                   </div>
                 </div>
               ))}
-              {invoices.length === 0 && <p className="p-4 text-sm text-slate-400">Hisob-fakturalar mavjud emas</p>}
+              {invoices.length === 0 && <p className="p-4 text-sm text-slate-500">Hisob-fakturalar mavjud emas</p>}
             </div>
           </div>
         )}
@@ -372,7 +372,7 @@ export function AdminPage() {
               </div>
             ))}
             {demoRequests.length === 0 && (
-              <p className="p-4 text-sm text-slate-400">Demo so'rovlar mavjud emas</p>
+              <p className="p-4 text-sm text-slate-500">Demo so'rovlar mavjud emas</p>
             )}
           </div>
         )}

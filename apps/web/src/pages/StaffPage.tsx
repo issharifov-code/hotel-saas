@@ -292,7 +292,7 @@ export function StaffPage() {
                   {canEdit && <span className="text-xs text-brand-navy underline">Ruxsatlarni tahrirlash</span>}
                 </button>
               ))}
-              {roles.length === 0 && <p className="p-4 text-sm text-slate-400">Rollar mavjud emas</p>}
+              {roles.length === 0 && <p className="p-4 text-sm text-slate-500">Rollar mavjud emas</p>}
             </div>
           )}
         </div>

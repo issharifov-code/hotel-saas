@@ -107,7 +107,7 @@ export function BillingPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">Hozircha hisob-faktura yaratilmagan</p>
+                <p className="text-sm text-slate-500">Hozircha hisob-faktura yaratilmagan</p>
               )}
             </div>
           </div>
@@ -116,7 +116,7 @@ export function BillingPage() {
         <div>
           <h2 className="text-lg font-semibold text-slate-900 mb-3">Hisob-fakturalar tarixi</h2>
           <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-            {invoices.length === 0 && <p className="p-4 text-sm text-slate-400">Hisob-fakturalar mavjud emas</p>}
+            {invoices.length === 0 && <p className="p-4 text-sm text-slate-500">Hisob-fakturalar mavjud emas</p>}
             {invoices.map((inv) => {
               const badge = invoiceStatusBadge(inv);
               return (

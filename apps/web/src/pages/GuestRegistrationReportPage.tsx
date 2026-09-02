@@ -81,7 +81,7 @@ export function GuestRegistrationReportPage() {
       </div>
 
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
-      {!data && !error && <p className="text-sm text-slate-400">Yuklanmoqda...</p>}
+      {!data && !error && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
 
       {data && (
         <div className="space-y-4">
@@ -102,7 +102,7 @@ export function GuestRegistrationReportPage() {
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             {data.stays.length === 0 ? (
-              <p className="text-sm text-slate-400">Tanlangan davrda turish qayd etilmagan.</p>
+              <p className="text-sm text-slate-500">Tanlangan davrda turish qayd etilmagan.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
