@@ -2,14 +2,16 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 // Kirish sahifasining chap panelidagi (illyustratsiya + sarlavha + izoh)
 // bloki uchun avtomatik aylanadigan slayder (2026-09). Talablar:
-// - har 7 soniyada avtomatik keyingi slaydga o'tadi;
+// - har 7 soniyada (6-8s oralig'ida) avtomatik keyingi slaydga o'tadi;
 // - sichqoncha ustida yoki fokusda (nuqta tugmalaridan biriga) turganda
 //   avtoplay to'xtaydi;
 // - `prefers-reduced-motion: reduce` bo'lsa avtoplay umuman ishga
 //   tushirilmaydi (foydalanuvchi baribir nuqtalar orqali qo'lda o'tkaza oladi);
 // - pastda 3 ta nuqta-indikator, ular orqali istalgan slaydga to'g'ridan-to'g'ri
-//   o'tish mumkin;
-// - illyustratsiya va matn orasida yumshoq (lekin tez, kuchli emas) crossfade.
+//   o'tish mumkin — faol nuqta boshqalardan sezilarli kattaroq/uzunroq, bosish
+//   mumkinligi aniq ko'rinishi uchun;
+// - illyustratsiya va matn orasida yumshoq fade + yengil pastdan-yuqoriga
+//   siljish (`folio-carousel-fade`, `index.css`da).
 export interface LoginCarouselSlide {
   illustration: ReactNode;
   title: string;
@@ -17,7 +19,7 @@ export interface LoginCarouselSlide {
 }
 
 const AUTOPLAY_INTERVAL_MS = 7000;
-const FADE_MS = 350;
+const FADE_MS = 480;
 
 export function LoginCarousel({ slides }: { slides: LoginCarouselSlide[] }) {
   const [index, setIndex] = useState(0);
@@ -77,8 +79,8 @@ export function LoginCarousel({ slides }: { slides: LoginCarouselSlide[] }) {
               aria-selected={i === index}
               aria-label={`${i + 1}-slayd: ${s.title}`}
               onClick={() => setIndex(i)}
-              className={`h-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 ${
-                i === index ? 'w-6 bg-brand-navy' : 'w-2 bg-brand-navy/25 hover:bg-brand-navy/40'
+              className={`h-2.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 ${
+                i === index ? 'w-9 bg-brand-navy' : 'w-2.5 bg-brand-navy/25 hover:bg-brand-navy/40'
               }`}
             />
           ))}
