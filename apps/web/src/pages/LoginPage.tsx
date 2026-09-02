@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResult, type TenantOption } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import folioOneLogoFull from '../assets/folio-one-logo-full.png';
+import folioOneLogo from '../assets/folio-one-logo.png';
 import { LoginIllustration } from '../components/LoginIllustration';
 import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
 import { LoginIllustrationStaff } from '../components/LoginIllustrationStaff';
@@ -72,6 +73,13 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // yengil soyali qutichada — chegaraning ko'k tomonida ham aniq o'qilishi
 // uchun (shaffof logotip to'g'ridan-to'g'ri ko'k fon ustida past kontrastli
 // edi).
+//
+// 2026-09-02 (5-tur): panellar chegarasidagi "bog'lovchi" logotip qutisi
+// olib tashlandi (OPERA Cloud/Oracle Hospitality'dagi kabi — asosiy ekranda
+// katta logotip emas, faqat FOOTER'da kichik logotip + brend nomi
+// ko'rsatiladi). Kichik ikonka-versiya (`folio-one-logo.png`, AppLayout'da
+// ishlatiladigan xuddi o'sha fayl) endi umumiy footer'da "Folio One" matni
+// bilan yonma-yon, copyright qatoridan oldin ko'rsatiladi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -217,17 +225,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="relative flex-1 flex flex-col md:flex-row">
-        {/* Ko'k va oq panellarni bog'lovchi logotip — ularning chegarasi
-            (seam) ustida, gorizontal markazda mutlaq pozitsiyalangan
-            (faqat md+; mobil'da panellar ustma-ust bo'lgani uchun chegara
-            yo'q, o'sha holat uchun pastdagi mobil header logotipi bor). */}
-        <div className="pointer-events-none absolute left-1/2 top-10 z-10 hidden -translate-x-1/2 md:block">
-          <div className="rounded-2xl bg-white px-5 py-3 shadow-md ring-1 ring-slate-100">
-            <img src={folioOneLogoFull} alt="Folio One" className="h-14 w-auto" />
-          </div>
-        </div>
-
+      <div className="flex-1 flex flex-col md:flex-row">
         <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
@@ -379,8 +377,13 @@ export function LoginPage() {
         </div>
       </div>
 
-      <footer className="border-t border-slate-200 bg-white px-6 py-4 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} Folio One — barcha huquqlar himoyalangan
+      <footer className="flex flex-wrap items-center justify-center gap-2 border-t border-slate-200 bg-white px-6 py-4 text-xs text-slate-400">
+        <img src={folioOneLogo} alt="" aria-hidden="true" className="h-4 w-4" />
+        <span className="font-medium text-slate-500">Folio One</span>
+        <span aria-hidden="true" className="text-slate-300">
+          |
+        </span>
+        <span>© {new Date().getFullYear()} — barcha huquqlar himoyalangan</span>
       </footer>
     </div>
   );
