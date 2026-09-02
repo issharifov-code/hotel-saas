@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { RatePlan } from './entities/rate-plan.entity';
 import { CreateRatePlanDto } from './dto/create-rate-plan.dto';
 import { UpdateRatePlanDto } from './dto/update-rate-plan.dto';
@@ -65,6 +65,22 @@ export class RatePlansService {
     });
     if (!ratePlan) throw new NotFoundException('Narx rejasi topilmadi');
     return ratePlan;
+  }
+
+  // Bir nechta narx rejasini BITTA so'rovda (WHERE id IN (...)) yuklaydi —
+  // Night Audit kabi joylarda har bir bron uchun alohida `findById` chaqirish
+  // o'rniga ishlatiladi. `findById`dan farqli o'laroq topilmagan ID'lar
+  // xatolik tashlamaydi — natijaviy ro'yxatda shunchaki yo'q bo'ladi
+  // (chaqiruvchi buni "narx rejasi yo'q" holati sifatida talqin qiladi).
+  async findByIds(
+    tenantId: string,
+    propertyId: string,
+    ids: string[],
+  ): Promise<RatePlan[]> {
+    if (ids.length === 0) return [];
+    return this.ratePlanRepo.find({
+      where: { id: In(ids), tenantId, propertyId },
+    });
   }
 
   async update(
