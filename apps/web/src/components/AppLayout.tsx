@@ -70,6 +70,11 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/city-ledger', label: 'City Ledger', moduleKey: 'invoicing' },
       { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
       { to: '/payroll', label: 'Ish haqi (Payroll)', moduleKey: 'payroll' },
+      {
+        to: '/attendance',
+        label: "Davomat va ta'til",
+        moduleKey: 'payroll',
+      },
       { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
     ],
   },
