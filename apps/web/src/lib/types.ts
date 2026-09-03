@@ -948,3 +948,49 @@ export interface PayrollRunDto {
   entries?: PayslipEntryDto[];
   createdAt: string;
 }
+
+// --- Davomat / Ta'til (2026-09) — Payroll'ning "hours entered manually"
+// bo'shlig'ini to'ldiradi (Payroll'da hujjatlashtirilgan gap). Mavjud
+// `payroll` PermissionModule'i qayta ishlatiladi (yangi modul qiymati YO'Q).
+
+export interface StaffRosterEntryDto {
+  id: string;
+  fullName: string;
+  salaryType: SalaryType | null;
+}
+
+export type AttendanceStatus = 'present' | 'absent' | 'leave' | 'holiday';
+
+export interface AttendanceRecordDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  userId: string;
+  date: string;
+  status: AttendanceStatus;
+  hoursWorked: string | null;
+  notes: string | null;
+  recordedByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeaveType = 'vacation' | 'sick' | 'unpaid' | 'other';
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface LeaveRequestDto {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  userId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  status: LeaveRequestStatus;
+  requestedByUserId: string;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  decisionNotes: string | null;
+  createdAt: string;
+}
