@@ -1,8 +1,17 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
+import {
+  PERMISSION_KEY,
+  RequiredPermission,
+} from '../decorators/require-permission.decorator';
 import { RolesService } from '../../modules/roles/roles.service';
 import { AuthenticatedUser } from '../interfaces/jwt-payload.interface';
+import { RequestWithUser } from '../interfaces/request-with-user.interface';
 
 // JwtAuthGuard'dan KEYIN ishlaydi (request.user allaqachon mavjud bo'lishi kerak).
 // @RequirePermission bilan belgilanmagan route'lar avtomatik ruxsat beriladi (faqat login talab qilinadi).
@@ -14,14 +23,13 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<RequiredPermission | undefined>(
-      PERMISSION_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const required = this.reflector.getAllAndOverride<
+      RequiredPermission | undefined
+    >(PERMISSION_KEY, [context.getHandler(), context.getClass()]);
     if (!required) return true;
 
-    const request = context.switchToHttp().getRequest();
-    const user: AuthenticatedUser = request.user;
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
+    const user: AuthenticatedUser | undefined = request.user;
     if (!user) return false;
 
     // Platforma super-admin barcha tenant ruxsatlarini chetlab o'tadi
@@ -29,10 +37,14 @@ export class PermissionsGuard implements CanActivate {
     if (user.isPlatformAdmin) return true;
 
     if (!user.tenantId) {
-      throw new ForbiddenException("Foydalanuvchi hech qanday tenant'ga bog'lanmagan");
+      throw new ForbiddenException(
+        "Foydalanuvchi hech qanday tenant'ga bog'lanmagan",
+      );
     }
 
-    const propertyId: string | undefined = request.params?.propertyId || request.query?.propertyId;
+    const propertyId: string | undefined =
+      (request.params?.propertyId as string | undefined) ||
+      (request.query?.propertyId as string | undefined);
 
     const permissions = await this.rolesService.getEffectivePermissions(
       user.tenantId,
