@@ -159,6 +159,24 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // konteynersiz, h-16 balandlikda ko'rsatiladi. Bu fayl faqat login badge'ida
 // ishlatiladi — footer'dagi kichik icon-only logotip (`folio-one-logo.png`,
 // "Folio One" havola matni bilan yonma-yon) o'zgarishsiz qoldi.
+//
+// 2026-09-03 (2-tur, kechroq): (1) badge logotipi biroz yuqoriga ko'chirildi
+// (`-mt-4`, o'lchami o'zgarishsiz, h-16) — foydalanuvchi qo'lda chizilgan
+// izohli skrinshot yubordi. (2) "Demo so'rash" formasi konversiya uchun
+// qayta ishlandi: forma ichiga sarlavha ("Demo so'rash") va tavsif matni
+// qo'shildi; forma ochilganda undan yuqoridagi "Ro'yxatdan o'tish / yoki /
+// Demo so'rash" bloki yashiriladi (aks holda foydalanuvchi bir xil action
+// ichida turib yana o'sha action tugmasini ko'rar edi); "Ismingiz" →
+// "Ism va familiyangiz"; "Telefon" → "Telefon raqamingiz", endi qulflangan
+// "+998" prefiksi bilan (foydalanuvchi faqat qolgan raqamlarni kiritadi,
+// submit'da birlashtiriladi); B2B lead'ni saralash uchun yangi ixtiyoriy
+// "Xonalar soni" tanlov maydoni qo'shildi (1–20/21–50/51–100/100+) — bu
+// maydon uchun backend'da yangi ustun ochilmadi, allaqachon mavjud bo'lgan
+// ixtiyoriy `DemoRequest.note` maydoniga "Xonalar soni: ..." shaklida
+// yoziladi; "Bekor qilish" → "Ortga qaytish", "Yuborish" → "Demo so'rovini
+// yuborish"; tugmalar mobil'da ustma-ust (`flex-col sm:flex-row`); kichik
+// maxfiylik matni qo'shildi; muvaffaqiyat xabari "So'rovingiz qabul
+// qilindi. Tez orada siz bilan bog'lanamiz."ga yangilandi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -248,6 +266,14 @@ function EyeOffIcon() {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 type LoginStep = 'credentials' | 'select-tenant';
 
 export function LoginPage() {
@@ -315,7 +341,7 @@ export function LoginPage() {
           <div className="w-full max-w-sm">
             {step === 'credentials' && (
               <>
-                <div className="mb-7 flex justify-center">
+                <div className="-mt-4 mb-7 flex justify-center">
                   <img src={folioOneLogoFull} alt="Folio One" aria-hidden="true" className="h-16 w-auto" />
                 </div>
                 <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
@@ -412,28 +438,32 @@ export function LoginPage() {
                   </button>
                 </form>
 
-                <p className="mt-4 text-center text-sm text-slate-500">
-                  Yangi mehmonxonami?{' '}
-                  <Link to="/register" className="font-medium text-brand-navy hover:underline">
-                    Ro'yxatdan o'tish
-                  </Link>
-                </p>
+                {!showDemoForm && (
+                  <>
+                    <p className="mt-4 text-center text-sm text-slate-500">
+                      Yangi mehmonxonami?{' '}
+                      <Link to="/register" className="font-medium text-brand-navy hover:underline">
+                        Ro'yxatdan o'tish
+                      </Link>
+                    </p>
 
-                <div className="mt-3 flex items-center gap-3" role="presentation">
-                  <span className="h-px flex-1 bg-slate-100" />
-                  <span className="text-xs text-slate-400">yoki</span>
-                  <span className="h-px flex-1 bg-slate-100" />
-                </div>
+                    <div className="mt-3 flex items-center gap-3" role="presentation">
+                      <span className="h-px flex-1 bg-slate-100" />
+                      <span className="text-xs text-slate-400">yoki</span>
+                      <span className="h-px flex-1 bg-slate-100" />
+                    </div>
 
-                <div className="mt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowDemoForm((v) => !v)}
-                    className="inline-flex items-center justify-center rounded-full border border-brand-navy/25 px-4 py-1.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
-                  >
-                    Demo so'rash
-                  </button>
-                </div>
+                    <div className="mt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowDemoForm(true)}
+                        className="inline-flex items-center justify-center rounded-full border border-brand-navy/25 px-4 py-1.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
+                      >
+                        Demo so'rash
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {showDemoForm && <DemoRequestForm onClose={() => setShowDemoForm(false)} />}
               </>
@@ -512,10 +542,17 @@ function TenantSelectStep({
   );
 }
 
+// Xonalar soni B2B lead'ni saralash uchun foydali, ammo backend'da alohida
+// ustun ochish (migratsiya) shart emas — DemoRequest.note maydoni (ixtiyoriy,
+// 1000 belgigacha) allaqachon mavjud, shuning uchun tanlangan variant shu
+// maydonga qisqa matn sifatida yoziladi ("Xonalar soni: 21–50").
+const ROOM_COUNT_OPTIONS = ['1–20', '21–50', '51–100', '100+'];
+
 function DemoRequestForm({ onClose }: { onClose: () => void }) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
+  const [roomCount, setRoomCount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
@@ -525,10 +562,16 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
     setDemoError(null);
     setSubmitting(true);
     try {
+      const fullPhone = `+998 ${phone}`.replace(/\s+/g, ' ').trim();
       await apiFetch('/marketing/demo-requests', {
         method: 'POST',
         auth: false,
-        body: JSON.stringify({ fullName, phone, email: demoEmail || undefined }),
+        body: JSON.stringify({
+          fullName,
+          phone: fullPhone,
+          email: demoEmail || undefined,
+          note: roomCount ? `Xonalar soni: ${roomCount}` : undefined,
+        }),
       });
       setSent(true);
     } catch (err) {
@@ -541,7 +584,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
   if (sent) {
     return (
       <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-        Rahmat! Tez orada siz bilan bog'lanamiz.
+        So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.
       </div>
     );
   }
@@ -549,7 +592,12 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
       <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">Ismingiz</label>
+        <h2 className="text-base font-semibold text-slate-900">Demo so'rash</h2>
+        <p className="mt-0.5 text-xs text-slate-500">Jamoamiz siz bilan bog'lanib, Folio One'ni tanishtiradi.</p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-slate-700">Ism va familiyangiz</label>
         <input
           required
           className={pillInputNoIcon}
@@ -557,16 +605,26 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
           onChange={(e) => setFullName(e.target.value)}
         />
       </div>
+
       <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">Telefon</label>
-        <input
-          required
-          className={pillInputNoIcon}
-          placeholder="+998 90 123 45 67"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+        <label className="mb-1 block text-xs font-semibold text-slate-700">Telefon raqamingiz</label>
+        <div className="flex">
+          <span className="flex select-none items-center rounded-l-full border border-r-0 border-slate-200 bg-slate-100 px-3.5 text-sm font-medium text-slate-500">
+            +998
+          </span>
+          <input
+            required
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            className="w-full rounded-r-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+            placeholder="90 123 45 67"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
       </div>
+
       <div>
         <label className="mb-1 block text-xs font-semibold text-slate-700">
           Email <span className="text-slate-400">(ixtiyoriy)</span>
@@ -578,13 +636,42 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
           onChange={(e) => setDemoEmail(e.target.value)}
         />
       </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-slate-700">
+          Xonalar soni <span className="text-slate-400">(ixtiyoriy)</span>
+        </label>
+        <div className="relative">
+          <select
+            className={`${pillInputNoIcon} appearance-none pr-9`}
+            value={roomCount}
+            onChange={(e) => setRoomCount(e.target.value)}
+          >
+            <option value="">Tanlang</option>
+            {ROOM_COUNT_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+            <ChevronDownIcon />
+          </span>
+        </div>
+      </div>
+
       {demoError && <p className="text-xs text-rose-600">{demoError}</p>}
-      <div className="flex gap-2">
-        <button type="submit" disabled={submitting} className={`${pillPrimaryBtn} flex-1`}>
-          {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
+
+      <p className="text-[11px] leading-snug text-slate-400">
+        Yuborish orqali siz bilan demo bo'yicha bog'lanishimizga rozilik bildirasiz.
+      </p>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button type="submit" disabled={submitting} className={`${pillPrimaryBtn} sm:flex-1`}>
+          {submitting ? 'Yuborilmoqda...' : "Demo so'rovini yuborish"}
         </button>
         <button type="button" onClick={onClose} className={pillSecondaryBtn}>
-          Bekor qilish
+          Ortga qaytish
         </button>
       </div>
     </form>
