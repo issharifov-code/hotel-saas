@@ -808,6 +808,17 @@ export interface StaffUserDto {
   createdAt: string;
 }
 
+// Maosh — alohida, PAYROLL ruxsati bilan himoyalangan endpoint orqali
+// olinadi/o'rnatiladi (StaffUserDto/`/users` ro'yxatida YO'Q — boshqa
+// xodimlarning maoshi USERS_ROLES:view huquqi orqali ko'rinib qolmasligi
+// uchun ataylab ajratilgan).
+export type SalaryType = 'monthly' | 'hourly';
+
+export interface StaffSalaryDto {
+  salaryType: SalaryType | null;
+  salaryAmount: string | null;
+}
+
 export type PermissionModuleKey =
   | 'booking'
   | 'front_desk'
@@ -820,7 +831,8 @@ export type PermissionModuleKey =
   | 'reports'
   | 'billing'
   | 'users_roles'
-  | 'tenant_settings';
+  | 'tenant_settings'
+  | 'payroll';
 
 export type PermissionActionKey = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 
@@ -898,5 +910,41 @@ export interface DemoRequestDto {
   email: string | null;
   note: string | null;
   contacted: boolean;
+  createdAt: string;
+}
+
+// --- Payroll / Ish haqi (2026-09) ---
+
+export type PayrollRunStatus = 'draft' | 'finalized' | 'paid';
+
+export interface PayslipEntryDto {
+  id: string;
+  payrollRunId: string;
+  userId: string | null;
+  employeeNameSnapshot: string;
+  salaryType: SalaryType;
+  rateSnapshot: string;
+  hoursWorked: string | null;
+  grossAmount: string;
+  adjustmentAmount: string;
+  adjustmentNote: string | null;
+  netAmount: string;
+  createdAt: string;
+}
+
+export interface PayrollRunDto {
+  id: string;
+  propertyId: string;
+  periodYear: number;
+  periodMonth: number;
+  status: PayrollRunStatus;
+  totalAmount: string;
+  runByUserId: string;
+  finalizedByUserId: string | null;
+  finalizedAt: string | null;
+  paidAt: string | null;
+  // Faqat bitta run tafsilotini olishda (`GET /payroll-runs/:id`) keladi —
+  // ro'yxat endpointida (`GET /payroll-runs`) yo'q.
+  entries?: PayslipEntryDto[];
   createdAt: string;
 }
