@@ -6,6 +6,7 @@ import { PayrollController } from './payroll.controller';
 import { RolesModule } from '../roles/roles.module';
 import { UsersModule } from '../users/users.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { AttendanceModule } from '../attendance/attendance.module';
 import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { RlsModule } from '../../common/rls/rls.module';
     RolesModule,
     UsersModule,
     AccountingModule,
+    AttendanceModule,
   ],
   providers: [PayrollService],
   controllers: [PayrollController],

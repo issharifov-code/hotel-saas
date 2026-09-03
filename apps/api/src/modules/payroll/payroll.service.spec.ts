@@ -14,6 +14,7 @@ describe('PayrollService', () => {
       employees?: Record<string, unknown>[];
       run?: Record<string, unknown>;
       entries?: Record<string, unknown>[];
+      monthlyHours?: number;
     } = {},
   ) {
     const baseRun = {
@@ -57,14 +58,25 @@ describe('PayrollService', () => {
     const accountingService = {
       postSimpleEntry: jest.fn().mockResolvedValue({ id: 'je-1' }),
     };
+    const attendanceService = {
+      getMonthlyHours: jest.fn().mockResolvedValue(opts.monthlyHours ?? 0),
+    };
 
     const service = new PayrollService(
       runRepo as never,
       entryRepo as never,
       usersService as never,
       accountingService as never,
+      attendanceService as never,
     );
-    return { service, runRepo, entryRepo, usersService, accountingService };
+    return {
+      service,
+      runRepo,
+      entryRepo,
+      usersService,
+      accountingService,
+      attendanceService,
+    };
   }
 
   describe('createRun', () => {
@@ -133,6 +145,41 @@ describe('PayrollService', () => {
       expect(runRepo.save).toHaveBeenLastCalledWith(
         expect.objectContaining({ totalAmount: '3000000.00' }),
       );
+    });
+
+    it('HOURLY xodim uchun Attendance moduli qayd etgan oylik soatlarni avtomatik taklif qiladi', async () => {
+      const { service, entryRepo, attendanceService } = createService({
+        employees: [
+          {
+            id: 'u2',
+            fullName: 'Malika Karimova',
+            salaryType: SalaryType.HOURLY,
+            salaryAmount: '25000.00',
+          },
+        ],
+        monthlyHours: 160,
+      });
+
+      await service.createRun('t1', 'prop-1', 'user-1', {
+        periodYear: 2026,
+        periodMonth: 9,
+      });
+
+      expect(attendanceService.getMonthlyHours).toHaveBeenCalledWith(
+        't1',
+        'prop-1',
+        'u2',
+        2026,
+        9,
+      );
+      expect(entryRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({
+          userId: 'u2',
+          hoursWorked: '160.00',
+          grossAmount: '4000000.00',
+          netAmount: '4000000.00',
+        }),
+      ]);
     });
   });
 

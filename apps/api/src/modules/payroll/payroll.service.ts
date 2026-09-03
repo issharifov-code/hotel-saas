@@ -11,6 +11,7 @@ import { PayslipEntry } from './entities/payslip-entry.entity';
 import { SalaryType } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AccountingService } from '../accounting/accounting.service';
+import { AttendanceService } from '../attendance/attendance.service';
 import { CreatePayrollRunDto } from './dto/create-payroll-run.dto';
 import { UpdatePayslipEntryDto } from './dto/update-payslip-entry.dto';
 
@@ -23,6 +24,7 @@ export class PayrollService {
     private readonly entryRepo: Repository<PayslipEntry>,
     private readonly usersService: UsersService,
     private readonly accountingService: AccountingService,
+    private readonly attendanceService: AttendanceService,
   ) {}
 
   async listRuns(tenantId: string, propertyId: string): Promise<PayrollRun[]> {
@@ -91,24 +93,40 @@ export class PayrollService {
     );
 
     let total = 0;
-    const entries = employees.map((emp) => {
+    const entries: PayslipEntry[] = [];
+    for (const emp of employees) {
       const rate = Number(emp.salaryAmount);
       const isHourly = emp.salaryType === SalaryType.HOURLY;
-      const gross = isHourly ? 0 : rate;
+      // HOURLY: Attendance moduli shu davr uchun qayd etilgan soatlar
+      // yig'indisini avtomatik taklif qiladi (agar hali qayd etilmagan bo'lsa
+      // — 0, xuddi avvalgidek qo'lda kiritiladi). Ikkala holatda ham
+      // updateEntry() orqali keyinroq qo'lda tuzatish mumkinligicha qoladi.
+      const hours = isHourly
+        ? await this.attendanceService.getMonthlyHours(
+            tenantId,
+            propertyId,
+            emp.id,
+            dto.periodYear,
+            dto.periodMonth,
+          )
+        : 0;
+      const gross = isHourly ? hours * rate : rate;
       total += gross;
-      return this.entryRepo.create({
-        payrollRunId: run.id,
-        userId: emp.id,
-        employeeNameSnapshot: emp.fullName,
-        salaryType: emp.salaryType!,
-        rateSnapshot: rate.toFixed(2),
-        hoursWorked: isHourly ? '0.00' : null,
-        grossAmount: gross.toFixed(2),
-        adjustmentAmount: '0.00',
-        adjustmentNote: null,
-        netAmount: gross.toFixed(2),
-      });
-    });
+      entries.push(
+        this.entryRepo.create({
+          payrollRunId: run.id,
+          userId: emp.id,
+          employeeNameSnapshot: emp.fullName,
+          salaryType: emp.salaryType!,
+          rateSnapshot: rate.toFixed(2),
+          hoursWorked: isHourly ? hours.toFixed(2) : null,
+          grossAmount: gross.toFixed(2),
+          adjustmentAmount: '0.00',
+          adjustmentNote: null,
+          netAmount: gross.toFixed(2),
+        }),
+      );
+    }
     await this.entryRepo.save(entries);
 
     run.totalAmount = total.toFixed(2);
