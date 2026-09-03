@@ -12,6 +12,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { SetSalaryDto } from './dto/set-salary.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -96,5 +97,36 @@ export class UsersController {
       dto.status,
     );
     return { id: updated.id, status: updated.status };
+  }
+
+  // Payroll (2026-09): ataylab ALOHIDA, PAYROLL:VIEW/EDIT bilan himoyalangan
+  // endpoint'lar — maosh USERS_ROLES:VIEW (yuqoridagi `list()`) javobiga
+  // QO'SHILMAYDI, chunki kelajakda kimdir USERS_ROLES:view'ga ega bo'lib,
+  // PAYROLL:view'ga ega bo'lmasligi mumkin (custom rol) — shu holatda ham
+  // hamkasblarining maoshi oshkor bo'lib qolmasligi kerak.
+  @Get(':id/salary')
+  @RequirePermission(PermissionModule.PAYROLL, PermissionAction.VIEW)
+  getSalary(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.usersService.getSalary(user.tenantId!, id);
+  }
+
+  @Patch(':id/salary')
+  @RequirePermission(PermissionModule.PAYROLL, PermissionAction.EDIT)
+  async setSalary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: SetSalaryDto,
+  ) {
+    const updated = await this.usersService.setSalary(
+      user.tenantId!,
+      id,
+      dto.salaryType,
+      dto.salaryAmount,
+    );
+    return {
+      id: updated.id,
+      salaryType: updated.salaryType,
+      salaryAmount: updated.salaryAmount,
+    };
   }
 }

@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserStatus } from './entities/user.entity';
+import { SalaryType, User, UserStatus } from './entities/user.entity';
 import { nullable } from '../../common/utils/typeorm.util';
 
 const SALT_ROUNDS = 12;
@@ -112,5 +112,44 @@ export class UsersService {
 
     user.status = status;
     return this.userRepo.save(user);
+  }
+
+  // Payroll moduli (2026-09): Xodimlar sahifasidagi "Maosh belgilash" orqali
+  // chaqiriladi. Har doim TO'LIQ juftlik (tur + summa) sifatida o'rnatiladi —
+  // qisman/bo'sh qiymat yubormaydi (frontend `SetSalaryModal` majburiy
+  // maydonlar bilan yuboradi).
+  async setSalary(
+    tenantId: string,
+    userId: string,
+    salaryType: SalaryType,
+    salaryAmount: string,
+  ): Promise<User> {
+    const user = await this.userRepo.findOneBy({ id: userId, tenantId });
+    if (!user) throw new NotFoundException('Xodim topilmadi');
+
+    user.salaryType = salaryType;
+    user.salaryAmount = salaryAmount;
+    return this.userRepo.save(user);
+  }
+
+  async getSalary(
+    tenantId: string,
+    userId: string,
+  ): Promise<{ salaryType: SalaryType | null; salaryAmount: string | null }> {
+    const user = await this.userRepo.findOneBy({ id: userId, tenantId });
+    if (!user) throw new NotFoundException('Xodim topilmadi');
+    return { salaryType: user.salaryType, salaryAmount: user.salaryAmount };
+  }
+
+  // PayrollService.createRun uchun: shu tenant'dagi faol va maoshi
+  // belgilangan xodimlar ro'yxati (payroll'ga avtomatik kiritish uchun).
+  async listActiveWithSalary(tenantId: string): Promise<User[]> {
+    const users = await this.userRepo.find({
+      where: { tenantId, status: UserStatus.ACTIVE },
+      order: { fullName: 'ASC' },
+    });
+    return users.filter(
+      (u) => u.salaryType !== null && u.salaryAmount !== null,
+    );
   }
 }
