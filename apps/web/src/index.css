@@ -47,10 +47,10 @@
      nusxalanmagan.
   */
   .f1-brand-mark {
-    @apply flex items-center justify-center h-12 w-12 rounded-2xl bg-white border border-slate-200 transition-colors duration-150;
+    @apply flex items-center justify-center h-12 w-12 transition-opacity duration-150;
   }
   .f1-brand-mark:hover {
-    @apply bg-slate-50;
+    @apply opacity-80;
   }
 
   /* "Tanlangan variant" (chip/tab/segment) uslubi — butun ilova bo'ylab
