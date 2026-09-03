@@ -743,9 +743,23 @@ export interface ReportsOverviewDto {
   adr: number;
   revPar: number;
   revenueTrend: { date: string; amount: number }[];
+  // Dashboard grafigidagi Revenue/ADR/Occupancy almashtirgichi uchun — kunning
+  // o'zida FAOL bo'lgan bronlar asosida (revenueTrend'dan farqli, u qabul
+  // qilingan to'lov sanasiga tayanadi). Qarang: apps/api/.../reports.service.ts.
+  occupancyTrend: { date: string; occupancyRatePct: number }[];
+  adrTrend: { date: string; adr: number }[];
   outstandingInvoices: { count: number; totalBalance: number };
   housekeepingPending: number;
   loyaltyDistribution: { tier: LoyaltyTier; count: number }[];
+  // Bevosita oldingi, xuddi shunday uzunlikdagi davrga nisbatan foiz o'zgarish
+  // (Dashboard'dagi trend strelkalari uchun) — oldingi davrda ma'lumot bo'lmasa
+  // (masalan yangi mehmonxona) `null`, frontend bunday holatda strelkani
+  // ko'rsatmaydi. Qarang: apps/api/.../reports.service.ts getOverview.
+  trend: {
+    occupancyRatePctDelta: number | null;
+    adrDelta: number | null;
+    revParDelta: number | null;
+  };
 }
 
 export interface SegmentPerformanceDto {
