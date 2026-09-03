@@ -55,6 +55,8 @@ import { ChannelSyncLog } from './modules/channel-manager/entities/channel-sync-
 import { DemoRequest } from './modules/marketing/entities/demo-request.entity';
 import { PayrollRun } from './modules/payroll/entities/payroll-run.entity';
 import { PayslipEntry } from './modules/payroll/entities/payslip-entry.entity';
+import { AttendanceRecord } from './modules/attendance/entities/attendance-record.entity';
+import { LeaveRequest } from './modules/attendance/entities/leave-request.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -83,6 +85,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
 import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
 import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 
 @Module({
   imports: [
@@ -149,6 +152,8 @@ import { PayrollModule } from './modules/payroll/payroll.module';
           DemoRequest,
           PayrollRun,
           PayslipEntry,
+          AttendanceRecord,
+          LeaveRequest,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -188,6 +193,7 @@ import { PayrollModule } from './modules/payroll/payroll.module';
     MessagingModule,
     CityLedgerModule,
     ChannelManagerModule,
+    AttendanceModule,
     PayrollModule,
   ],
   controllers: [AppController],
