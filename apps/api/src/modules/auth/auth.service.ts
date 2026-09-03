@@ -31,6 +31,7 @@ export class AuthService {
         tenantName: dto.tenantName,
         subdomain: dto.subdomain,
         baseCurrency: dto.baseCurrency,
+        roomsCountHint: dto.roomsCountHint,
       });
 
     const roles = await this.rolesService.seedSystemRolesForTenant(tenant.id);
@@ -41,6 +42,7 @@ export class AuthService {
       email: dto.ownerEmail,
       password: dto.ownerPassword,
       fullName: dto.ownerFullName,
+      position: dto.ownerPosition,
     });
 
     await this.rolesService.assignRoleToUser(
