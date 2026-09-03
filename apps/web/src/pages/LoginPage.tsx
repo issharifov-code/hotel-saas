@@ -177,6 +177,41 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // yuborish"; tugmalar mobil'da ustma-ust (`flex-col sm:flex-row`); kichik
 // maxfiylik matni qo'shildi; muvaffaqiyat xabari "So'rovingiz qabul
 // qilindi. Tez orada siz bilan bog'lanamiz."ga yangilandi.
+//
+// 2026-09-03 (3-tur — desktop layout/scroll va demo-flow tuzatish, batafsil
+// yozma spec asosida): (1) Demo-flow endi to'liq almashtiruv: "Demo so'rash"
+// bosilganda login formasi (email/parol/checkbox/"Kirish"/"Parolni
+// unutdingizmi?"/ro'yxatdan o'tish/"yoki"/"Demo so'rash" tugmasi) BUTUNLAY
+// yashiriladi, o'rniga FAQAT demo forma ko'rinadi (avval ikkalasi bir vaqtda
+// ko'rinardi — demo forma login formaning tagiga qo'shilardi). "Ortga
+// qaytish" login state'ga qaytaradi. `DemoRequestForm`ning o'zi endi mustaqil
+// sarlavha+tavsif chiqaradi ("Demo so'rash" / "Jamoamiz siz bilan
+// bog'lanib..."), login h1/p bilan bir xil o'lcham/joylashuv iyerarxiyasida
+// — ilgarigi kichik ichki-karta uslubi (rounded-2xl border bg-slate-50/60
+// karta, h2 text-base) olib tashlandi. (2) Desktop scroll: sahifa endi
+// `md:h-[100dvh] md:overflow-hidden` — global (body-darajasidagi) vertikal
+// scroll md+ ekranlarda umuman paydo bo'lmaydi; qator (`flex md:flex-row`)
+// `md:min-h-0` bilan; chap carousel paneli `md:overflow-hidden` (hech qachon
+// scroll bo'lmaydi, ichki kontent avtoplay/illyustratsiya o'zgarishsiz
+// vertikal markazlashgan turadi); o'ng panel `md:overflow-y-auto
+// md:min-h-0` — demo forma (yoki uzun xato xabarlari) viewport balandligiga
+// sig'masagina FAQAT shu panel ichida scroll paydo bo'ladi, chap panel va
+// footer joyida qoladi. Markazlashgan kontent flexbox `items-center`/
+// `justify-center` o'rniga `mx-auto`/`md:my-auto` (margin:auto) orqali
+// markazlashtiriladi — bu ba'zi brauzerlarda `align-items:center` +
+// `overflow:auto` birgalikda ishlatilganda kontentning yuqori qismi scroll
+// orqali ko'rinmay qolishi mumkin bo'lgan mashhur flexbox xatosining oldini
+// oladi. (3) Mobil/tablet: global page scroll ruxsat etiladi (`md:` prefiksi
+// bo'lmagani uchun asosiy wrapper faqat `min-h-[100dvh]`da qoladi); F1
+// logotipidan keyin, forma tepasida ixcham "hero" carousel (`LoginCarousel
+// compact`, faqat `md:hidden`) qaytarildi — 8-turda butunlay olib
+// tashlangan edi, endi qayta tiklandi (login va demo state'larning
+// ikkalasida ham ko'rinadi, umumiy "chrome" sifatida). Demo forma mobil'da
+// ham login formani to'liq almashtiradi (yuqoridagi (1)ga qarang); demo
+// forma tugmalari (`flex flex-col sm:flex-row`) endi ikkalasi ham aniq
+// `w-full sm:w-auto`/`sm:flex-1` bilan — avval `flex-col`dagi standart
+// `align-items:stretch` orqali bilvosita to'liq kenglikda edi, endi aniq
+// belgilangan.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -329,117 +364,124 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      <div className="flex-1 flex flex-col md:flex-row">
-        <div className="hidden md:flex md:w-1/2 flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
+    <div className="flex min-h-[100dvh] flex-col md:h-[100dvh] md:overflow-hidden">
+      <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
+        <div className="hidden md:flex md:w-1/2 md:overflow-hidden flex-col bg-gradient-to-br from-[#eef2fd] to-[#dde5fa] p-12 text-slate-900">
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
-          <div className="w-full max-w-sm">
+        <div className="flex flex-1 flex-col bg-white px-6 py-12 md:min-h-0 md:overflow-y-auto">
+          <div className="mx-auto w-full max-w-sm md:my-auto">
             {step === 'credentials' && (
               <>
                 <div className="-mt-4 mb-7 flex justify-center">
                   <img src={folioOneLogoFull} alt="Folio One" aria-hidden="true" className="h-16 w-auto" />
                 </div>
-                <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
-                <p className="mb-5 text-sm text-slate-600">Tizimga kirish uchun email va parolingizni kiriting</p>
 
-                <form onSubmit={onSubmit} className="space-y-4">
-                  <div>
-                    <label htmlFor="login-email" className="mb-1 block text-sm font-semibold text-slate-700">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <FieldIcon>
-                        <MailIcon />
-                      </FieldIcon>
-                      <input
-                        id="login-email"
-                        type="email"
-                        required
-                        autoFocus
-                        placeholder="email@hotel.uz"
-                        aria-invalid={!!error}
-                        className={pillInputClass({ hasError: !!error })}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="login-password" className="mb-1 block text-sm font-semibold text-slate-700">
-                      Parol
-                    </label>
-                    <div className="relative">
-                      <FieldIcon>
-                        <LockIcon />
-                      </FieldIcon>
-                      <input
-                        id="login-password"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="Parolingiz"
-                        aria-invalid={!!error}
-                        className={pillInputClass({ hasError: !!error, trailingIcon: true })}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
-                      >
-                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                      </button>
-                    </div>
-                    <div className="mt-1.5 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setShowForgot((v) => !v)}
-                        className="text-sm font-medium text-brand-navy hover:underline"
-                      >
-                        Parolni unutdingizmi?
-                      </button>
-                    </div>
-                  </div>
+                <div className="mb-7 md:hidden">
+                  <LoginCarousel slides={SLIDES} compact />
+                </div>
 
-                  {showForgot && (
-                    <p className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                      Hozircha parolni faqat mehmonxonangiz administratori "Xodimlar" bo'limidan
-                      tiklashi mumkin — administratoringizga murojaat qiling.
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="remember-me"
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-navy focus:ring-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
-                    />
-                    <label htmlFor="remember-me" className="cursor-pointer select-none text-sm text-slate-600">
-                      Tizimda eslab qolish
-                    </label>
-                  </div>
-
-                  {error && (
-                    <p role="alert" aria-live="polite" className="text-sm text-rose-600">
-                      {error}
-                    </p>
-                  )}
-
-                  <button type="submit" disabled={loading} className={pillPrimaryBtn}>
-                    {loading ? 'Kirilmoqda...' : 'Kirish'}
-                  </button>
-                </form>
-
-                {!showDemoForm && (
+                {!showDemoForm ? (
                   <>
+                    <h1 className="mb-2 text-center text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
+                    <p className="mb-8 text-center text-sm text-slate-600">
+                      Tizimga kirish uchun email va parolingizni kiriting
+                    </p>
+
+                    <form onSubmit={onSubmit} className="space-y-4">
+                      <div>
+                        <label htmlFor="login-email" className="mb-1 block text-sm font-semibold text-slate-700">
+                          Email
+                        </label>
+                        <div className="relative">
+                          <FieldIcon>
+                            <MailIcon />
+                          </FieldIcon>
+                          <input
+                            id="login-email"
+                            type="email"
+                            required
+                            autoFocus
+                            placeholder="email@hotel.uz"
+                            aria-invalid={!!error}
+                            className={pillInputClass({ hasError: !!error })}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="login-password" className="mb-1 block text-sm font-semibold text-slate-700">
+                          Parol
+                        </label>
+                        <div className="relative">
+                          <FieldIcon>
+                            <LockIcon />
+                          </FieldIcon>
+                          <input
+                            id="login-password"
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Parolingiz"
+                            aria-invalid={!!error}
+                            className={pillInputClass({ hasError: !!error, trailingIcon: true })}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                          >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
+                        </div>
+                        <div className="mt-1.5 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowForgot((v) => !v)}
+                            className="text-sm font-medium text-brand-navy hover:underline"
+                          >
+                            Parolni unutdingizmi?
+                          </button>
+                        </div>
+                      </div>
+
+                      {showForgot && (
+                        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                          Hozircha parolni faqat mehmonxonangiz administratori "Xodimlar" bo'limidan
+                          tiklashi mumkin — administratoringizga murojaat qiling.
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="remember-me"
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-navy focus:ring-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                        />
+                        <label htmlFor="remember-me" className="cursor-pointer select-none text-sm text-slate-600">
+                          Tizimda eslab qolish
+                        </label>
+                      </div>
+
+                      {error && (
+                        <p role="alert" aria-live="polite" className="text-sm text-rose-600">
+                          {error}
+                        </p>
+                      )}
+
+                      <button type="submit" disabled={loading} className={pillPrimaryBtn}>
+                        {loading ? 'Kirilmoqda...' : 'Kirish'}
+                      </button>
+                    </form>
+
                     <p className="mt-4 text-center text-sm text-slate-500">
                       Yangi mehmonxonami?{' '}
                       <Link to="/register" className="font-medium text-brand-navy hover:underline">
@@ -463,9 +505,9 @@ export function LoginPage() {
                       </button>
                     </div>
                   </>
+                ) : (
+                  <DemoRequestForm onClose={() => setShowDemoForm(false)} />
                 )}
-
-                {showDemoForm && <DemoRequestForm onClose={() => setShowDemoForm(false)} />}
               </>
             )}
 
@@ -581,99 +623,99 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
     }
   };
 
-  if (sent) {
-    return (
-      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-        So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">Demo so'rash</h2>
-        <p className="mt-0.5 text-xs text-slate-500">Jamoamiz siz bilan bog'lanib, Folio One'ni tanishtiradi.</p>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">Ism va familiyangiz</label>
-        <input
-          required
-          className={pillInputNoIcon}
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">Telefon raqamingiz</label>
-        <div className="flex">
-          <span className="flex select-none items-center rounded-l-full border border-r-0 border-slate-200 bg-slate-100 px-3.5 text-sm font-medium text-slate-500">
-            +998
-          </span>
-          <input
-            required
-            type="tel"
-            inputMode="numeric"
-            autoComplete="tel-national"
-            className="w-full rounded-r-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-            placeholder="90 123 45 67"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">
-          Email <span className="text-slate-400">(ixtiyoriy)</span>
-        </label>
-        <input
-          type="email"
-          className={pillInputNoIcon}
-          value={demoEmail}
-          onChange={(e) => setDemoEmail(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-semibold text-slate-700">
-          Xonalar soni <span className="text-slate-400">(ixtiyoriy)</span>
-        </label>
-        <div className="relative">
-          <select
-            className={`${pillInputNoIcon} appearance-none pr-9`}
-            value={roomCount}
-            onChange={(e) => setRoomCount(e.target.value)}
-          >
-            <option value="">Tanlang</option>
-            {ROOM_COUNT_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-            <ChevronDownIcon />
-          </span>
-        </div>
-      </div>
-
-      {demoError && <p className="text-xs text-rose-600">{demoError}</p>}
-
-      <p className="text-[11px] leading-snug text-slate-400">
-        Yuborish orqali siz bilan demo bo'yicha bog'lanishimizga rozilik bildirasiz.
+    <>
+      <h2 className="mb-2 text-center text-2xl font-semibold text-slate-900">Demo so'rash</h2>
+      <p className="mb-8 text-center text-sm text-slate-600">
+        Jamoamiz siz bilan bog'lanib, Folio One'ni tanishtiradi.
       </p>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <button type="submit" disabled={submitting} className={`${pillPrimaryBtn} sm:flex-1`}>
-          {submitting ? 'Yuborilmoqda...' : "Demo so'rovini yuborish"}
-        </button>
-        <button type="button" onClick={onClose} className={pillSecondaryBtn}>
-          Ortga qaytish
-        </button>
-      </div>
-    </form>
+      {sent ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">Ism va familiyangiz</label>
+            <input
+              required
+              className={pillInputNoIcon}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">Telefon raqamingiz</label>
+            <div className="flex">
+              <span className="flex select-none items-center rounded-l-full border border-r-0 border-slate-200 bg-slate-100 px-3.5 text-sm font-medium text-slate-500">
+                +998
+              </span>
+              <input
+                required
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                className="w-full rounded-r-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                placeholder="90 123 45 67"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Email <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+            </label>
+            <input
+              type="email"
+              className={pillInputNoIcon}
+              value={demoEmail}
+              onChange={(e) => setDemoEmail(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Xonalar soni <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+            </label>
+            <div className="relative">
+              <select
+                className={`${pillInputNoIcon} appearance-none pr-9`}
+                value={roomCount}
+                onChange={(e) => setRoomCount(e.target.value)}
+              >
+                <option value="">Tanlang</option>
+                {ROOM_COUNT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                <ChevronDownIcon />
+              </span>
+            </div>
+          </div>
+
+          {demoError && <p className="text-sm text-rose-600">{demoError}</p>}
+
+          <p className="text-[11px] leading-snug text-slate-400">
+            Yuborish orqali siz bilan demo bo'yicha bog'lanishimizga rozilik bildirasiz.
+          </p>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="submit" disabled={submitting} className={`${pillPrimaryBtn} w-full sm:flex-1`}>
+              {submitting ? 'Yuborilmoqda...' : "Demo so'rovini yuborish"}
+            </button>
+            <button type="button" onClick={onClose} className={`${pillSecondaryBtn} w-full sm:w-auto`}>
+              Ortga qaytish
+            </button>
+          </div>
+        </form>
+      )}
+    </>
   );
 }
