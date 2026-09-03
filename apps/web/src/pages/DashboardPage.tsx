@@ -16,13 +16,6 @@ import type {
   RoomStatus,
 } from '../lib/types';
 
-interface Role {
-  id: string;
-  name: string;
-  isSystem: boolean;
-  permissions: { module: string; action: string }[];
-}
-
 const TIER_LABELS: Record<LoyaltyTier, string> = {
   bronze: 'Bronza',
   silver: 'Kumush',
@@ -153,27 +146,34 @@ function DistributionBars({
   );
 }
 
-// Yengil, tashqi kutubxonasiz SVG ustunli grafik — daromad tendensiyasini
+// Yengil, tashqi kutubxonasiz SVG ustunli grafik — trend metrikalarini
 // ko'rsatish uchun (loyihada hozircha chart kutubxonasi o'rnatilmagan).
-function RevenueTrendChart({ data, currency }: { data: { date: string; amount: number }[]; currency: string }) {
-  const max = Math.max(1, ...data.map((d) => d.amount));
+// 2026-09: `RevenueTrendChart`dan umumlashtirildi — endi Revenue/ADR/
+// Occupancy'ning har biri uchun qayta ishlatiladi (`RevenueChartCard`ga
+// qarang), qiymatni formatlash `formatTooltip` orqali chaqiruvchiga beriladi.
+function TrendChart({
+  data,
+  formatTooltip,
+}: {
+  data: { date: string; value: number }[];
+  formatTooltip: (date: string, value: number) => string;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.value));
   const width = 560;
   const height = 140;
   const barGap = 4;
   const barWidth = (width - barGap * (data.length - 1)) / data.length;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-36" role="img" aria-label="Daromad tendensiyasi">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-36" role="img" aria-label="Trend grafigi">
       {data.map((d, i) => {
-        const barHeight = Math.max(1, (d.amount / max) * (height - 20));
+        const barHeight = Math.max(1, (d.value / max) * (height - 20));
         const x = i * (barWidth + barGap);
         const y = height - barHeight - 16;
         const dayLabel = d.date.slice(8, 10);
         return (
           <g key={d.date}>
-            <title>
-              {d.date}: {money(d.amount, currency)}
-            </title>
+            <title>{formatTooltip(d.date, d.value)}</title>
             <rect x={x} y={y} width={barWidth} height={barHeight} rx={2} className="fill-indigo-500" />
             <text x={x + barWidth / 2} y={height - 4} textAnchor="middle" className="fill-slate-400" fontSize={9}>
               {dayLabel}
@@ -185,12 +185,148 @@ function RevenueTrendChart({ data, currency }: { data: { date: string; amount: n
   );
 }
 
-function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+type ChartMetric = 'revenue' | 'adr' | 'occupancy';
+
+const CHART_METRIC_LABELS: Record<ChartMetric, string> = {
+  revenue: 'Daromad',
+  adr: 'ADR',
+  occupancy: 'Bandlik',
+};
+
+// Daromad tendensiyasi grafigi (2026-09, wireframe fikr-mulohazasi asosida):
+// avvalgi faqat-daromad bar chart o'rniga endi Revenue/ADR/Occupancy
+// o'rtasida almashtirgich — backend allaqachon uchala trend massivini ham
+// qaytaradi (`overview.revenueTrend/adrTrend/occupancyTrend`).
+function RevenueChartCard({ overview, currency }: { overview: ReportsOverviewDto; currency: string }) {
+  const [metric, setMetric] = useState<ChartMetric>('revenue');
+
+  const data: { date: string; value: number }[] =
+    metric === 'revenue'
+      ? overview.revenueTrend.map((d) => ({ date: d.date, value: d.amount }))
+      : metric === 'adr'
+        ? overview.adrTrend.map((d) => ({ date: d.date, value: d.adr }))
+        : overview.occupancyTrend.map((d) => ({ date: d.date, value: d.occupancyRatePct }));
+
+  const formatTooltip = (date: string, value: number) =>
+    metric === 'occupancy' ? `${date}: ${value}%` : `${date}: ${money(value, currency)}`;
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+        <p className="text-sm font-medium text-slate-900">Daromad tendensiyasi (oxirgi 14 kun)</p>
+        <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-50 p-0.5">
+          {(Object.keys(CHART_METRIC_LABELS) as ChartMetric[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMetric(m)}
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                metric === m ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+              }`}
+            >
+              {CHART_METRIC_LABELS[m]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <TrendChart data={data} formatTooltip={formatTooltip} />
+    </div>
+  );
+}
+
+// Loyalty taqsimoti paneli (2026-09): avvalgi versiyada raqamlar (40/25/12/3)
+// nimani anglatishi (son? foiz?) darhol bilinmasdi — endi sarlavhada jami
+// mehmonlar soni, har bir daraja qatorida esa son VA umumiy foiz ko'rsatiladi.
+function LoyaltyPanel({ distribution }: { distribution: { tier: LoyaltyTier; count: number }[] }) {
+  const total = distribution.reduce((sum, d) => sum + d.count, 0);
+  const maxCount = Math.max(1, ...distribution.map((d) => d.count));
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+      <p className="text-sm font-medium text-slate-900">Loyalty darajalari</p>
+      <p className="text-xs text-slate-400 mb-3">{total} mehmon</p>
+      <div className="space-y-2">
+        {distribution.map((d) => {
+          const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
+          return (
+            <div key={d.tier}>
+              <div className="flex justify-between text-xs text-slate-600 mb-1">
+                <span>{TIER_LABELS[d.tier]}</span>
+                <span>
+                  {d.count} mehmon <span className="text-slate-400">· {pct}%</span>
+                </span>
+              </div>
+              <div className="h-2 rounded bg-slate-100">
+                <div
+                  className={`h-2 rounded ${TIER_BAR_COLORS[d.tier]}`}
+                  style={{ width: `${(d.count / maxCount) * 100}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Trend strelkasi (2026-09) — backend `ReportsOverviewDto.trend`dan kelgan
+// nisbiy foiz o'zgarishni ko'rsatadi (bevosita oldingi, xuddi shunday
+// uzunlikdagi davrga solishtirib). `null` bo'lsa (oldingi davrda ma'lumot
+// yo'q — masalan yangi mehmonxona) hech narsa ko'rsatilmaydi.
+function TrendBadge({ deltaPct }: { deltaPct: number | null | undefined }) {
+  if (deltaPct === null || deltaPct === undefined) return null;
+  const up = deltaPct >= 0;
+  return (
+    <p className={`text-xs font-medium mt-1 ${up ? 'text-emerald-600' : 'text-rose-600'}`}>
+      {up ? '↑' : '↓'} {Math.abs(deltaPct)}%{' '}
+      <span className="font-normal text-slate-400">oldingi davrga nisbatan</span>
+    </p>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  trend,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  trend?: number | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="text-2xl font-semibold text-slate-900 mt-1">{value}</p>
+      <TrendBadge deltaPct={trend} />
       {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+// "Bugungi operatsiyalar" tez-nazar qatori (2026-09) — Umumiy tabda
+// allaqachon yuklangan `overview`dan (kelish/ketish/tozalash/to'lovlar)
+// foydalanadi, qo'shimcha backend endpoint kerak emas. Yuqoridagi kattaroq
+// KPI kartalaridan farqli, bir qatorli ixcham ko'rinish uchun.
+function TodaysOperationsStrip({ overview }: { overview: ReportsOverviewDto }) {
+  const stats = [
+    { label: 'Bugungi kelishlar', value: overview.todayArrivals },
+    { label: 'Bugungi ketishlar', value: overview.todayDepartures },
+    { label: 'Tozalash kutilmoqda', value: overview.housekeepingPending },
+    { label: "To'lovlar kutilmoqda", value: overview.outstandingInvoices.count },
+  ];
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+      <p className="text-sm font-medium text-slate-900 mb-3">Bugungi operatsiyalar</p>
+      <div className="flex flex-wrap gap-x-8 gap-y-3">
+        {stats.map((s) => (
+          <div key={s.label} className="min-w-[120px]">
+            <p className="text-xs text-slate-500">{s.label}</p>
+            <p className="text-xl font-semibold text-slate-900 mt-0.5">{s.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -238,7 +374,7 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
           <p className="text-sm font-medium text-slate-900 mb-3">Xonalar holati (tozalik)</p>
           <DistributionBars
             rows={(Object.keys(HK_STATUS_LABELS) as HousekeepingStatus[]).map((k) => ({
@@ -248,7 +384,7 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
             }))}
           />
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
           <p className="text-sm font-medium text-slate-900 mb-3">Xonalar holati (band/bo'sh)</p>
           <DistributionBars
             rows={(Object.keys(ROOM_STATUS_LABELS) as RoomStatus[]).map((k) => ({
@@ -260,7 +396,7 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 mt-3">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mt-3">
         <p className="text-sm font-medium text-slate-900 mb-3">Vazifalar holati</p>
         <DistributionBars
           rows={(Object.keys(TASK_STATUS_LABELS) as HousekeepingTaskStatus[]).map((k) => ({
@@ -270,6 +406,51 @@ function HousekeepingTab({ propertyId }: { propertyId: string }) {
           }))}
         />
       </div>
+    </>
+  );
+}
+
+// "Front Desk" tabi (2026-09, OPERA Cloud'dagi "Default" tabidagi In
+// House/Arrivals/Departures panellariga o'xshab) — Umumiy tabda allaqachon
+// yuklangan `overview`dan bugungi kelish/ketish va turgan mehmonlar sonini
+// alohida, kattaroq panellarda ko'rsatadi. Yangi backend endpoint kerak
+// emas — bir xil `overview` obyekti qayta ishlatiladi (MoliyaviyTab'dagi
+// naqsh bilan bir xil).
+function FrontDeskTab({
+  overview,
+  overviewError,
+}: {
+  overview: ReportsOverviewDto | null;
+  overviewError: string | null;
+}) {
+  if (overviewError) return <p className="text-sm text-rose-600">{overviewError}</p>;
+  if (!overview) return <p className="text-sm text-slate-500">Yuklanmoqda...</p>;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <p className="text-sm font-medium text-slate-900 mb-2">Turgan mehmonlar (In House)</p>
+          <p className="text-3xl font-semibold text-slate-900">{overview.occupancy.occupiedRooms}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {overview.occupancy.totalRooms} xonadan band · {overview.inHouseBookings} bron
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <p className="text-sm font-medium text-slate-900 mb-2">Bugungi kelishlar (Arrivals)</p>
+          <p className="text-3xl font-semibold text-slate-900">{overview.todayArrivals}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <p className="text-sm font-medium text-slate-900 mb-2">Bugungi ketishlar (Departures)</p>
+          <p className="text-3xl font-semibold text-slate-900">{overview.todayDepartures}</p>
+        </div>
+      </div>
+      <Link
+        to="/bookings"
+        className="inline-block mt-4 text-sm font-medium text-brand-navy hover:underline"
+      >
+        Bronlar taqvimini ko'rish →
+      </Link>
     </>
   );
 }
@@ -330,9 +511,14 @@ function MoliyaviyTab({
           <KpiCard
             label={`Bandlik (o'rtacha, ${overview.periodDays} kun)`}
             value={`${overview.occupancy.occupancyRatePct}%`}
+            trend={overview.trend.occupancyRatePctDelta}
           />
-          <KpiCard label="ADR (o'rtacha kunlik narx)" value={money(overview.adr, currency)} />
-          <KpiCard label="RevPAR" value={money(overview.revPar, currency)} />
+          <KpiCard
+            label="ADR (o'rtacha kunlik narx)"
+            value={money(overview.adr, currency)}
+            trend={overview.trend.adrDelta}
+          />
+          <KpiCard label="RevPAR" value={money(overview.revPar, currency)} trend={overview.trend.revParDelta} />
           <KpiCard
             label="To'lanmagan hisob-fakturalar"
             value={money(overview.outstandingInvoices.totalBalance, currency)}
@@ -361,7 +547,7 @@ function MoliyaviyTab({
                 <KpiCard label="Sof foyda" value={money(netProfit ?? 0, currency)} />
               </div>
               {departmentTotals.length > 0 && (
-                <div className="rounded-lg border border-slate-200 bg-white p-4 mt-3">
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mt-3">
                   <p className="text-sm font-medium text-slate-900 mb-3">Bo'limlar bo'yicha daromad (USALI)</p>
                   <DistributionBars
                     rows={departmentTotals.map((d, i) => ({
@@ -381,44 +567,181 @@ function MoliyaviyTab({
   );
 }
 
-const MODULES = [
-  { key: 'booking', label: 'Bron / Xona boshqaruvi', link: '/bookings' },
-  { key: 'front_desk', label: 'Front Desk' },
-  { key: 'housekeeping', label: 'Housekeeping', link: '/housekeeping' },
-  { key: 'warehouse', label: 'Warehouse (Ombor)', link: '/warehouse' },
-  { key: 'pos', label: 'POS', link: '/pos' },
-  { key: 'guest_crm', label: 'Guest CRM / Loyalty', link: '/guests' },
-  { key: 'invoicing', label: 'Invoicing', link: '/invoicing' },
-  { key: 'accounting', label: 'Moliyaviy hisob (USALI)', link: '/accounting' },
-  { key: 'reports', label: 'Hisobot / Dashboard' },
-  { key: 'billing', label: 'SaaS Billing' },
+// "Modullar" ilova-ishga-tushirgich ikonkalari (2026-09) — minimal chiziqli
+// uslub, AppLayout'dagi mavjud icon'lar bilan bir xil (viewBox 20x20,
+// strokeWidth ~1.8).
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M10 2.5a4 4 0 0 1 4 4v2.3c0 1 .4 1.9 1.1 2.6l.5.5c.5.5.1 1.4-.6 1.4H5c-.7 0-1.1-.9-.6-1.4l.5-.5c.7-.7 1.1-1.6 1.1-2.6V6.5a4 4 0 0 1 4-4Z"
+      />
+      <path strokeLinecap="round" d="M8.3 15.5a1.8 1.8 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+function BroomIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l4 4-7 7-4-1 1-4 6-6Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 11 3.5 16.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 17.5l1-2.7 1.7 1.7-2.7 1Z" />
+    </svg>
+  );
+}
+
+function CashIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="2.3" y="5.5" width="15.4" height="9" rx="1.8" />
+      <circle cx="10" cy="10" r="2.2" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 16.5v-11M3.5 16.5h13" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.5 13.5v-3M10 13.5v-6M13.5 13.5v-4.5" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <circle cx="7.2" cy="6.5" r="2.5" />
+      <path strokeLinecap="round" d="M2.5 16c0-2.6 2.1-4.3 4.7-4.3s4.7 1.7 4.7 4.3" />
+      <circle cx="14" cy="7.2" r="2" />
+      <path strokeLinecap="round" d="M13 11.9c1.9.2 3.5 1.7 3.5 4" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="3" y="4.5" width="14" height="12" rx="1.8" />
+      <path strokeLinecap="round" d="M3 8.5h14M6.5 2.5v3M13.5 2.5v3" />
+    </svg>
+  );
+}
+
+function BoxIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 2.5 17 6v8l-7 3.5L3 14V6l7-3.5Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l7 3.5L17 6M10 9.5V17.5" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.5 3.5h2l1.7 9.3a1.8 1.8 0 0 0 1.8 1.5h6.3a1.8 1.8 0 0 0 1.8-1.5l1.1-6H5.5"
+      />
+      <circle cx="8" cy="17" r="1.1" />
+      <circle cx="14.5" cy="17" r="1.1" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 2.5h10v15l-2-1.3-1.5 1.3-1.5-1.3-1.5 1.3-1.5-1.3L5 17.5v-15Z" />
+      <path strokeLinecap="round" d="M7.3 6.5h5.4M7.3 9.5h5.4M7.3 12.5h3" />
+    </svg>
+  );
+}
+
+function CardIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="2.5" y="4.5" width="15" height="11" rx="1.8" />
+      <path strokeLinecap="round" d="M2.5 8h15" />
+      <path strokeLinecap="round" d="M5 12.5h3" />
+    </svg>
+  );
+}
+
+// "Modullar" — ilova-ishga-tushirgich (app launcher) ro'yxati (2026-09,
+// wireframe fikr-mulohazasi asosida qayta ishlandi): avvalgi versiyada har
+// bir modul "Ruxsat bor/yo'q" matni bilan generic admin-panel ko'rinishida
+// edi — endi faqat foydalanuvchiga ochiq modullar, ikonka+qisqa tavsif bilan,
+// haqiqiy ilova ishga tushirgichiga o'xshab ko'rsatiladi (ruxsat yo'q
+// modullar butunlay yashiriladi, "qulflangan" plitkalar bilan chalg'itish
+// o'rniga).
+const MODULES: { key: string; label: string; subtitle: string; link: string; icon: () => React.JSX.Element }[] = [
+  { key: 'front_desk', label: 'Front Desk', subtitle: 'Operatsiyalar', link: '/night-audit', icon: BellIcon },
+  { key: 'housekeeping', label: 'Housekeeping', subtitle: 'Xona holati', link: '/housekeeping', icon: BroomIcon },
+  { key: 'accounting', label: 'Moliyaviy hisob', subtitle: 'USALI', link: '/accounting', icon: CashIcon },
+  { key: 'reports', label: 'Hisobotlar', subtitle: 'Dashboard', link: '/segment-reports', icon: ChartIcon },
+  { key: 'guest_crm', label: 'Mijozlar', subtitle: 'CRM / Loyalty', link: '/guests', icon: UsersIcon },
+  { key: 'booking', label: 'Bronlar', subtitle: 'Xona boshqaruvi', link: '/bookings', icon: CalendarIcon },
+  { key: 'warehouse', label: 'Ombor', subtitle: 'Warehouse', link: '/warehouse', icon: BoxIcon },
+  { key: 'pos', label: 'POS', subtitle: 'Savdo nuqtasi', link: '/pos', icon: CartIcon },
+  { key: 'invoicing', label: 'Hisob-fakturalar', subtitle: 'Invoicing', link: '/invoicing', icon: ReceiptIcon },
+  { key: 'billing', label: 'Obuna', subtitle: "To'lovlar", link: '/billing', icon: CardIcon },
 ];
 
-type Tab = 'umumiy' | 'housekeeping' | 'moliyaviy';
+function ModuleTile({
+  label,
+  subtitle,
+  link,
+  icon: Icon,
+}: {
+  label: string;
+  subtitle: string;
+  link: string;
+  icon: () => React.JSX.Element;
+}) {
+  return (
+    <Link
+      to={link}
+      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 transition-shadow hover:shadow-md hover:border-brand-navy/30"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-navy-light text-brand-navy">
+        <Icon />
+      </span>
+      <span className="min-w-0">
+        <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
+        <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+      </span>
+    </Link>
+  );
+}
+
+type Tab = 'umumiy' | 'front_desk' | 'housekeeping' | 'moliyaviy';
 
 const TAB_LABELS: Record<Tab, string> = {
   umumiy: 'Umumiy',
+  front_desk: 'Front Desk',
   housekeeping: 'Housekeeping',
   moliyaviy: 'Moliyaviy / Rev Mgt',
 };
 
 export function DashboardPage() {
-  const { user, property, permissions } = useAuth();
+  const { user, property, permissions, logout } = useAuth();
   const [tab, setTab] = useState<Tab>('umumiy');
-  const [roles, setRoles] = useState<Role[]>([]);
   const [overview, setOverview] = useState<ReportsOverviewDto | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
   const hasAccess = (moduleKey: string) => permissions.some((p) => p.startsWith(`${moduleKey}:`));
 
   useEffect(() => {
-    if (!user?.tenantId || !hasAccess('users_roles')) return;
-    apiFetch<Role[]>('/roles').then(setRoles).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.tenantId, permissions]);
-
-  useEffect(() => {
-    if (!property || !hasAccess('reports')) return;
+    // Front Desk tabi ham shu `overview`dan foydalanadi (kelish/ketish/
+    // turgan mehmonlar sonlari) — shuning uchun `front_desk` ruxsati bo'lgan,
+    // lekin `reports` ruxsati bo'lmagan foydalanuvchi uchun ham yuklanadi.
+    if (!property || !(hasAccess('reports') || hasAccess('front_desk'))) return;
     setOverviewError(null);
     apiFetch<ReportsOverviewDto>(`/properties/${property.id}/reports/overview`)
       .then(setOverview)
@@ -428,29 +751,54 @@ export function DashboardPage() {
 
   const currency = property?.currency ?? 'UZS';
 
-  // OPERA Cloud dashboard'idagi kabi — bo'limlar mazmuni bo'yicha guruhlangan tablar:
-  // Umumiy (hamma uchun), Housekeeping va Moliyaviy/Rev Mgt faqat tegishli ruxsat
-  // bor foydalanuvchilarga ko'rinadi.
+  // OPERA Cloud dashboard'idagi kabi — bo'limlar mazmuni bo'yicha guruhlangan
+  // 4 ta tab: Umumiy (hamma uchun), Front Desk, Housekeeping va Moliyaviy/Rev
+  // Mgt faqat tegishli ruxsat bor foydalanuvchilarga ko'rinadi.
   const visibleTabs: Tab[] = [
     'umumiy',
+    ...(hasAccess('front_desk') ? (['front_desk'] as const) : []),
     ...(hasAccess('housekeeping') ? (['housekeeping'] as const) : []),
     ...(hasAccess('reports') || hasAccess('accounting') ? (['moliyaviy'] as const) : []),
   ];
   const activeTab = visibleTabs.includes(tab) ? tab : 'umumiy';
 
+  const firstName = user?.fullName?.trim().split(/\s+/)[0] || user?.email;
+
   return (
     <AppLayout title="Bosh sahifa">
-      <div className="flex gap-6 border-b border-slate-200 mb-6">
+      {/* OPERA Cloud'dagi "Hello, {ism}!" salomlashuvi (2026-09), 2026-09
+          (ixchamlashtirish): avvalgi ikki qatorli (sarlavha + alohida
+          "Siz emasmisiz?" qatori) blok bitta qatorga siqildi — foydalanuvchi
+          fikri: dashboard yuqorisida ortiqcha bo'sh joy KPI'larni pastga
+          surib yubormasligi kerak. Chiqish havolasi endi kichik/subtle,
+          ism yonida. */}
+      <div className="mb-4 flex items-baseline gap-3 flex-wrap">
+        <p className="text-xl font-semibold text-slate-900">Salom, {firstName}!</p>
+        <button
+          type="button"
+          onClick={logout}
+          className="text-xs text-slate-400 hover:text-brand-navy hover:underline"
+        >
+          Tizimdan chiqish
+        </button>
+      </div>
+
+      {/* Tab-qatori (2026-09, Login sahifasiga moslab): pastki-chiziqli
+          tablar o'rniga Login'dagi pill tugmalar uslubiga mos yumaloq
+          segmentli tanlagich — konteyner rounded-full, faol tab to'liq
+          brand-navy fon bilan ajratiladi. */}
+      <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white p-1 mb-4 shadow-sm">
         {visibleTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`relative pb-3 pt-1 text-sm font-medium transition-colors ${
-              activeTab === t ? 'text-brand-navy' : 'text-slate-500 hover:text-slate-700'
+            className={`px-5 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+              activeTab === t
+                ? 'bg-brand-navy text-white'
+                : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
             }`}
           >
             {TAB_LABELS[t]}
-            {activeTab === t && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand-navy" />}
           </button>
         ))}
       </div>
@@ -476,100 +824,51 @@ export function DashboardPage() {
                       label={`Bandlik (o'rtacha, ${overview.periodDays} kun)`}
                       value={`${overview.occupancy.occupancyRatePct}%`}
                       hint={`hozir: ${overview.occupancy.occupiedRooms} / ${overview.occupancy.totalRooms} xona band`}
+                      trend={overview.trend.occupancyRatePctDelta}
                     />
-                    <KpiCard label="ADR (o'rtacha kunlik narx)" value={money(overview.adr, currency)} />
-                    <KpiCard label="RevPAR" value={money(overview.revPar, currency)} />
+                    <KpiCard
+                      label="ADR (o'rtacha kunlik narx)"
+                      value={money(overview.adr, currency)}
+                      trend={overview.trend.adrDelta}
+                    />
+                    <KpiCard label="RevPAR" value={money(overview.revPar, currency)} trend={overview.trend.revParDelta} />
                     <KpiCard
                       label="Turgan mehmonlar"
                       value={String(overview.inHouseBookings)}
                       hint={`Bugun kelish: ${overview.todayArrivals} · Bugun ketish: ${overview.todayDepartures}`}
                     />
-                    <KpiCard
-                      label="To'lanmagan hisob-fakturalar"
-                      value={money(overview.outstandingInvoices.totalBalance, currency)}
-                      hint={`${overview.outstandingInvoices.count} ta hisob-faktura`}
-                    />
-                    <KpiCard label="Tozalash kutilmoqda" value={String(overview.housekeepingPending)} hint="Housekeeping vazifalari" />
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
-                    <div className="lg:col-span-2 rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-medium text-slate-900 mb-2">Daromad tendensiyasi (oxirgi 14 kun)</p>
-                      <RevenueTrendChart data={overview.revenueTrend} currency={currency} />
-                    </div>
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-medium text-slate-900 mb-3">Loyalty darajalari bo'yicha mehmonlar</p>
-                      <div className="space-y-2">
-                        {(() => {
-                          const maxCount = Math.max(1, ...overview.loyaltyDistribution.map((d) => d.count));
-                          return overview.loyaltyDistribution.map((d) => (
-                            <div key={d.tier}>
-                              <div className="flex justify-between text-xs text-slate-600 mb-1">
-                                <span>{TIER_LABELS[d.tier]}</span>
-                                <span>{d.count}</span>
-                              </div>
-                              <div className="h-2 rounded bg-slate-100">
-                                <div
-                                  className={`h-2 rounded ${TIER_BAR_COLORS[d.tier]}`}
-                                  style={{ width: `${(d.count / maxCount) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </div>
+                    <RevenueChartCard overview={overview} currency={currency} />
+                    <LoyaltyPanel distribution={overview.loyaltyDistribution} />
+                  </div>
+
+                  <div className="mt-3">
+                    <TodaysOperationsStrip overview={overview} />
                   </div>
                 </>
               )}
             </section>
           )}
 
-          <section>
-            <h2 className="text-lg font-semibold text-slate-900 mb-3">Modullar</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {MODULES.map((m) => {
-                const active = hasAccess(m.key);
-                const Card = (
-                  <div
-                    className={`rounded-lg border p-3 text-sm h-full ${
-                      active
-                        ? 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                        : 'border-slate-100 bg-slate-100 text-slate-400'
-                    }`}
-                  >
-                    <p className="font-medium">{m.label}</p>
-                    <p className="text-xs mt-1">{active ? 'Ruxsat bor' : "Ruxsat yo'q"}</p>
-                  </div>
-                );
-                return active && m.link ? (
-                  <Link key={m.key} to={m.link}>
-                    {Card}
-                  </Link>
-                ) : (
-                  <div key={m.key}>{Card}</div>
-                );
-              })}
-            </div>
-          </section>
-
-          {hasAccess('users_roles') && (
+          {MODULES.some((m) => hasAccess(m.key)) && (
             <section>
-              <h2 className="text-lg font-semibold text-slate-900 mb-3">Rollar ({roles.length})</h2>
-              <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-                {roles.map((r) => (
-                  <div key={r.id} className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">{r.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {r.isSystem ? 'Standart rol' : 'Custom rol'} · {r.permissions.length} ta ruxsat
-                      </p>
-                    </div>
-                  </div>
+              <h2 className="text-lg font-semibold text-slate-900 mb-3">Modullar</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {MODULES.filter((m) => hasAccess(m.key)).map((m) => (
+                  <ModuleTile key={m.key} label={m.label} subtitle={m.subtitle} link={m.link} icon={m.icon} />
                 ))}
               </div>
             </section>
           )}
+
+        </div>
+      )}
+
+      {activeTab === 'front_desk' && property && (
+        <div className="space-y-3">
+          <FrontDeskTab overview={overview} overviewError={overviewError} />
         </div>
       )}
 
