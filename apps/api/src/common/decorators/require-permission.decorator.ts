@@ -9,5 +9,8 @@ export interface RequiredPermission {
 }
 
 // Controller metodini himoyalash uchun: @RequirePermission(PermissionModule.WAREHOUSE, PermissionAction.EDIT)
-export const RequirePermission = (module: PermissionModule, action: PermissionAction) =>
-  SetMetadata(PERMISSION_KEY, { module, action } as RequiredPermission);
+export const RequirePermission = (
+  module: PermissionModule,
+  action: PermissionAction,
+) =>
+  SetMetadata<string, RequiredPermission>(PERMISSION_KEY, { module, action });
