@@ -135,6 +135,20 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // inputlarga `hover:` (chegara ozgina to'qlashadi) va `disabled:`
 // (kulrang fon, kursor, xiralik) holatlari ham qo'shildi — normal/hover/
 // fokus/xato/disabled endi bir-biridan vizual jihatdan aniq ajraladi.
+//
+// 2026-09-02 (8-tur — logo asset va mobil carousel): (1) `folio-one-logo.png`
+// asset foydalanuvchi yuborgan yuqori sifatli F1 belgisi (rasmning faqat
+// ikonka qismi, matnsiz, kvadrat canvas'ga markazlashtirilgan) bilan
+// almashtirildi — avvalgi versiya kichik o'lchamda (28px) yaxshi
+// o'qilmasligi sababli. Login panel badge'i ham kattalashtirildi
+// (kontainer h-11→h-14 (~56px), ikonka h-7→h-9 (~36px)) — footer'dagi
+// logotip o'lchami o'zgarishsiz qoldi (h-5, ~20px), chunki foydalanuvchi
+// faqat login panel badge'i haqida fikr bildirgan edi. (2) Mobil versiyadagi
+// ixcham carousel-hero (`compact` LoginCarousel) butunlay olib tashlandi —
+// endi mobil'da login formasi F1 badge va sarlavhadan boshlanadi, aylanuvchi
+// slayder ko'rsatilmaydi. Desktop'dagi chap panel carousel'i o'zgarishsiz.
+// `LoginCarousel`ning `compact` prop'i komponentda saqlanib qoldi (kelajakda
+// kerak bo'lishi mumkin), lekin hozircha hech qayerda ishlatilmaydi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -289,15 +303,11 @@ export function LoginPage() {
 
         <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
           <div className="w-full max-w-sm">
-            <div className="mb-5 md:hidden">
-              <LoginCarousel slides={SLIDES} compact />
-            </div>
-
             {step === 'credentials' && (
               <>
                 <div className="mb-7 flex justify-center">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-                    <img src={folioOneLogo} alt="" aria-hidden="true" className="h-7 w-7" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                    <img src={folioOneLogo} alt="" aria-hidden="true" className="h-9 w-9" />
                   </div>
                 </div>
                 <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
