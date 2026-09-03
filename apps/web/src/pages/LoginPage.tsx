@@ -212,6 +212,18 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // `w-full sm:w-auto`/`sm:flex-1` bilan — avval `flex-col`dagi standart
 // `align-items:stretch` orqali bilvosita to'liq kenglikda edi, endi aniq
 // belgilangan.
+//
+// 2026-09-03 (4-tur — demo forma muvaffaqiyat holatini kuchaytirish):
+// foydalanuvchi jonli skrinshotni ko'rgach fikr bildirdi — muvaffaqiyat
+// bloki "toza va professional" chiqqan, lekin (1) chap tarafiga kichik
+// `✓` (CheckCircleIcon, yangi) ikonka qo'shildi, (2) pastiga yengil,
+// outline-pill "Kirish sahifasiga qaytish" tugmasi qo'shildi (`onClose`
+// chaqiradi — xuddi "Ortga qaytish" bilan bir xil, login holatiga
+// qaytaradi) — aks holda foydalanuvchi keyin nima qilishini bilmay
+// qolishi mumkin edi, (3) blok bilan undan yuqoridagi subtitle orasidagi
+// bo'shliq (`mb-8`, 32px) ustiga qo'shimcha `mt-2` (8px) qo'shildi —
+// jami ~40px, so'ralgan 36-44px oralig'ida. Matnning o'zi ("So'rovingiz
+// qabul qilindi...") o'zgarishsiz qoldi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -305,6 +317,24 @@ function ChevronDownIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="mt-0.5 flex-shrink-0"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 5-5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -631,8 +661,20 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
       </p>
 
       {sent ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.
+        <div className="mt-2">
+          <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <CheckCircleIcon />
+            <p>So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.</p>
+          </div>
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-full border border-emerald-200 px-4 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
+            >
+              Kirish sahifasiga qaytish
+            </button>
+          </div>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
