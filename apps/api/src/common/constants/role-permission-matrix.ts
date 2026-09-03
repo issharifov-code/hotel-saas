@@ -52,6 +52,10 @@ export const SYSTEM_ROLE_DEFINITIONS: SystemRoleDefinition[] = [
         ],
       },
       { module: PermissionModule.ACCOUNTING, actions: ALL_ACTIONS },
+      // Payroll — buxgalter uchun ACCOUNTING bilan bir xil to'liq huquq
+      // (maosh belgilash, payroll ishga tushirish/yakunlash/to'langan deb
+      // belgilash — barchasi moliyaviy xarakterdagi amal).
+      { module: PermissionModule.PAYROLL, actions: ALL_ACTIONS },
       { module: PermissionModule.REPORTS, actions: [PermissionAction.VIEW] },
       { module: PermissionModule.BILLING, actions: [PermissionAction.VIEW] },
     ],
