@@ -53,6 +53,8 @@ import { Channel } from './modules/channel-manager/entities/channel.entity';
 import { ChannelRoomTypeMapping } from './modules/channel-manager/entities/channel-room-type-mapping.entity';
 import { ChannelSyncLog } from './modules/channel-manager/entities/channel-sync-log.entity';
 import { DemoRequest } from './modules/marketing/entities/demo-request.entity';
+import { PayrollRun } from './modules/payroll/entities/payroll-run.entity';
+import { PayslipEntry } from './modules/payroll/entities/payslip-entry.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -80,6 +82,7 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
 import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
 
 @Module({
   imports: [
@@ -144,6 +147,8 @@ import { ChannelManagerModule } from './modules/channel-manager/channel-manager.
           ChannelRoomTypeMapping,
           ChannelSyncLog,
           DemoRequest,
+          PayrollRun,
+          PayslipEntry,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -183,6 +188,7 @@ import { ChannelManagerModule } from './modules/channel-manager/channel-manager.
     MessagingModule,
     CityLedgerModule,
     ChannelManagerModule,
+    PayrollModule,
   ],
   controllers: [AppController],
   providers: [
