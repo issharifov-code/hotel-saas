@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant, TenantPlan, TenantStatus } from './entities/tenant.entity';
@@ -11,7 +15,8 @@ const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 export class TenantsService {
   constructor(
     @InjectRepository(Tenant) private readonly tenantRepo: Repository<Tenant>,
-    @InjectRepository(Property) private readonly propertyRepo: Repository<Property>,
+    @InjectRepository(Property)
+    private readonly propertyRepo: Repository<Property>,
     private readonly accountingService: AccountingService,
   ) {}
 
@@ -20,11 +25,12 @@ export class TenantsService {
     subdomain: string;
     baseCurrency?: string;
     propertyName?: string;
+    roomsCountHint?: string;
   }): Promise<{ tenant: Tenant; property: Property }> {
     const subdomain = params.subdomain.trim().toLowerCase();
     if (!SUBDOMAIN_REGEX.test(subdomain)) {
       throw new ConflictException(
-        'Subdomain faqat kichik lotin harflari, raqamlar va tire (-) dan iborat bo\'lishi kerak',
+        "Subdomain faqat kichik lotin harflari, raqamlar va tire (-) dan iborat bo'lishi kerak",
       );
     }
 
@@ -48,15 +54,22 @@ export class TenantsService {
           baseCurrency: params.baseCurrency || 'UZS',
           status: TenantStatus.TRIAL,
           plan: TenantPlan.START,
+          roomsCountHint: params.roomsCountHint?.trim() || null,
         }),
       );
 
-      await manager.query('SELECT set_config($1, $2, true)', ['app.tenant_id', tenant.id]);
+      await manager.query('SELECT set_config($1, $2, true)', [
+        'app.tenant_id',
+        tenant.id,
+      ]);
 
       // Standart (soddalashtirilgan USALI) hisoblar rejasi — buxgalteriya moduli
       // ishlashi uchun har bir tenant kamida shu hisoblarga ega bo'lishi shart
       // (avtomatik provodka `systemKey` orqali ularni topadi).
-      await this.accountingService.seedDefaultChartOfAccounts(tenant.id, manager);
+      await this.accountingService.seedDefaultChartOfAccounts(
+        tenant.id,
+        manager,
+      );
 
       const property = await manager.save(
         manager.create(Property, {
