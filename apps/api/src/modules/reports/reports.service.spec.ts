@@ -36,6 +36,16 @@ describe('ReportsService', () => {
       checkOut: string;
       totalAmount: string;
     }[];
+    previousPeriodBookings?: {
+      checkIn: string;
+      checkOut: string;
+      totalAmount: string;
+    }[];
+    trendWindowBookings?: {
+      checkIn: string;
+      checkOut: string;
+      totalAmount: string;
+    }[];
     revenueTrendRows?: { date: string; total: string }[];
     outstandingInvoices?: { totalAmount: string; paidAmount: string }[];
     housekeepingPending?: number;
@@ -93,17 +103,31 @@ describe('ReportsService', () => {
           ({
             select,
             relations,
+            where,
           }: {
             select?: Record<string, unknown>;
             relations?: Record<string, unknown>;
+            where?: { checkIn?: { type?: string }; checkOut?: unknown };
           }) => {
             if (relations)
               return Promise.resolve(opts.registrationBookings ?? []);
-            return Promise.resolve(
-              select && 'marketSegment' in select
-                ? (opts.segmentBookings ?? [])
-                : (opts.periodBookings ?? []),
-            );
+            if (select && 'marketSegment' in select)
+              return Promise.resolve(opts.segmentBookings ?? []);
+            // occupancyTrend/adrTrend oynasi (checkIn<=today VA
+            // checkOut>=trendStart) — ikkala checkIn/checkOut cheklovi bilan
+            // yagona so'rov, shu orqali boshqalardan ajratamiz.
+            if (where?.checkOut)
+              return Promise.resolve(
+                opts.trendWindowBookings ?? opts.periodBookings ?? [],
+              );
+            // getOverview joriy davr uchun MoreThanOrEqual, oldingi (trend)
+            // davr uchun Between operatoridan foydalanadi — shu orqali
+            // ikkalasini mock'da ajratamiz.
+            if (where?.checkIn?.type === 'between')
+              return Promise.resolve(
+                opts.previousPeriodBookings ?? opts.periodBookings ?? [],
+              );
+            return Promise.resolve(opts.periodBookings ?? []);
           },
         ),
       findAndCount: jest.fn().mockImplementation(() => {
@@ -243,6 +267,80 @@ describe('ReportsService', () => {
       { tier: LoyaltyTier.GOLD, count: 3 },
       { tier: LoyaltyTier.PLATINUM, count: 0 },
     ]);
+  });
+
+  it('trend: joriy davrni bevosita oldingi davrga solishtirib nisbiy foizni hisoblaydi', async () => {
+    const service = createService({
+      totalRooms: 10,
+      periodBookings: [
+        {
+          checkIn: '2026-08-20',
+          checkOut: '2026-08-25',
+          totalAmount: '500.00',
+        }, // 5 kecha, 500
+      ],
+      previousPeriodBookings: [
+        {
+          checkIn: '2026-07-20',
+          checkOut: '2026-07-24',
+          totalAmount: '200.00',
+        }, // 4 kecha, 200
+      ],
+    });
+    const result = await service.getOverview('t1', 'p1', 30);
+    // Joriy: adr=500/5=100, revPar=round2(500/(10*30))=1.67, occupancy=round2(5/300*100)=1.67
+    // Oldingi: adr=200/4=50, revPar=round2(200/(10*30))=0.67, occupancy=round2(4/300*100)=1.33
+    expect(result.adr).toBe(100);
+    expect(result.trend.adrDelta).toBe(100); // (100-50)/50*100 = 100%
+    expect(result.trend.revParDelta).not.toBeNull();
+    expect(result.trend.occupancyRatePctDelta).not.toBeNull();
+    expect(result.trend.adrDelta!).toBeGreaterThan(0);
+  });
+
+  it("trend: oldingi davrda ma'lumot bo'lmasa (0), foiz o'zgarish null qaytadi", async () => {
+    const service = createService({
+      totalRooms: 10,
+      periodBookings: [
+        {
+          checkIn: '2026-08-20',
+          checkOut: '2026-08-25',
+          totalAmount: '500.00',
+        },
+      ],
+      previousPeriodBookings: [],
+    });
+    const result = await service.getOverview('t1', 'p1', 30);
+    expect(result.trend).toEqual({
+      occupancyRatePctDelta: null,
+      adrDelta: null,
+      revParDelta: null,
+    });
+  });
+
+  it("occupancyTrend/adrTrend: bugun faol bo'lgan bronni to'g'ri hisoblaydi, faol bo'lmagan kunlarni 0/band-emas qiladi", async () => {
+    const todayDate = new Date();
+    const today = todayDate.toISOString().slice(0, 10);
+    const checkOutDate = new Date(todayDate);
+    checkOutDate.setDate(checkOutDate.getDate() + 2);
+    const checkOut = checkOutDate.toISOString().slice(0, 10);
+    const service = createService({
+      totalRooms: 4,
+      // Bugundan boshlab 2 kechalik, 400 birlik bron => 200/kecha.
+      trendWindowBookings: [
+        { checkIn: today, checkOut, totalAmount: '400.00' },
+      ],
+    });
+    const result = await service.getOverview('t1', 'p1', 30);
+    expect(result.occupancyTrend).toHaveLength(14);
+    expect(result.adrTrend).toHaveLength(14);
+    const todayOccupancy = result.occupancyTrend.find((r) => r.date === today);
+    const todayAdr = result.adrTrend.find((r) => r.date === today);
+    // 1 ta faol bron / 4 xona = 25%
+    expect(todayOccupancy?.occupancyRatePct).toBe(25);
+    expect(todayAdr?.adr).toBe(200);
+    // Bron boshlanishidan oldingi kunlarda hali faol emas edi:
+    const yesterday = result.occupancyTrend[result.occupancyTrend.length - 2];
+    expect(yesterday.occupancyRatePct).toBe(0);
   });
 
   describe('getSegmentPerformance', () => {

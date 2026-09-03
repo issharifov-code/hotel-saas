@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  In,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import {
   Booking,
@@ -33,9 +39,28 @@ export interface ReportsOverviewDto {
   adr: number; // Average Daily Rate — tanlangan davr uchun
   revPar: number; // Revenue Per Available Room — tanlangan davr uchun
   revenueTrend: { date: string; amount: number }[]; // oxirgi 14 kun, kunlik qabul qilingan to'lovlar
+  // Dashboard grafigidagi Revenue/ADR/Occupancy almashtirgichi uchun (2026-09) —
+  // revenueTrend'dan farqli (qabul qilingan to'lov sanasi), bular kunning
+  // o'zida FAOL bo'lgan (checkIn <= kun < checkOut) bronlar asosida: har bir
+  // kun uchun band xona-tunlar %'i va faol bronlar bo'yicha o'rtacha kechalik
+  // narx (nightlyRate = totalAmount/nights, shu kunlarda faol bo'lganlar
+  // bo'yicha o'rtacha).
+  occupancyTrend: { date: string; occupancyRatePct: number }[];
+  adrTrend: { date: string; adr: number }[];
   outstandingInvoices: { count: number; totalBalance: number };
   housekeepingPending: number;
   loyaltyDistribution: { tier: string; count: number }[];
+  // Dashboard'dagi trend strelkalari uchun (2026-09) — joriy davr shu uzunlikdagi
+  // BEVOSITA OLDINGI davrga solishtirilgan nisbiy foiz o'zgarishi (masalan
+  // periodDays=30 bo'lsa, oxirgi 30 kun undan oldingi 30 kun bilan
+  // solishtiriladi). Oldingi davrda tegishli qiymat 0 bo'lsa (masalan yangi
+  // mehmonxona, hali bron bo'lmagan), foiz o'zgarish ma'nosiz bo'lgani uchun
+  // `null` qaytariladi — frontend bunday holatda strelkani ko'rsatmaydi.
+  trend: {
+    occupancyRatePctDelta: number | null;
+    adrDelta: number | null;
+    revParDelta: number | null;
+  };
 }
 
 // Segment/kanal/agentlik/korporativ hisob bo'yicha daromad taqsimoti —
@@ -152,6 +177,23 @@ export class ReportsService {
     periodStartDate.setDate(periodStartDate.getDate() - periodDays);
     const periodStart = isoDate(periodStartDate);
 
+    // Trend strelkalari uchun — joriy davrdan bevosita oldingi, xuddi shunday
+    // uzunlikdagi (periodDays) davr, ustma-ust tushmasligi uchun bir kunlik
+    // bo'shliq bilan (previousPeriodEnd = periodStart - 1 kun).
+    const previousPeriodEndDate = new Date(periodStartDate);
+    previousPeriodEndDate.setDate(previousPeriodEndDate.getDate() - 1);
+    const previousPeriodStartDate = new Date(previousPeriodEndDate);
+    previousPeriodStartDate.setDate(
+      previousPeriodStartDate.getDate() - (periodDays - 1),
+    );
+    const previousPeriodStart = isoDate(previousPeriodStartDate);
+    const previousPeriodEnd = isoDate(previousPeriodEndDate);
+
+    // revenueTrend, occupancyTrend va adrTrend uchun umumiy oyna boshlanishi.
+    const trendStartIso = isoDate(
+      new Date(Date.now() - (TREND_DAYS - 1) * 86_400_000),
+    );
+
     const [
       totalRooms,
       occupiedRooms,
@@ -159,6 +201,8 @@ export class ReportsService {
       todayDepartures,
       inHouseBookings,
       periodBookings,
+      previousPeriodBookings,
+      trendWindowBookings,
       revenueTrendRows,
       outstandingInvoices,
       housekeepingPending,
@@ -196,6 +240,25 @@ export class ReportsService {
         },
         select: { checkIn: true, checkOut: true, totalAmount: true },
       }),
+      this.bookingRepo.find({
+        where: {
+          tenantId,
+          propertyId,
+          checkIn: Between(previousPeriodStart, previousPeriodEnd),
+          status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+        },
+        select: { checkIn: true, checkOut: true, totalAmount: true },
+      }),
+      this.bookingRepo.find({
+        where: {
+          tenantId,
+          propertyId,
+          checkIn: LessThanOrEqual(today),
+          checkOut: MoreThanOrEqual(trendStartIso),
+          status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+        },
+        select: { checkIn: true, checkOut: true, totalAmount: true },
+      }),
       this.paymentRepo
         .createQueryBuilder('payment')
         .innerJoin('payment.invoice', 'invoice')
@@ -204,7 +267,7 @@ export class ReportsService {
         .where('invoice.tenantId = :tenantId', { tenantId })
         .andWhere('invoice.propertyId = :propertyId', { propertyId })
         .andWhere('payment.createdAt >= :trendStart', {
-          trendStart: `${isoDate(new Date(Date.now() - (TREND_DAYS - 1) * 86_400_000))} 00:00:00`,
+          trendStart: `${trendStartIso} 00:00:00`,
         })
         .groupBy("to_char(payment.createdAt, 'YYYY-MM-DD')")
         .getRawMany<{ date: string; total: string }>(),
@@ -268,6 +331,37 @@ export class ReportsService {
       revenueTrend.push({ date: d, amount: round2(trendByDate.get(d) ?? 0) });
     }
 
+    // occupancyTrend/adrTrend: har bir kun uchun o'sha kuni FAOL (checkIn <=
+    // kun < checkOut) bronlarni sanaymiz. Bandlik — band xonalar / jami
+    // xonalar; ADR — faol bronlar bo'yicha o'rtacha kechalik narx
+    // (har bir bron uchun totalAmount/nights, keyin barcha faol bronlar
+    // bo'yicha o'rtacha).
+    const occupancyTrend: { date: string; occupancyRatePct: number }[] = [];
+    const adrTrend: { date: string; adr: number }[] = [];
+    for (let i = TREND_DAYS - 1; i >= 0; i--) {
+      const d = isoDate(new Date(Date.now() - i * 86_400_000));
+      let occupiedCount = 0;
+      let rateSum = 0;
+      let rateCount = 0;
+      for (const b of trendWindowBookings) {
+        if (b.checkIn <= d && d < b.checkOut) {
+          occupiedCount += 1;
+          const nights = daysBetween(b.checkIn, b.checkOut);
+          rateSum += Number(b.totalAmount) / nights;
+          rateCount += 1;
+        }
+      }
+      occupancyTrend.push({
+        date: d,
+        occupancyRatePct:
+          totalRooms > 0 ? round2((occupiedCount / totalRooms) * 100) : 0,
+      });
+      adrTrend.push({
+        date: d,
+        adr: rateCount > 0 ? round2(rateSum / rateCount) : 0,
+      });
+    }
+
     let outstandingCount = 0;
     let outstandingTotal = 0;
     for (const inv of outstandingInvoices) {
@@ -286,6 +380,36 @@ export class ReportsService {
       count: loyaltyCounts.get(tier) ?? 0,
     }));
 
+    // Oldingi davr uchun xuddi shu ADR/RevPAR/bandlik hisob-kitobi (yuqoridagi
+    // bilan bir xil mantiq) — faqat trend strelkalari uchun, natija DTO'ning
+    // asosiy maydonlariga ta'sir qilmaydi.
+    let prevRoomRevenue = 0;
+    let prevRoomNights = 0;
+    for (const b of previousPeriodBookings) {
+      const nights = daysBetween(b.checkIn, b.checkOut);
+      prevRoomRevenue += Number(b.totalAmount);
+      prevRoomNights += nights;
+    }
+    const prevAdr =
+      prevRoomNights > 0 ? round2(prevRoomRevenue / prevRoomNights) : 0;
+    const prevRevPar =
+      totalRooms > 0 ? round2(prevRoomRevenue / (totalRooms * periodDays)) : 0;
+    const prevOccupancyRatePct =
+      totalRooms > 0
+        ? round2((prevRoomNights / (totalRooms * periodDays)) * 100)
+        : 0;
+
+    // Oldingi davr qiymati 0 bo'lsa (masalan hali bron bo'lmagan yangi
+    // mehmonxona), nisbiy foiz o'zgarish ma'nosiz bo'lgani uchun `null`.
+    const pctDelta = (current: number, previous: number): number | null =>
+      previous > 0 ? round2(((current - previous) / previous) * 100) : null;
+
+    const trend = {
+      occupancyRatePctDelta: pctDelta(occupancyRatePct, prevOccupancyRatePct),
+      adrDelta: pctDelta(adr, prevAdr),
+      revParDelta: pctDelta(revPar, prevRevPar),
+    };
+
     return {
       asOfDate: today,
       periodDays,
@@ -300,12 +424,15 @@ export class ReportsService {
       adr,
       revPar,
       revenueTrend,
+      occupancyTrend,
+      adrTrend,
       outstandingInvoices: {
         count: outstandingCount,
         totalBalance: round2(outstandingTotal),
       },
       housekeepingPending,
       loyaltyDistribution,
+      trend,
     };
   }
 
