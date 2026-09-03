@@ -439,11 +439,15 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             pastki (kontent bilan chegara) chiziqlaridan "yirib chiqadigan"
             vizual salmoq — Windows 7 Start tugmasi taassurotiga yaqinroq,
             lekin gradient/gloss/bevel'siz, qarang index.css .f1-brand-mark). */}
-        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="mr-2 shrink-0 -my-3">
+        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="shrink-0 -my-3">
           <span className="f1-brand-mark">
             <img src={folioOneLogo} alt="" className="h-9 w-9" />
           </span>
         </Link>
+        {/* Nozik ajratuvchi — yuqoridagi header'dagi sana/user/? oralig'idagi
+            chiziqlar bilan bir xil uslub (h-5 w-px), faqat oq fonga moslab
+            rangi bg-slate-200 (2026-09, foydalanuvchi fikri). */}
+        <span className="mr-2 h-5 w-px bg-slate-200" aria-hidden="true" />
         {visibleSections.map((section) =>
           section.label ? (
             <div key={section.key} className="relative">
