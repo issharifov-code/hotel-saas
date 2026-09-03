@@ -17,6 +17,16 @@ export enum UserStatus {
   DISABLED = 'disabled',
 }
 
+// Payroll moduli (2026-09): xodimga qanday to'lanishi. MONTHLY — bir oylik
+// bazaviy maosh (`salaryAmount` = oylik summa). HOURLY — soatlik stavka
+// (`salaryAmount` = bir soatlik narx, ish soatlari har bir payroll ishga
+// tushirilganda qo'lda kiritiladi — tizimda hali davomat/attendance moduli
+// yo'q).
+export enum SalaryType {
+  MONTHLY = 'monthly',
+  HOURLY = 'hourly',
+}
+
 // Bitta foydalanuvchi = aniq bitta tenant'ga tegishli (agentlik stsenariysi keyingi bosqichda).
 // Platforma super-admin foydalanuvchilari uchun tenantId=null.
 @Entity('users')
@@ -47,6 +57,27 @@ export class User {
   // ko'rsatilgan — sababi `roomsCountHint`dagi izohda tushuntirilgan.
   @Column({ type: 'varchar', length: 150, nullable: true })
   position: string | null;
+
+  // Payroll (2026-09): ikkalasi ham ixtiyoriy — belgilanmagan xodim payroll
+  // ishga tushirilganda avtomatik ro'yxatga kiritilmaydi (StaffPage'da
+  // "Maosh belgilash" orqali o'rnatiladi). `salaryAmount` MONTHLY uchun
+  // oylik summa, HOURLY uchun bir soatlik stavka sifatida talqin qilinadi.
+  @Column({
+    name: 'salary_type',
+    type: 'enum',
+    enum: SalaryType,
+    nullable: true,
+  })
+  salaryType: SalaryType | null;
+
+  @Column({
+    name: 'salary_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  salaryAmount: string | null;
 
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
