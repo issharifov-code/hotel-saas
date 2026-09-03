@@ -22,6 +22,7 @@ import { MaintenancePage } from './pages/MaintenancePage';
 import { InvoicingPage } from './pages/InvoicingPage';
 import { CityLedgerPage } from './pages/CityLedgerPage';
 import { AccountingPage } from './pages/AccountingPage';
+import { PayrollPage } from './pages/PayrollPage';
 import { SegmentReportsPage } from './pages/SegmentReportsPage';
 import { GuestRegistrationReportPage } from './pages/GuestRegistrationReportPage';
 import { BillingPage } from './pages/BillingPage';
@@ -170,6 +171,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AccountingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payroll"
+            element={
+              <ProtectedRoute>
+                <PayrollPage />
               </ProtectedRoute>
             }
           />
