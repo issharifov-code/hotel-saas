@@ -14,6 +14,7 @@ export enum PermissionModule {
   BILLING = 'billing', // SaaS obuna to'lovlari
   USERS_ROLES = 'users_roles', // Role Management
   TENANT_SETTINGS = 'tenant_settings',
+  PAYROLL = 'payroll', // Xodimlar maoshi / ish haqi hisob-kitobi
 }
 
 export enum PermissionAction {
