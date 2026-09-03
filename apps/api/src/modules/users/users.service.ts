@@ -23,6 +23,7 @@ export class UsersService {
     password: string;
     fullName: string;
     isPlatformAdmin?: boolean;
+    position?: string;
   }): Promise<User> {
     const normalizedEmail = params.email.trim().toLowerCase();
 
@@ -44,6 +45,7 @@ export class UsersService {
       fullName: params.fullName,
       status: UserStatus.ACTIVE,
       isPlatformAdmin: params.isPlatformAdmin ?? false,
+      position: params.position?.trim() || null,
     });
     return this.userRepo.save(user);
   }
