@@ -55,6 +55,21 @@ export class Tenant {
   @Column({ name: 'has_sample_data', type: 'boolean', default: false })
   hasSampleData: boolean;
 
+  // Ro'yxatdan o'tish formasida ixtiyoriy tanlangan taxminiy xonalar soni
+  // bucket'i (masalan "21–50") — B2B segmentatsiya uchun. DIQQAT: `type:
+  // 'varchar'` ANIQ ko'rsatilishi SHART — `string | null` union tipida
+  // `type` ko'rsatilmasa, reflect-metadata dizayn tipini `Object` deb
+  // qaytaradi va TypeORM production'da `DataTypeNotSupportedError` bilan
+  // qulab tushadi (bu loyihada `DemoRequest.email`da avval sodir bo'lgan
+  // xato — qarang shu hisobotning 3-bo'limi).
+  @Column({
+    name: 'rooms_count_hint',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
+  roomsCountHint: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
