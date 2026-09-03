@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SampleDataBanner } from './SampleDataBanner';
@@ -11,25 +11,27 @@ interface NavItem {
   moduleKey?: string;
 }
 
-// OPERA Cloud'dagi kabi — chap menyudagi ~20 ta yassi (flat) link mazmuni
-// bo'yicha guruhlarga bo'lingan. `label`i bor bo'lim ochiladigan (accordion)
-// guruh sifatida, `label`siz bo'lim esa (bitta item bilan) oddiy standalone
-// link sifatida ko'rsatiladi.
+// Yuqori gorizontal modul-panel (2026-09, 3-bosqich): foydalanuvchi bergan
+// OPERA Cloud skrinshotidagi aniq guruhlash va nomlanishga moslashtirildi —
+// Mijozlar / Bronlar / Front Desk / Nomer fondi / Moliya / Boshqa / Hisobotlar.
+// `label`i bor bo'lim bosilganda ochiladigan dropdown-guruh, `label`siz bo'lim
+// (bitta item bilan) esa to'g'ridan-to'g'ri link sifatida ko'rsatiladi.
 interface NavSection {
   key: string;
   label?: string;
   items: NavItem[];
 }
 
-// "Bosh sahifa" endi standalone nav-item emas — chap menyu yuqorisidagi
-// Folio One logotipi shu vazifani bajaradi (bosilganda /dashboard'ga olib
-// boradi). "Xodimlar va ruxsatlar" ham bu yerdan olib tashlandi — endi
-// faqat yuqori paneldagi Sozlamalar (gear) tugmasi orqali ochiladi, ikki
-// joyda takrorlanmasligi uchun.
+// "Bosh sahifa" endi standalone nav-item emas — modul panelining eng
+// chetidagi F1 logotipi shu vazifani bajaradi (OPERA'da ham "OPERA Cloud"
+// logotipi shu joyda va shu vazifada). "Xodimlar", "Ish haqi", "Davomat",
+// "Obuna va to'lovlar" va "Rollarni boshqarish" bu yerdan olib tashlangan —
+// endi OPERA'dagi kabi yuqori paneldagi hamburger orqali ochiladigan
+// "Administratsiya" menyusida (pastga qarang, ADMIN_ITEMS/ROLES_ITEM).
 const NAV_SECTIONS: NavSection[] = [
   {
     key: 'client-relations',
-    label: 'Mehmonlar bilan aloqalar',
+    label: 'Mijozlar',
     items: [
       { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
       { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
@@ -53,7 +55,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'inventory',
-    label: 'Inventar',
+    label: 'Nomer fondi',
     items: [
       { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
       { to: '/housekeeping', label: 'Housekeeping', moduleKey: 'housekeeping' },
@@ -61,22 +63,19 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
     ],
   },
-  { key: 'pos', items: [{ to: '/pos', label: 'POS', moduleKey: 'pos' }] },
   {
     key: 'financials',
-    label: 'Moliyaviy',
+    label: 'Moliya',
     items: [
       { to: '/invoicing', label: 'Hisob-fakturalar', moduleKey: 'invoicing' },
       { to: '/city-ledger', label: 'City Ledger', moduleKey: 'invoicing' },
       { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
-      { to: '/payroll', label: 'Ish haqi (Payroll)', moduleKey: 'payroll' },
-      {
-        to: '/attendance',
-        label: "Davomat va ta'til",
-        moduleKey: 'payroll',
-      },
-      { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
     ],
+  },
+  {
+    key: 'misc',
+    label: 'Boshqa',
+    items: [{ to: '/pos', label: 'POS', moduleKey: 'pos' }],
   },
   {
     key: 'reports',
@@ -88,22 +87,43 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-function ChevronIcon({ open }: { open: boolean }) {
+// Hamburger orqali ochiladigan "Administratsiya" menyusi (OPERA'da ham
+// Xodimlar/Ish haqi/Rollar shu tarzda asosiy modul panelidan alohida,
+// hamburger ichida joylashgan). Davomat (Payroll bilan bir xil moduleKey —
+// soatlarni Payroll o'qiydi) va Obuna/to'lovlar (tenant'ning o'z SaaS
+// obunasi, mehmonxona moliyaviy hisobotlaridan farqli — hisob boshqaruvi
+// tusidagi narsa) ham shu yerga, HR/administrativ guruhga qo'shildi.
+const ADMIN_ITEMS: NavItem[] = [
+  { to: '/staff', label: 'Xodimlar' },
+  { to: '/payroll', label: 'Ish haqi', moduleKey: 'payroll' },
+  { to: '/attendance', label: "Davomat va ta'til", moduleKey: 'payroll' },
+  { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
+];
+const ROLES_ITEM: NavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
+
+// Hamburger-menyuning ochiq/yopiqligi ham module-dropdown'lar bilan bir xil
+// `openGroup` holatida saqlanadi — shu sentinel-kalit ostida.
+const ADMIN_MENU_KEY = '__admin__';
+
+// Dropdown-guruh tugmasi uchun pastga qaragan strelka — ochiq holatda 180°
+// aylanib, yuqoriga qaraydi (odatiy "dropdown ochiq" ishorasi).
+function ChevronDownIcon({ open }: { open: boolean }) {
   return (
     <svg
       viewBox="0 0 20 20"
-      className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+      className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
       fill="none"
       stroke="currentColor"
       strokeWidth={2}
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7 4l6 6-6 6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7l6 6 6-6" />
     </svg>
   );
 }
 
 function isRouteActive(pathname: string, to: string) {
-  return pathname === to || pathname.startsWith(`${to}/`);
+  const path = to.split('?')[0];
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 function HamburgerIcon() {
@@ -114,31 +134,19 @@ function HamburgerIcon() {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
+    </svg>
+  );
+}
+
 function UserIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8}>
       <circle cx="10" cy="6.5" r="3.2" />
       <path strokeLinecap="round" d="M3.5 17c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" />
-    </svg>
-  );
-}
-
-// Haqiqiy tishli g'ildirakka o'xshasin deb aniq "cog" shakli ishlatildi —
-// avvalgi versiya (doira + 8 ta to'g'ri chiziq) "kun/quyosh" ikonkasiga
-// o'xshab qolgan edi.
-function GearIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-[18px] w-[18px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }
@@ -168,7 +176,7 @@ function HelpIcon() {
 
 const WEEKDAY_FULL = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 
-// OPERA'dagi yuqori panelda ko'rsatilgan "Tuesday, 01 Sep, 2026" uslubidagi
+// OPERA'dagi yuqori panelda ko'rsatilgan "Thursday, 03 Sep, 2026" uslubidagi
 // sana — property'ning joriy moliyaviy kuni (Kunni yopish moduli shu qiymatni
 // yuritadi), taqvim sanasidan farq qilishi mumkin (audit hali yopilmagan bo'lsa).
 function formatBusinessDate(isoDate: string): string {
@@ -178,110 +186,155 @@ function formatBusinessDate(isoDate: string): string {
   return `${WEEKDAY_FULL[date.getDay()]}, ${dayMonth}, ${y}`;
 }
 
-const SIDEBAR_COLLAPSE_KEY = 'folioOne.sidebarCollapsed';
-
 export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
 
-  // Brauzer tab sarlavhasi (2026-09): har bir sahifa AppLayout'ga o'z
-  // `title` propini uzatadi — shu qiymatdan foydalanib sarlavhani markazlashtirib
-  // qo'yamiz, alohida sahifalarga qo'lda tegish shart emas.
+  // Brauzer tab sarlavhasi: har bir sahifa AppLayout'ga o'z `title` propini
+  // uzatadi — shu qiymatdan foydalanib sarlavhani markazlashtirib qo'yamiz,
+  // alohida sahifalarga qo'lda tegish shart emas.
   useEffect(() => {
     document.title = `Folio One | ${title}`;
   }, [title]);
 
-  // OPERA'dagi kabi mazmuniy guruhlash (2026-09): har bir bo'lim ruxsatga ega
-  // item'largagina filtrlanadi; hech narsa qolmasa, butun bo'lim yashiriladi.
+  // Mazmuniy guruhlash: har bir bo'lim ruxsatga ega item'largagina
+  // filtrlanadi; hech narsa qolmasa, butun bo'lim yashiriladi.
   const visibleSections = NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.moduleKey || can(item.moduleKey, 'view')),
   })).filter((section) => section.items.length > 0);
 
   const activeGroupKey =
-    visibleSections.find(
-      (section) => section.label && section.items.some((item) => isRouteActive(location.pathname, item.to)),
-    )?.key ?? null;
+    visibleSections.find((section) => section.items.some((item) => isRouteActive(location.pathname, item.to)))
+      ?.key ?? null;
 
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(activeGroupKey ? [activeGroupKey] : []));
+  // "Xodimlar" moduleKey'siz — StaffPage'ning o'zi (avvalgi Sozlamalar/gear
+  // tugmasidagi kabi) barcha tizimga kirgan foydalanuvchilarga ochiq, faqat
+  // tahrirlash amallari `can('users_roles', ...)` bilan cheklangan.
+  const visibleAdminItems = ADMIN_ITEMS.filter((item) => !item.moduleKey || can(item.moduleKey, 'view'));
+  const showRolesItem = !ROLES_ITEM.moduleKey || can(ROLES_ITEM.moduleKey, 'view');
+  const hasAdminMenu = visibleAdminItems.length > 0 || showRolesItem;
+  const adminMenuActive =
+    visibleAdminItems.some((item) => isRouteActive(location.pathname, item.to)) ||
+    (showRolesItem && isRouteActive(location.pathname, ROLES_ITEM.to));
 
-  // Joriy sahifa yopiq guruh ichida bo'lsa, uni avtomatik ochamiz — lekin
-  // foydalanuvchi qo'lda yopgan boshqa guruhlarni qayta yopib qo'ymaymiz.
-  useEffect(() => {
-    if (!activeGroupKey) return;
-    setExpanded((prev) => (prev.has(activeGroupKey) ? prev : new Set(prev).add(activeGroupKey)));
-  }, [activeGroupKey]);
-
+  // Yuqori gorizontal panel: faqat bitta dropdown (modul guruhi yoki
+  // Administratsiya menyusi) bir vaqtda ochiq bo'lishi mumkin, bosilganda
+  // ochiladi/yopiladi (hover emas). Sahifadan tashqariga bosilganda
+  // (quyidagi shaffof overlay orqali) avtomatik yopiladi.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const toggleGroup = (key: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setOpenGroup((prev) => (prev === key ? null : key));
   };
+  const closeGroup = () => setOpenGroup(null);
 
-  // Chap menyuni yig'ish (2026-09, OPERA'dagi hamburger tugmasi kabi): har bir
-  // sahifa o'z AppLayout nusxasini alohida mount qiladi (umumiy Outlet-layout
-  // emas), shuning uchun oddiy useState navigatsiya paytida qayta tiklanib
-  // ketardi — holatni localStorage'da saqlab, sahifalar orasida barqaror
-  // qilib qo'yamiz.
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
-      if (saved !== null) return saved === '1';
-    } catch {
-      // localStorage mavjud bo'lmasa (masalan, maxfiy oynada) pastdagi sukut qiymatga o'tamiz
-    }
-    // Saqlangan tanlov yo'q (birinchi tashrif) — tor ekranlarda (mobil/planshet,
-    // `lg:` breakpoint'idan tor) menyu boshida yopiq (drawer) bo'lsin, aks holda
-    // sidebar butun ekranni bosib, kontentni ko'rsatmay qo'yardi. Keng ekranda
-    // esa avvalgidek ochiq.
-    return typeof window !== 'undefined' && window.innerWidth < 1024;
-  });
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(SIDEBAR_COLLAPSE_KEY, next ? '1' : '0');
-      } catch {
-        // localStorage mavjud bo'lmasa (masalan, maxfiy oynada) sukut holatda davom etamiz
-      }
-      return next;
-    });
-  };
+  // Mobil/planshetda (`lg:`dan tor) gorizontal panel o'rniga hamburger orqali
+  // ochiladigan to'liq-kenglikdagi ochiladigan menyu ishlatiladi (barcha
+  // modullar + Administratsiya + Rollarni boshqarish bitta ro'yxatda, chunki
+  // mobilda alohida modul-panel yo'q). Har bir sahifa o'z AppLayout nusxasini
+  // alohida mount qiladi, shuning uchun bu holat sahifalar orasida
+  // saqlanmaydi — har doim yopiq holatda boshlanadi, bu ochiladigan menyu
+  // uchun kutilgan xatti-harakat.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  // Mobil/planshetda sidebar overlay-drawer sifatida ishlaydi — havola bosilgach
-  // avtomatik yopilishi kerak (aks holda kontent ustida qolib, uni bekitib turadi).
-  // Bu localStorage'dagi foydalanuvchi tanlovini (desktop uchun) o'zgartirmaydi —
-  // faqat joriy holatni vaqtincha yopadi; keyingi sahifa mount'ida localStorage'dan
-  // qayta o'qiladi.
-  const closeMobileDrawer = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setCollapsed(true);
+  // Sahifa (route) o'zgarganda ochiq dropdown/mobil-menyu avtomatik yopiladi
+  // (masalan brauzerning orqaga/oldinga tugmasi bilan navigatsiya qilinganda).
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
-  };
+    closeGroup();
+    closeMobileMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
-    // h-screen + flex-col + overflow-hidden (2026-09): butun ilova viewport
-    // balandligiga qotib turadi — yuqoridagi OPERA uslubidagi panel va pastki
-    // footer doim ko'rinadi, faqat o'rtadagi `main` tarkibi mustaqil aylanadi.
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      {/* OPERA Cloud uslubidagi yuqori panel: hamburger, logotip, moliyaviy sana, foydalanuvchi, sozlamalar */}
+      {/* Yuqori panel: hamburger, mehmonxonaning o'z nomi/logotipi, moliyaviy sana, foydalanuvchi */}
       <header className="shrink-0 h-14 bg-gray-600 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
         <div className="flex items-center gap-3 min-w-0">
+          {/* Mobilda (`lg:`dan tor) hamburger — barcha modullar + Administratsiya
+              bitta to'liq ro'yxatli ochiladigan menyuni boshqaradi. */}
           <button
             type="button"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Menyuni yoyish' : 'Menyuni yig‘ish'}
-            title={collapsed ? 'Menyuni yoyish' : 'Menyuni yig‘ish'}
-            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-label={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
+            title={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
+            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white lg:hidden"
           >
-            <HamburgerIcon />
+            {mobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
           </button>
+          {/* Desktopda (`lg:`+) xuddi shu joydagi hamburger endi faqat
+              "Administratsiya" + "Rollarni boshqarish" dropdown'ini ochadi —
+              oddiy modullar allaqachon pastdagi gorizontal panelda ko'rinadi
+              (OPERA'da ham xuddi shunday: hamburger = administrativ menyu). */}
+          {hasAdminMenu && (
+            <div className="relative hidden lg:block">
+              <button
+                type="button"
+                onClick={() => toggleGroup(ADMIN_MENU_KEY)}
+                aria-label="Administratsiya menyusi"
+                title="Administratsiya menyusi"
+                aria-expanded={openGroup === ADMIN_MENU_KEY}
+                className={`p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white ${
+                  openGroup === ADMIN_MENU_KEY ? 'bg-white/10 text-white' : ''
+                } ${adminMenuActive ? 'text-brand-gold' : ''}`}
+              >
+                <HamburgerIcon />
+              </button>
+              {openGroup === ADMIN_MENU_KEY && (
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
+                  {visibleAdminItems.length > 0 && (
+                    <>
+                      <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Administratsiya
+                      </p>
+                      {visibleAdminItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          onClick={closeGroup}
+                          className={({ isActive }) =>
+                            `block px-4 py-2 text-sm whitespace-nowrap ${
+                              isActive
+                                ? 'bg-brand-navy-light text-brand-navy font-semibold'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                            }`
+                          }
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </>
+                  )}
+                  {showRolesItem && (
+                    <>
+                      {visibleAdminItems.length > 0 && <div className="my-1 border-t border-slate-100" />}
+                      <NavLink
+                        to={ROLES_ITEM.to}
+                        onClick={closeGroup}
+                        className={({ isActive }) =>
+                          `block px-4 py-2 text-sm whitespace-nowrap ${
+                            isActive
+                              ? 'bg-brand-navy-light text-brand-navy font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                          }`
+                        }
+                      >
+                        {ROLES_ITEM.label}
+                      </NavLink>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {/* Mehmonxonaning o'z nomi (OPERA'da ham yuqori panelda PMS logotipi
-              o'rniga mulkning o'z brendi ko'rsatiladi) — Folio One logotipi esa
-              endi chap menyu yuqorisida (pastga qarang). */}
+              o'rniga mulkning o'z brendi ko'rsatiladi — Folio One logotipi esa
+              endi pastdagi modul panelining chetida, quyiga qarang). */}
           <p className="text-sm font-semibold truncate">{property?.name ?? 'Folio One'}</p>
         </div>
         <div className="flex items-center gap-4 sm:gap-6 shrink-0">
@@ -305,14 +358,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           >
             <HelpIcon />
           </Link>
-          <Link
-            to="/staff"
-            aria-label="Sozlamalar"
-            title="Sozlamalar"
-            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
-          >
-            <GearIcon />
-          </Link>
           {user?.isPlatformAdmin && (
             <Link
               to="/admin"
@@ -326,109 +371,184 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobil/planshetda (`lg:`dan tor) sidebar ochiq bo'lganda kontent ustidan
-            qoraytiruvchi fon — bosilsa menyuni yopadi. Desktopda hech qachon
-            ko'rsatilmaydi (sidebar u yerda kontentni surib qo'yadi, ustiga chiqmaydi). */}
-        {!collapsed && (
-          <div
-            className="fixed left-0 right-0 top-14 bottom-0 z-30 bg-slate-900/40 lg:hidden"
-            onClick={toggleCollapsed}
-            aria-hidden="true"
-          />
-        )}
-        <aside
-          className={`fixed left-0 top-14 bottom-0 z-40 w-60 flex flex-col overflow-y-auto bg-white border-r border-slate-200 transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:h-full lg:shrink-0 lg:transition-[width] lg:duration-150 lg:translate-x-0 ${
-            collapsed ? '-translate-x-full lg:translate-x-0 lg:w-0 lg:overflow-hidden lg:border-r-0' : 'translate-x-0 lg:w-60'
-          }`}
+      {/* Yuqori gorizontal modul-panel (faqat desktop, `lg:`+): chapda F1
+          logotipi (Bosh sahifa), keyin har bir mazmuniy guruh bosilganda
+          dropdown sifatida ochiladi. */}
+      <nav className="hidden lg:flex flex-wrap items-stretch shrink-0 bg-white border-b border-slate-200 px-3 relative z-20">
+        <Link
+          to="/dashboard"
+          aria-label="Bosh sahifa"
+          title="Bosh sahifa"
+          className="flex items-center px-3 py-2 border-b-2 border-transparent hover:bg-slate-50 -mb-px"
         >
-          {/* Folio One logotipi = "Bosh sahifa" havolasi (avvalgi matnli
-              nav-item o'rnida) — bosilganda /dashboard'ga olib boradi. */}
-          <NavLink
-            to="/dashboard"
-            onClick={closeMobileDrawer}
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-4 py-4 border-b border-slate-100 w-60 ${
-                isActive ? 'bg-brand-navy-light' : 'hover:bg-slate-50'
-              }`
-            }
-          >
-            <img src={folioOneLogo} alt="Folio One" className="h-7 w-7 shrink-0" />
-            <span className="text-sm font-semibold text-brand-navy">Folio One</span>
-          </NavLink>
-          <nav className="flex-1 px-3 py-4 space-y-0.5 w-60">
-            {visibleSections.map((section) =>
-              section.label ? (
-                <div key={section.key}>
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(section.key)}
-                    className="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-brand-navy"
-                  >
-                    <span>{section.label}</span>
-                    <ChevronIcon open={expanded.has(section.key)} />
-                  </button>
-                  {expanded.has(section.key) && (
-                    <div className="space-y-0.5 mb-1">
-                      {section.items.map((item) => (
-                        <NavLink
-                          key={item.to}
-                          to={item.to}
-                          onClick={closeMobileDrawer}
-                          className={({ isActive }) =>
-                            `block rounded-md border-l-2 px-3 py-2 pl-5 text-sm font-medium ${
-                              isActive
-                                ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
-                                : 'border-transparent text-slate-600 hover:bg-slate-100'
-                            }`
-                          }
-                        >
-                          {item.label}
-                        </NavLink>
-                      ))}
+          <img src={folioOneLogo} alt="" className="h-6 w-6" />
+        </Link>
+        {visibleSections.map((section) =>
+          section.label ? (
+            <div key={section.key} className="relative">
+              <button
+                type="button"
+                onClick={() => toggleGroup(section.key)}
+                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 -mb-px ${
+                  activeGroupKey === section.key
+                    ? 'border-brand-gold text-brand-navy font-semibold'
+                    : 'border-transparent text-slate-600 hover:text-brand-navy hover:bg-slate-50'
+                } ${openGroup === section.key ? 'bg-slate-50' : ''}`}
+                aria-expanded={openGroup === section.key}
+              >
+                <span>{section.label}</span>
+                <ChevronDownIcon open={openGroup === section.key} />
+              </button>
+              {openGroup === section.key && (
+                <div className="absolute left-0 top-full z-50 min-w-[220px] rounded-b-md border border-slate-200 bg-white py-1 shadow-lg">
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeGroup}
+                      className={({ isActive }) =>
+                        `block px-4 py-2 text-sm whitespace-nowrap ${
+                          isActive
+                            ? 'bg-brand-navy-light text-brand-navy font-semibold'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            section.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 -mb-px ${
+                    isActive
+                      ? 'border-brand-gold text-brand-navy font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-brand-navy hover:bg-slate-50'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))
+          ),
+        )}
+      </nav>
+      {/* Dropdown ochiq bo'lganda, undan tashqariga bosilsa yopish uchun
+          shaffof overlay (dropdown panelining o'zi undan yuqori z-index'da). */}
+      {openGroup && <div className="fixed inset-0 z-10" onClick={closeGroup} aria-hidden="true" />}
+
+      {/* Mobil/planshetda (`lg:`dan tor) hamburger orqali ochiladigan to'liq
+          ro'yxat — desktopdagi dropdown'lardan farqli, hammasi bir vaqtda
+          ko'rinadi (accordion emas), chunki bu vaqtinchalik ochiladigan
+          menyu, doimiy sidebar emas. Administratsiya + Rollarni boshqarish
+          ham shu ro'yxat oxirida, chunki mobilda alohida hamburger-dropdown
+          yo'q (bitta hamburger — bitta to'liq menyu). */}
+      {mobileMenuOpen && (
+        <>
+          <div className="fixed left-0 right-0 top-14 bottom-0 z-30 bg-slate-900/40 lg:hidden" onClick={closeMobileMenu} aria-hidden="true" />
+          <div className="lg:hidden fixed left-0 right-0 top-14 z-40 max-h-[calc(100vh-3.5rem)] overflow-y-auto bg-white border-b border-slate-200 shadow-lg">
+            <nav className="px-3 py-2">
+              {visibleSections.map((section) => (
+                <div key={section.key} className="py-1">
+                  {section.label && (
+                    <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      {section.label}
+                    </p>
+                  )}
+                  <div className="space-y-0.5">
+                    {section.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={closeMobileMenu}
+                        className={({ isActive }) =>
+                          `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                            isActive
+                              ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
+                              : 'border-transparent text-slate-600 hover:bg-slate-100'
+                          }`
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {hasAdminMenu && (
+                <div className="py-1 border-t border-slate-100 mt-1">
+                  {visibleAdminItems.length > 0 && (
+                    <>
+                      <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Administratsiya
+                      </p>
+                      <div className="space-y-0.5">
+                        {visibleAdminItems.map((item) => (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            onClick={closeMobileMenu}
+                            className={({ isActive }) =>
+                              `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                                isActive
+                                  ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
+                                  : 'border-transparent text-slate-600 hover:bg-slate-100'
+                              }`
+                            }
+                          >
+                            {item.label}
+                          </NavLink>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {showRolesItem && (
+                    <div className="space-y-0.5 mt-0.5">
+                      <NavLink
+                        to={ROLES_ITEM.to}
+                        onClick={closeMobileMenu}
+                        className={({ isActive }) =>
+                          `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                            isActive
+                              ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
+                              : 'border-transparent text-slate-600 hover:bg-slate-100'
+                          }`
+                        }
+                      >
+                        {ROLES_ITEM.label}
+                      </NavLink>
                     </div>
                   )}
                 </div>
-              ) : (
-                section.items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileDrawer}
-                    className={({ isActive }) =>
-                      `block rounded-md border-l-2 px-3 py-2 pl-2.5 text-sm font-medium ${
-                        isActive
-                          ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
-                          : 'border-transparent text-slate-600 hover:bg-slate-100'
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))
-              ),
-            )}
-          </nav>
-          <div className="px-5 py-4 border-t border-slate-100 w-60">
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-            <button onClick={logout} className="mt-1 text-xs text-slate-600 hover:text-brand-navy underline">
-              Chiqish
-            </button>
+              )}
+              <div className="border-t border-slate-100 mt-2 px-3 py-3">
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <button onClick={logout} className="mt-1 text-xs text-slate-600 hover:text-brand-navy underline">
+                  Chiqish
+                </button>
+              </div>
+            </nav>
           </div>
-        </aside>
+        </>
+      )}
 
-        <div className="flex-1 min-w-0 h-full flex flex-col">
-          <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-4">
-            <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-          </header>
-          <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
-            <SampleDataBanner />
-            {children}
-          </main>
-        </div>
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-4">
+          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+        </header>
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+          <SampleDataBanner />
+          {children}
+        </main>
       </div>
 
-      {/* Pastki footer (2026-09) — OPERA'dagi "Oracle Hospitality | Copyright..." panelining Folio One versiyasi */}
+      {/* Pastki footer — OPERA'dagi "Oracle Hospitality | Copyright..." panelining Folio One versiyasi */}
       <footer className="shrink-0 bg-white border-t border-slate-200 px-5 py-2 flex items-center justify-between text-xs text-slate-400">
         <span className="truncate">
           <span className="font-semibold text-slate-500">Folio One</span>
