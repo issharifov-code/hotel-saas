@@ -7,7 +7,10 @@ import { BookingStatus } from '../bookings/entities/booking.entity';
 // komissiya hisob-kitobi (bekor qilingan bronlar hisobga olinmasligi, foiz
 // to'g'ri qo'llanilishi).
 describe('AgenciesService', () => {
-  function createService(bookings: unknown[] = [], agency: unknown = { id: 'a1', commissionPct: '10.00' }) {
+  function createService(
+    bookings: unknown[] = [],
+    agency: unknown = { id: 'a1', commissionPct: '10.00' },
+  ) {
     const savedAgency = { id: 'a1' };
     const agencyRepo = {
       create: jest.fn((data: unknown) => data),
@@ -18,7 +21,10 @@ describe('AgenciesService', () => {
     const bookingRepo = {
       find: jest.fn().mockResolvedValue(bookings),
     };
-    const service = new AgenciesService(agencyRepo as never, bookingRepo as never);
+    const service = new AgenciesService(
+      agencyRepo as never,
+      bookingRepo as never,
+    );
     return { service, agencyRepo, bookingRepo };
   }
 
@@ -32,7 +38,10 @@ describe('AgenciesService', () => {
 
   it('yaratishda berilgan commissionPct saqlanadi', async () => {
     const { service, agencyRepo } = createService();
-    await service.create('t1', 'p1', { name: 'ACME Travel', commissionPct: '15.50' });
+    await service.create('t1', 'p1', {
+      name: 'ACME Travel',
+      commissionPct: '15.50',
+    });
     expect(agencyRepo.create.mock.calls[0][0].commissionPct).toBe('15.50');
   });
 
@@ -60,7 +69,11 @@ describe('AgenciesService', () => {
 
   it("getSummary — bekor qilingan bronlarni hisobga olmaydi, komissiyani to'g'ri hisoblaydi", async () => {
     const bookings = [
-      { id: 'b1', totalAmount: '1000000.00', status: BookingStatus.CHECKED_OUT },
+      {
+        id: 'b1',
+        totalAmount: '1000000.00',
+        status: BookingStatus.CHECKED_OUT,
+      },
       { id: 'b2', totalAmount: '500000.00', status: BookingStatus.CONFIRMED },
     ];
     const { service, bookingRepo } = createService(bookings, {
@@ -70,17 +83,20 @@ describe('AgenciesService', () => {
     // findById (real query) ham chaqiriladi — findOneBy orqali agency qaytarilishi kerak
     const summary = await service.getSummary('t1', 'p1', 'a1');
 
+    const whereMatcher: unknown = expect.objectContaining({
+      tenantId: 't1',
+      propertyId: 'p1',
+      agencyId: 'a1',
+    });
     expect(bookingRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 't1', propertyId: 'p1', agencyId: 'a1' }),
-      }),
+      expect.objectContaining({ where: whereMatcher }),
     );
     expect(summary.bookingCount).toBe(2);
     expect(summary.totalRevenue).toBe('1500000.00');
     expect(summary.commissionOwed).toBe('150000.00'); // 1,500,000 * 10%
   });
 
-  it('getSummary — bronlar bo\'lmasa 0 qaytaradi', async () => {
+  it("getSummary — bronlar bo'lmasa 0 qaytaradi", async () => {
     const { service } = createService([], { id: 'a1', commissionPct: '10.00' });
     const summary = await service.getSummary('t1', 'p1', 'a1');
     expect(summary.bookingCount).toBe(0);
