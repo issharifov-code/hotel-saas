@@ -10,6 +10,7 @@ import {
   PermissionModule,
 } from '../../common/enums/permission.enum';
 import { parsePagination } from '../../common/utils/pagination.util';
+import { parseDaysParam } from '../../common/utils/days-param.util';
 
 @Controller('properties/:propertyId/reports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -23,9 +24,7 @@ export class ReportsController {
     @Param('propertyId') propertyId: string,
     @Query('days') days?: string,
   ) {
-    const parsed = days ? parseInt(days, 10) : 30;
-    const periodDays =
-      Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
+    const periodDays = parseDaysParam(days);
     return this.reportsService.getOverview(
       user.tenantId!,
       propertyId,
@@ -40,9 +39,7 @@ export class ReportsController {
     @Param('propertyId') propertyId: string,
     @Query('days') days?: string,
   ) {
-    const parsed = days ? parseInt(days, 10) : 30;
-    const periodDays =
-      Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
+    const periodDays = parseDaysParam(days);
     return this.reportsService.getSegmentPerformance(
       user.tenantId!,
       propertyId,
@@ -59,9 +56,7 @@ export class ReportsController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
-    const parsed = days ? parseInt(days, 10) : 30;
-    const periodDays =
-      Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
+    const periodDays = parseDaysParam(days);
     return this.reportsService.getGuestRegistrationReport(
       user.tenantId!,
       propertyId,
