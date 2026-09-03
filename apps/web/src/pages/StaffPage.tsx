@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -78,7 +79,11 @@ type Tab = 'staff' | 'roles';
 
 export function StaffPage() {
   const { user, can } = useAuth();
-  const [tab, setTab] = useState<Tab>('staff');
+  // Yuqori paneldagi hamburger-menyu "Rollarni boshqarish"ni to'g'ridan-to'g'ri
+  // Rollar tabiga ochish uchun ?tab=roles query-parametrini o'qiydi
+  // (Administratsiya > Xodimlar hamon standart "Xodimlar" tabiga ochadi).
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(searchParams.get('tab') === 'roles' ? 'roles' : 'staff');
   const [users, setUsers] = useState<StaffUserDto[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [permissions, setPermissions] = useState<PermissionDto[]>([]);
