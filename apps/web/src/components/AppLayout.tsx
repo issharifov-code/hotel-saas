@@ -253,8 +253,13 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      {/* Yuqori panel: hamburger, mehmonxonaning o'z nomi/logotipi, moliyaviy sana, foydalanuvchi */}
-      <header className="shrink-0 h-14 bg-gray-600 text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
+      {/* Yuqori panel: hamburger, mehmonxonaning o'z nomi/logotipi, moliyaviy sana, foydalanuvchi.
+          2026-09 (uslub yangilanishi): fon endi neytral kulrang o'rniga
+          brend rangi (`bg-brand-navy`) — Login sahifasida ishlatiladigan
+          xuddi shu rang, butun ilova bo'ylab izchil brend identifikatsiyasi
+          uchun. Icon-tugmalar endi `rounded-full` (Login'dagi pill/yumaloq
+          uslubga mos), oldingi to'rtburchak `rounded` o'rniga. */}
+      <header className="shrink-0 h-14 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobilda (`lg:`dan tor) hamburger — barcha modullar + Administratsiya
               bitta to'liq ro'yxatli ochiladigan menyuni boshqaradi. */}
@@ -263,7 +268,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
             title={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
-            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white lg:hidden"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors lg:hidden"
           >
             {mobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
           </button>
@@ -279,14 +284,14 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 aria-label="Administratsiya menyusi"
                 title="Administratsiya menyusi"
                 aria-expanded={openGroup === ADMIN_MENU_KEY}
-                className={`p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white ${
+                className={`p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors ${
                   openGroup === ADMIN_MENU_KEY ? 'bg-white/10 text-white' : ''
                 } ${adminMenuActive ? 'text-brand-gold' : ''}`}
               >
                 <HamburgerIcon />
               </button>
               {openGroup === ADMIN_MENU_KEY && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 text-left shadow-lg overflow-hidden">
                   {visibleAdminItems.length > 0 && (
                     <>
                       <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -354,7 +359,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             to="/help"
             aria-label="Yordam"
             title="Yordam"
-            className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
           >
             <HelpIcon />
           </Link>
@@ -363,7 +368,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               to="/admin"
               aria-label="Platforma boshqaruvi"
               title="Platforma boshqaruvi"
-              className="p-1.5 rounded hover:bg-white/10 text-white/80 hover:text-white"
+              className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               <AdminShieldIcon />
             </Link>
@@ -373,15 +378,18 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
       {/* Yuqori gorizontal modul-panel (faqat desktop, `lg:`+): chapda F1
           logotipi (Bosh sahifa), keyin har bir mazmuniy guruh bosilganda
-          dropdown sifatida ochiladi. */}
-      <nav className="hidden lg:flex flex-wrap items-stretch shrink-0 bg-white border-b border-slate-200 px-3 relative z-20">
-        <Link
-          to="/dashboard"
-          aria-label="Bosh sahifa"
-          title="Bosh sahifa"
-          className="flex items-center px-3 py-2 border-b-2 border-transparent hover:bg-slate-50 -mb-px"
-        >
-          <img src={folioOneLogo} alt="" className="h-6 w-6" />
+          dropdown sifatida ochiladi.
+          2026-09 (uslub yangilanishi, Login sahifasiga moslab): oldingi
+          pastki-chiziqli (`border-b-2`) tablar o'rniga Login'dagi pill
+          tugmalar/inputlar uslubiga mos yumaloq (`rounded-full`) chip'lar —
+          faol/hover holatida orqa fon bilan ajratiladi, chiziq bilan emas. */}
+      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-2 relative z-20">
+        {/* F1 logotipi — nav panelining brend belgisi (2026-09, kattalashtirish
+            + yumshoq "ko'tarilgan" uslub, qarang index.css .f1-brand-mark). */}
+        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="mr-2 shrink-0">
+          <span className="f1-brand-mark">
+            <img src={folioOneLogo} alt="" className="h-8 w-8" />
+          </span>
         </Link>
         {visibleSections.map((section) =>
           section.label ? (
@@ -389,25 +397,27 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               <button
                 type="button"
                 onClick={() => toggleGroup(section.key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 -mb-px ${
+                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   activeGroupKey === section.key
-                    ? 'border-brand-gold text-brand-navy font-semibold'
-                    : 'border-transparent text-slate-600 hover:text-brand-navy hover:bg-slate-50'
-                } ${openGroup === section.key ? 'bg-slate-50' : ''}`}
+                    ? 'bg-brand-navy text-white'
+                    : `text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light ${
+                        openGroup === section.key ? 'bg-brand-navy-light text-brand-navy' : ''
+                      }`
+                }`}
                 aria-expanded={openGroup === section.key}
               >
                 <span>{section.label}</span>
                 <ChevronDownIcon open={openGroup === section.key} />
               </button>
               {openGroup === section.key && (
-                <div className="absolute left-0 top-full z-50 min-w-[220px] rounded-b-md border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg overflow-hidden">
                   {section.items.map((item) => (
                     <NavLink
                       key={item.to}
                       to={item.to}
                       onClick={closeGroup}
                       className={({ isActive }) =>
-                        `block px-4 py-2 text-sm whitespace-nowrap ${
+                        `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
                           isActive
                             ? 'bg-brand-navy-light text-brand-navy font-semibold'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
@@ -426,10 +436,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 -mb-px ${
+                  `flex items-center whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                     isActive
-                      ? 'border-brand-gold text-brand-navy font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-brand-navy hover:bg-slate-50'
+                      ? 'bg-brand-navy text-white'
+                      : 'text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light'
                   }`
                 }
               >
@@ -468,10 +478,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         to={item.to}
                         onClick={closeMobileMenu}
                         className={({ isActive }) =>
-                          `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                          `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                             isActive
-                              ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
-                              : 'border-transparent text-slate-600 hover:bg-slate-100'
+                              ? 'bg-brand-navy text-white'
+                              : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                           }`
                         }
                       >
@@ -495,10 +505,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                             to={item.to}
                             onClick={closeMobileMenu}
                             className={({ isActive }) =>
-                              `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                              `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                                 isActive
-                                  ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
-                                  : 'border-transparent text-slate-600 hover:bg-slate-100'
+                                  ? 'bg-brand-navy text-white'
+                                  : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                               }`
                             }
                           >
@@ -514,10 +524,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         to={ROLES_ITEM.to}
                         onClick={closeMobileMenu}
                         className={({ isActive }) =>
-                          `block rounded-md border-l-2 px-3 py-2 pl-4 text-sm font-medium ${
+                          `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                             isActive
-                              ? 'border-brand-gold bg-brand-navy-light text-brand-navy font-semibold'
-                              : 'border-transparent text-slate-600 hover:bg-slate-100'
+                              ? 'bg-brand-navy text-white'
+                              : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                           }`
                         }
                       >
@@ -539,8 +549,13 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       )}
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-4">
-          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+        {/* 2026-09 (yakuniy sayqal): sahifa sarlavhasi endi text-xl (avvalgi
+            text-lg) — bo'lim sarlavhalari (masalan Dashboard'dagi "Bugungi
+            holat", "Modullar", h2, text-lg) bilan aniq farqlanadigan
+            tipografik iyerarxiya uchun; vertikal bo'shliq ham biroz oshirildi
+            (py-4 -> py-5). */}
+        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-5">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
         </header>
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
           <SampleDataBanner />
