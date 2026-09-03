@@ -1,10 +1,22 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PosOrder, PosOrderStatus, PosPaymentMethod } from './entities/pos-order.entity';
+import { In, Repository } from 'typeorm';
+import {
+  PosOrder,
+  PosOrderStatus,
+  PosPaymentMethod,
+} from './entities/pos-order.entity';
 import { PosOrderItem } from './entities/pos-order-item.entity';
 import { MenuItem } from './entities/menu-item.entity';
-import { CreatePosOrderDto, CreatePosOrderItemDto } from './dto/create-pos-order.dto';
+import {
+  CreatePosOrderDto,
+  CreatePosOrderItemDto,
+} from './dto/create-pos-order.dto';
 import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
 import { InvoicingService } from '../invoicing/invoicing.service';
@@ -21,9 +33,12 @@ const DIRECT_PAYMENT_SYSTEM_KEY: Partial<Record<PosPaymentMethod, string>> = {
 @Injectable()
 export class PosOrdersService {
   constructor(
-    @InjectRepository(PosOrder) private readonly orderRepo: Repository<PosOrder>,
-    @InjectRepository(PosOrderItem) private readonly orderItemRepo: Repository<PosOrderItem>,
-    @InjectRepository(MenuItem) private readonly menuItemRepo: Repository<MenuItem>,
+    @InjectRepository(PosOrder)
+    private readonly orderRepo: Repository<PosOrder>,
+    @InjectRepository(PosOrderItem)
+    private readonly orderItemRepo: Repository<PosOrderItem>,
+    @InjectRepository(MenuItem)
+    private readonly menuItemRepo: Repository<MenuItem>,
     private readonly invoicingService: InvoicingService,
     private readonly accountingService: AccountingService,
   ) {}
@@ -55,15 +70,25 @@ export class PosOrdersService {
     return this.orderRepo.save(order);
   }
 
-  async listByProperty(tenantId: string, propertyId: string, status?: PosOrderStatus): Promise<PosOrder[]> {
+  async listByProperty(
+    tenantId: string,
+    propertyId: string,
+    status?: PosOrderStatus,
+  ): Promise<PosOrder[]> {
     return this.orderRepo.find({
-      where: status ? { tenantId, propertyId, status } : { tenantId, propertyId },
+      where: status
+        ? { tenantId, propertyId, status }
+        : { tenantId, propertyId },
       relations: { items: { menuItem: true } },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findById(tenantId: string, propertyId: string, id: string): Promise<PosOrder> {
+  async findById(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+  ): Promise<PosOrder> {
     const order = await this.orderRepo.findOne({
       where: { id, tenantId, propertyId },
       relations: { items: { menuItem: true } },
@@ -72,7 +97,12 @@ export class PosOrdersService {
     return order;
   }
 
-  async addItems(tenantId: string, propertyId: string, id: string, dto: AddOrderItemsDto): Promise<PosOrder> {
+  async addItems(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+    dto: AddOrderItemsDto,
+  ): Promise<PosOrder> {
     const order = await this.findById(tenantId, propertyId, id);
     if (order.status !== PosOrderStatus.OPEN) {
       throw new ConflictException(
@@ -88,7 +118,12 @@ export class PosOrdersService {
     return this.orderRepo.save(refreshed);
   }
 
-  async pay(tenantId: string, propertyId: string, id: string, dto: PayOrderDto): Promise<PosOrder> {
+  async pay(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+    dto: PayOrderDto,
+  ): Promise<PosOrder> {
     const order = await this.findById(tenantId, propertyId, id);
     if (order.status !== PosOrderStatus.OPEN) {
       throw new ConflictException(
@@ -101,7 +136,9 @@ export class PosOrdersService {
 
     if (dto.paymentMethod === PosPaymentMethod.ROOM_ACCOUNT) {
       if (!dto.bookingId) {
-        throw new BadRequestException("Xona hisobiga yozish uchun bron tanlanishi shart");
+        throw new BadRequestException(
+          'Xona hisobiga yozish uchun bron tanlanishi shart',
+        );
       }
       await this.invoicingService.chargeToFolioByBooking(
         tenantId,
@@ -134,7 +171,11 @@ export class PosOrdersService {
     return this.orderRepo.save(order);
   }
 
-  async cancel(tenantId: string, propertyId: string, id: string): Promise<PosOrder> {
+  async cancel(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+  ): Promise<PosOrder> {
     const order = await this.findById(tenantId, propertyId, id);
     if (order.status !== PosOrderStatus.OPEN) {
       throw new ConflictException(
@@ -150,12 +191,27 @@ export class PosOrdersService {
     lines: CreatePosOrderItemDto[],
     orderId?: string,
   ): Promise<PosOrderItem[]> {
+    // N+1 tuzatish (2026-09-02, polish audit): avval har bir qator uchun
+    // alohida `findOneBy` so'rovi yuborilardi (N ta buyurtma bandi = N ta
+    // so'rov, POS'da har bir buyurtmada chaqiriladigan "hot path"). Endi
+    // barcha menyu taomi ID'lari bitta `IN (...)` so'roviga yig'iladi.
+    const menuItemIds = [...new Set(lines.map((line) => line.menuItemId))];
+    const menuItems = await this.menuItemRepo.find({
+      where: { id: In(menuItemIds), tenantId },
+    });
+    const menuItemById = new Map(menuItems.map((item) => [item.id, item]));
+
     const items: PosOrderItem[] = [];
     for (const line of lines) {
-      const menuItem = await this.menuItemRepo.findOneBy({ id: line.menuItemId, tenantId });
-      if (!menuItem) throw new NotFoundException(`Menyu taomi topilmadi: ${line.menuItemId}`);
+      const menuItem = menuItemById.get(line.menuItemId);
+      if (!menuItem)
+        throw new NotFoundException(
+          `Menyu taomi topilmadi: ${line.menuItemId}`,
+        );
       if (!menuItem.isActive) {
-        throw new BadRequestException(`"${menuItem.name}" hozircha sotuvda emas (faol emas)`);
+        throw new BadRequestException(
+          `"${menuItem.name}" hozircha sotuvda emas (faol emas)`,
+        );
       }
       items.push(
         this.orderItemRepo.create({
@@ -171,6 +227,8 @@ export class PosOrdersService {
   }
 
   private sumItems(items: PosOrderItem[]): string {
-    return items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0).toFixed(2);
+    return items
+      .reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0)
+      .toFixed(2);
   }
 }
