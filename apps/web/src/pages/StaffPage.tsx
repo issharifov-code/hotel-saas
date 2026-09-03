@@ -163,7 +163,7 @@ export function StaffPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-md px-4 py-2 text-sm font-medium ${
-              tab === t ? 'bg-brand-navy text-white' : 'bg-white text-slate-600 border border-slate-200'
+              tab === t ? 'chip-active' : 'bg-white text-slate-600 border border-slate-200'
             }`}
           >
             {t === 'staff' ? 'Xodimlar' : 'Rollar va ruxsatlar'}

@@ -77,7 +77,9 @@ export function AccountingPage() {
             type="button"
             onClick={() => setView(v)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === v ? 'bg-brand-navy text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+              view === v
+                ? 'chip-active'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {VIEW_LABELS[v]}

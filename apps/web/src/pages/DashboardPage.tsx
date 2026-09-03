@@ -785,17 +785,15 @@ export function DashboardPage() {
 
       {/* Tab-qatori (2026-09, Login sahifasiga moslab): pastki-chiziqli
           tablar o'rniga Login'dagi pill tugmalar uslubiga mos yumaloq
-          segmentli tanlagich — konteyner rounded-full, faol tab to'liq
-          brand-navy fon bilan ajratiladi. */}
+          segmentli tanlagich — konteyner rounded-full, faol tab `.chip-active`
+          (atrofi + yengil fon, to'liq brand-navy EMAS, qarang index.css). */}
       <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white p-1 mb-4 shadow-sm">
         {visibleTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-5 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
-              activeTab === t
-                ? 'bg-brand-navy text-white'
-                : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
+              activeTab === t ? 'chip-active' : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
             }`}
           >
             {TAB_LABELS[t]}
