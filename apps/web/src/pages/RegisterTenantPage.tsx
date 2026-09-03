@@ -21,6 +21,30 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // uslubidagi input/tugma klasslari va ikonkalar login sahifasidan ataylab
 // nusxalandi (mustaqil, faqat shu faylga xos — LoginPage.tsx'ga tegilmadi,
 // login sahifasining o'zi o'zgarishsiz qoldi).
+//
+// 2026-09-03 (2-tur): foydalanuvchi to'rtta qo'shimcha tuzatish so'radi:
+// (1) "Subdomain" maydoni UI'dan BUTUNLAY olib tashlandi — u tushunarsiz
+// texnik atama edi. Subdomain hamon backend'da SHART (tenant marshrutlash
+// uchun), shuning uchun mehmonxona nomidan avtomatik hosil qilinadi
+// (`slugify`, foydalanuvchiga umuman ko'rsatilmaydi) va yuborishda band
+// bo'lib chiqsa (409, "Bu subdomain allaqachon band"), foydalanuvchiga
+// bildirmasdan tasodifiy qo'shimcha bilan avtomatik qayta urinadi
+// (`registerWithSubdomainRetry`). (2) "Parolni tasdiqlang" maydoni
+// qo'shildi, mos kelmasa forma yuborilmaydi. (3) Yangi ixtiyoriy
+// "Xonalar soni" (backend: `Tenant.roomsCountHint`, demo formadagi bir xil
+// bucket qiymatlari) va "Lavozimingiz" (backend: `User.position`, erkin
+// matn, Ism va familiyangizdan keyin) maydonlari qo'shildi. (4) Muvaffaqiyatli
+// ro'yxatdan o'tgandan so'ng darhol `/dashboard`ga o'tish o'rniga, forma
+// o'rnida tabrik ekrani ko'rsatiladi ("Tabriklaymiz..."), "Davom etish"
+// tugmasi bosilgandagina dashboard'ga o'tadi — bu har doim FAQAT birinchi
+// marta ro'yxatdan o'tishda ko'rinadi, chunki `/register` har doim yangi
+// tenant yaratadi.
+//
+// 2026-09-03 (3-tur): Mobil'da forma tepasidagi ixcham carousel-hero
+// (`LoginCarousel compact`, `md:hidden` bloki) olib tashlandi — foydalanuvchi
+// mobil versiyalarda aylanadigan elementlarni istamadi (hech bir sahifada,
+// LoginPage.tsx'da ham xuddi shunday olib tashlandi). Desktop'dagi chap
+// panel carousel'i o'zgarishsiz qoldi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -39,6 +63,8 @@ const SLIDES: LoginCarouselSlide[] = [
     desc: 'Aniq ruxsatlar, housekeeping vazifalari va real vaqt hisobotlari',
   },
 ];
+
+const ROOM_COUNT_OPTIONS = ['1–20', '21–50', '51–100', '100+'];
 
 function pillInputClass({ hasError = false, trailingIcon = false } = {}) {
   return [
@@ -103,27 +129,80 @@ function EyeOffIcon() {
   );
 }
 
-// "Subdomain" tushunarsiz atama ekani haqida foydalanuvchi fikr bildirdi
-// (2026-09-03) — bu maydon nima uchun kerakligi (mehmonxonaning tizimdagi
-// noyob manzili, masalan mehmonlar uchun ochiq bron sahifasida ishlatiladi)
-// oldin hech qanday izohsiz, alohida qo'lda to'ldiriladigan maydon sifatida
-// ko'rsatilardi. Endi mehmonxona nomidan avtomatik hosil qilinadi (Slack/
-// Notion'dagi workspace-slug naqshiga o'xshash) va pastida jonli ko'rinadi;
-// foydalanuvchi hali ham qo'lda tahrirlashi mumkin — birinchi qo'lda
-// tahrirlashdan keyin avtomatik yangilanish to'xtaydi (`subdomainTouched`),
-// aks holda foydalanuvchining qo'lda kiritgani nomni o'zgartirganda ustidan
-// yozib yuborilardi. Yozayotganda chetdagi tire kesilmaydi (foydalanuvchi
-// "bukhara-" deb yozayotganda tire darhol olib tashlanmasligi kerak),
-// faqat maydondan chiqqanda (`onBlur`) va nom asosida avtomatik hosil
-// qilinganda chetlar tozalanadi.
-function slugify(value: string, { trimEdges = true } = {}) {
-  let out = value
+function ChevronDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Foydalanuvchiga hech qachon ko'rsatilmaydi — faqat backend'ga yuborish
+// uchun ichki identifikator. Uzbek apostrofsimon belgilarni (`o'`/`g'`dagi
+// `'`/`'`/`ʻ`/`ʼ`/`` ` ``) olib tashlaydi (harflarga qo'shilib ketadi, tire
+// qo'shilmaydi — "Farg'ona" → "fargona"), qolgan ruxsat etilmagan
+// belgilarni tire bilan almashtiradi, ketma-ket tirelarni birlashtiradi,
+// chetdagi tirelarni kesadi, 63 belgiga cheklaydi (backend regex bilan mos).
+function slugify(value: string) {
+  return value
     .toLowerCase()
     .replace(/['’ʻʼ`]/g, '')
     .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-{2,}/g, '-');
-  if (trimEdges) out = out.replace(/^-+|-+$/g, '');
-  return out.slice(0, 63);
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 63);
+}
+
+function randomSuffix() {
+  return Math.random().toString(36).slice(2, 6);
+}
+
+const MAX_SUBDOMAIN_ATTEMPTS = 5;
+
+// Subdomain foydalanuvchiga ko'rinmagani uchun, agar avtomatik hosil
+// qilingan qiymat allaqachon band bo'lsa (409, "...subdomain..."),
+// foydalanuvchini bezovta qilmasdan tasodifiy qo'shimcha bilan bir necha
+// marta avtomatik qayta uriniladi. Boshqa har qanday xato (masalan email
+// band) darhol tashqariga uzatiladi.
+async function registerWithSubdomainRetry(
+  buildBody: (subdomain: string) => Record<string, unknown>,
+  baseSlug: string,
+): Promise<{ accessToken: string }> {
+  const base = baseSlug || 'mehmonxona';
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_SUBDOMAIN_ATTEMPTS; attempt++) {
+    const subdomain = attempt === 0 ? base : `${base}-${randomSuffix()}`;
+    try {
+      return await apiFetch<{ accessToken: string }>('/auth/register-tenant', {
+        method: 'POST',
+        auth: false,
+        body: JSON.stringify(buildBody(subdomain)),
+      });
+    } catch (err) {
+      const isSubdomainCollision =
+        err instanceof ApiError && err.status === 409 && /subdomain/i.test(err.message);
+      if (!isSubdomainCollision) throw err;
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
 
 export function RegisterTenantPage() {
@@ -135,51 +214,53 @@ export function RegisterTenantPage() {
   const { refresh } = useAuth();
   const [form, setForm] = useState({
     tenantName: '',
-    subdomain: '',
+    roomsCountHint: '',
     ownerFullName: '',
+    ownerPosition: '',
     ownerEmail: '',
     ownerPassword: '',
   });
-  const [subdomainTouched, setSubdomainTouched] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
-  const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const update =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const onTenantNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setForm((f) => ({ ...f, tenantName: value, subdomain: subdomainTouched ? f.subdomain : slugify(value) }));
-  };
-
-  const onSubdomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSubdomainTouched(true);
-    setForm((f) => ({ ...f, subdomain: slugify(e.target.value, { trimEdges: false }) }));
-  };
-
-  const onSubdomainBlur = () => {
-    setForm((f) => ({ ...f, subdomain: slugify(f.subdomain) }));
-  };
+  const passwordMismatch =
+    confirmPassword.length > 0 && confirmPassword !== form.ownerPassword;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (form.ownerPassword !== confirmPassword) {
+      setError('Parollar bir-biriga mos kelmadi');
+      return;
+    }
+
     setLoading(true);
-    // Agar foydalanuvchi "Enter" bilan to'g'ridan-to'g'ri subdomain
-    // maydonidan yuborsa, `onBlur` ishga tushmasligi mumkin — shuning
-    // uchun chetdagi tire yuborishdan oldin ham qat'iy tozalanadi.
-    const trimmedSubdomain = slugify(form.subdomain);
-    setForm((f) => ({ ...f, subdomain: trimmedSubdomain }));
     try {
-      const res = await apiFetch<{ accessToken: string }>('/auth/register-tenant', {
-        method: 'POST',
-        auth: false,
-        body: JSON.stringify({ ...form, subdomain: trimmedSubdomain }),
-      });
+      const baseSlug = slugify(form.tenantName);
+      const res = await registerWithSubdomainRetry(
+        (subdomain) => ({
+          tenantName: form.tenantName,
+          subdomain,
+          ownerFullName: form.ownerFullName,
+          ownerPosition: form.ownerPosition || undefined,
+          ownerEmail: form.ownerEmail,
+          ownerPassword: form.ownerPassword,
+          roomsCountHint: form.roomsCountHint || undefined,
+        }),
+        baseSlug,
+      );
       setToken(res.accessToken);
       await refresh();
-      navigate('/dashboard');
+      setRegistered(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Ro'yxatdan o'tishda xatolik");
     } finally {
@@ -202,132 +283,199 @@ export function RegisterTenantPage() {
               <img src={folioOneLogoFull} alt="Folio One" aria-hidden="true" className="h-16 w-auto" />
             </div>
 
-            <div className="mb-7 md:hidden">
-              <LoginCarousel slides={SLIDES} compact />
-            </div>
-
-            <h1 className="mb-2 text-center text-2xl font-semibold text-slate-900">Yangi mehmonxona</h1>
-            <p className="mb-8 text-center text-sm text-slate-600">
-              Ro'yxatdan o'tgach, standart rollar (Egasi, Buxgalter, Front Desk va h.k.) avtomatik
-              yaratiladi.
-            </p>
-
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="reg-tenant-name" className="mb-1 block text-sm font-semibold text-slate-700">
-                  Mehmonxona nomi
-                </label>
-                <input
-                  id="reg-tenant-name"
-                  required
-                  className={pillInputNoIcon}
-                  value={form.tenantName}
-                  onChange={onTenantNameChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="reg-subdomain" className="mb-1 block text-sm font-semibold text-slate-700">
-                  Manzilingiz (subdomain)
-                </label>
-                <input
-                  id="reg-subdomain"
-                  required
-                  placeholder="masalan: bukhara-boutique"
-                  className={pillInputNoIcon}
-                  value={form.subdomain}
-                  onChange={onSubdomainChange}
-                  onBlur={onSubdomainBlur}
-                />
-                <p className="mt-1.5 text-[11px] leading-snug text-slate-400">
-                  Mehmonxonangiz nomidan avtomatik hosil bo'ladi, xohlasangiz o'zgartirishingiz mumkin —
-                  mehmonlar uchun bron sahifasi shu manzilda ochiladi:{' '}
-                  <span className="font-medium text-slate-500">
-                    {form.subdomain || 'mehmonxona-nomi'}.usali.uz
-                  </span>
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="reg-owner-name" className="mb-1 block text-sm font-semibold text-slate-700">
-                  Ism va familiyangiz
-                </label>
-                <input
-                  id="reg-owner-name"
-                  required
-                  className={pillInputNoIcon}
-                  value={form.ownerFullName}
-                  onChange={update('ownerFullName')}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="reg-email" className="mb-1 block text-sm font-semibold text-slate-700">
-                  Email
-                </label>
-                <div className="relative">
-                  <FieldIcon>
-                    <MailIcon />
-                  </FieldIcon>
-                  <input
-                    id="reg-email"
-                    type="email"
-                    required
-                    placeholder="email@hotel.uz"
-                    aria-invalid={!!error}
-                    className={pillInputClass({ hasError: !!error })}
-                    value={form.ownerEmail}
-                    onChange={update('ownerEmail')}
-                  />
+            {registered ? (
+              <div className="text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <CheckCircleIcon />
                 </div>
+                <h1 className="mb-2 text-2xl font-semibold text-slate-900">
+                  Tabriklaymiz, siz ro'yxatdan muvaffaqiyatli o'tdingiz!
+                </h1>
+                <p className="mb-8 text-sm text-slate-600">
+                  Mehmonxonangiz tizimda yaratildi. Endi Folio One'da ishlashni boshlashingiz mumkin.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className={pillPrimaryBtn}
+                >
+                  Davom etish
+                </button>
               </div>
+            ) : (
+              <>
+                <h1 className="mb-2 text-center text-2xl font-semibold text-slate-900">Yangi mehmonxona</h1>
+                <p className="mb-8 text-center text-sm text-slate-600">
+                  Ro'yxatdan o'tgach, standart rollar (Egasi, Buxgalter, Front Desk va h.k.) avtomatik
+                  yaratiladi.
+                </p>
 
-              <div>
-                <label htmlFor="reg-password" className="mb-1 block text-sm font-semibold text-slate-700">
-                  Parol
-                </label>
-                <div className="relative">
-                  <FieldIcon>
-                    <LockIcon />
-                  </FieldIcon>
-                  <input
-                    id="reg-password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Parol yarating"
-                    aria-invalid={!!error}
-                    className={pillInputClass({ hasError: !!error, trailingIcon: true })}
-                    value={form.ownerPassword}
-                    onChange={update('ownerPassword')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                <form onSubmit={onSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="reg-tenant-name" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Mehmonxona nomi
+                    </label>
+                    <input
+                      id="reg-tenant-name"
+                      required
+                      className={pillInputNoIcon}
+                      value={form.tenantName}
+                      onChange={update('tenantName')}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-rooms-count" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Xonalar soni <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="reg-rooms-count"
+                        className={`${pillInputNoIcon} appearance-none pr-9`}
+                        value={form.roomsCountHint}
+                        onChange={update('roomsCountHint')}
+                      >
+                        <option value="">Tanlang</option>
+                        {ROOM_COUNT_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <ChevronDownIcon />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-owner-name" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Ism va familiyangiz
+                    </label>
+                    <input
+                      id="reg-owner-name"
+                      required
+                      className={pillInputNoIcon}
+                      value={form.ownerFullName}
+                      onChange={update('ownerFullName')}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-owner-position" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Lavozimingiz <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+                    </label>
+                    <input
+                      id="reg-owner-position"
+                      placeholder="masalan: Egasi, Bosh menejer"
+                      className={pillInputNoIcon}
+                      value={form.ownerPosition}
+                      onChange={update('ownerPosition')}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-email" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <FieldIcon>
+                        <MailIcon />
+                      </FieldIcon>
+                      <input
+                        id="reg-email"
+                        type="email"
+                        required
+                        placeholder="email@hotel.uz"
+                        aria-invalid={!!error}
+                        className={pillInputClass({ hasError: !!error })}
+                        value={form.ownerEmail}
+                        onChange={update('ownerEmail')}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-password" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Parol
+                    </label>
+                    <div className="relative">
+                      <FieldIcon>
+                        <LockIcon />
+                      </FieldIcon>
+                      <input
+                        id="reg-password"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={8}
+                        placeholder="Parol yarating"
+                        aria-invalid={!!error}
+                        className={pillInputClass({ hasError: !!error, trailingIcon: true })}
+                        value={form.ownerPassword}
+                        onChange={update('ownerPassword')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                      >
+                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="reg-password-confirm" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Parolni tasdiqlang
+                    </label>
+                    <div className="relative">
+                      <FieldIcon>
+                        <LockIcon />
+                      </FieldIcon>
+                      <input
+                        id="reg-password-confirm"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        required
+                        placeholder="Parolni qayta kiriting"
+                        aria-invalid={passwordMismatch}
+                        className={pillInputClass({ hasError: passwordMismatch, trailingIcon: true })}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        aria-label={showConfirmPassword ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-1"
+                      >
+                        {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                    {passwordMismatch && (
+                      <p className="mt-1.5 text-sm text-rose-600">Parollar bir-biriga mos kelmadi</p>
+                    )}
+                  </div>
+
+                  {error && (
+                    <p role="alert" aria-live="polite" className="text-sm text-rose-600">
+                      {error}
+                    </p>
+                  )}
+
+                  <button type="submit" disabled={loading} className={pillPrimaryBtn}>
+                    {loading ? 'Yaratilmoqda...' : "Ro'yxatdan o'tish"}
                   </button>
-                </div>
-              </div>
+                </form>
 
-              {error && (
-                <p role="alert" aria-live="polite" className="text-sm text-rose-600">
-                  {error}
+                <p className="mt-4 text-center text-sm text-slate-500">
+                  Hisobingiz bormi?{' '}
+                  <Link to="/login" className="font-medium text-brand-navy hover:underline">
+                    Kirish
+                  </Link>
                 </p>
-              )}
-
-              <button type="submit" disabled={loading} className={pillPrimaryBtn}>
-                {loading ? 'Yaratilmoqda...' : "Ro'yxatdan o'tish"}
-              </button>
-            </form>
-
-            <p className="mt-4 text-center text-sm text-slate-500">
-              Hisobingiz bormi?{' '}
-              <Link to="/login" className="font-medium text-brand-navy hover:underline">
-                Kirish
-              </Link>
-            </p>
+              </>
+            )}
           </div>
         </div>
       </div>

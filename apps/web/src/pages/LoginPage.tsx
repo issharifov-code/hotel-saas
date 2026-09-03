@@ -8,6 +8,12 @@ import { LoginIllustration } from '../components/LoginIllustration';
 import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
 import { LoginIllustrationStaff } from '../components/LoginIllustrationStaff';
 import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarousel';
+import {
+  COUNTRY_DIAL_CODES,
+  DEFAULT_COUNTRY_ISO2,
+  PRIORITY_ISO2,
+  countryFlagEmoji,
+} from '../lib/countryDialCodes';
 
 // Login sahifasi qayta dizayni (2026-09): split-screen (chap — yengil/och fon
 // ustida illyustratsiya va xususiyatlar ro'yxati, o'ng — forma), Subdomain
@@ -224,6 +230,22 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // bo'shliq (`mb-8`, 32px) ustiga qo'shimcha `mt-2` (8px) qo'shildi —
 // jami ~40px, so'ralgan 36-44px oralig'ida. Matnning o'zi ("So'rovingiz
 // qabul qilindi...") o'zgarishsiz qoldi.
+//
+// 2026-09-03 (5-tur): Demo so'rash formasidagi telefon maydonida qulflangan
+// "+998" prefiksi o'rniga davlat kodi `<select>`i qo'shildi
+// (`apps/web/src/lib/countryDialCodes.ts`, yangi umumiy fayl) — standart
+// holat O'zbekiston, lekin ochib istalgan boshqa davlatni tanlash mumkin.
+// Tez-tez tanlanadigan 10 ta davlat (`PRIORITY_ISO2`) alohida optgroup'da
+// tepada, qolganlari "Barcha davlatlar" optgroup'ida ingliz nomi bo'yicha
+// alfavit tartibida. Bayroq emoji regional-indicator trikidan avtomatik
+// hosil qilinadi (`countryFlagEmoji`) — 190+ emoji qo'lda yozilmagan.
+// Submit paytida tanlangan davlatning `dialCode`si raqam bilan birlashtiriladi.
+//
+// 2026-09-03 (6-tur): Mobil/tablet'dagi ixcham "hero" carousel (`LoginCarousel
+// compact`, `md:hidden` bloki, F1 logotipidan keyin) butunlay olib
+// tashlandi — foydalanuvchi mobil versiyalarda avtomatik aylanadigan
+// elementlarni istamadi (hech bir sahifada). Desktop'dagi chap panel
+// carousel'i (illyustratsiya bilan, `md:flex`) o'zgarishsiz qoldi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -408,10 +430,6 @@ export function LoginPage() {
               <>
                 <div className="-mt-4 mb-7 flex justify-center">
                   <img src={folioOneLogoFull} alt="Folio One" aria-hidden="true" className="h-16 w-auto" />
-                </div>
-
-                <div className="mb-7 md:hidden">
-                  <LoginCarousel slides={SLIDES} compact />
                 </div>
 
                 {!showDemoForm ? (
@@ -622,6 +640,7 @@ const ROOM_COUNT_OPTIONS = ['1–20', '21–50', '51–100', '100+'];
 
 function DemoRequestForm({ onClose }: { onClose: () => void }) {
   const [fullName, setFullName] = useState('');
+  const [countryIso2, setCountryIso2] = useState(DEFAULT_COUNTRY_ISO2);
   const [phone, setPhone] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
   const [roomCount, setRoomCount] = useState('');
@@ -634,7 +653,9 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
     setDemoError(null);
     setSubmitting(true);
     try {
-      const fullPhone = `+998 ${phone}`.replace(/\s+/g, ' ').trim();
+      const dialCode =
+        COUNTRY_DIAL_CODES.find((c) => c.iso2 === countryIso2)?.dialCode ?? '+998';
+      const fullPhone = `${dialCode} ${phone}`.replace(/\s+/g, ' ').trim();
       await apiFetch('/marketing/demo-requests', {
         method: 'POST',
         auth: false,
@@ -691,9 +712,32 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">Telefon raqamingiz</label>
             <div className="flex">
-              <span className="flex select-none items-center rounded-l-full border border-r-0 border-slate-200 bg-slate-100 px-3.5 text-sm font-medium text-slate-500">
-                +998
-              </span>
+              <div className="relative">
+                <select
+                  aria-label="Davlat kodi"
+                  value={countryIso2}
+                  onChange={(e) => setCountryIso2(e.target.value)}
+                  className="h-full w-[7.5rem] appearance-none rounded-l-full border border-r-0 border-slate-200 bg-slate-100 py-4 pl-3.5 pr-7 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                >
+                  <optgroup label="Tez-tez tanlanadi">
+                    {COUNTRY_DIAL_CODES.filter((c) => PRIORITY_ISO2.includes(c.iso2)).map((c) => (
+                      <option key={c.iso2} value={c.iso2}>
+                        {countryFlagEmoji(c.iso2)} {c.name} ({c.dialCode})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Barcha davlatlar">
+                    {COUNTRY_DIAL_CODES.filter((c) => !PRIORITY_ISO2.includes(c.iso2)).map((c) => (
+                      <option key={c.iso2} value={c.iso2}>
+                        {countryFlagEmoji(c.iso2)} {c.name} ({c.dialCode})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <ChevronDownIcon />
+                </span>
+              </div>
               <input
                 required
                 type="tel"
