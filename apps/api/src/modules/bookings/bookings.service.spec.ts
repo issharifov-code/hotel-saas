@@ -826,6 +826,12 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
     const bookingRepo = {
       findOne: jest.fn().mockResolvedValue({ ...booking }),
       save: jest.fn((b: Record<string, unknown>) => Promise.resolve(b)),
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...booking }),
+      })),
     };
     const ratePlansService = {
       findById: jest.fn().mockResolvedValue(ratePlan),
@@ -936,6 +942,51 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
     );
     await expect(service.cancel('t1', 'p1', 'b1')).rejects.toThrow(
       ConflictException,
+    );
+  });
+
+  it('allaqachon bekor qilingan bronni qayta bekor qilishga urinsa ConflictException tashlaydi (ikkilanma-jarima himoyasi)', async () => {
+    const { service, invoicingService } = createCancelService(
+      {
+        ...baseBooking,
+        status: BookingStatus.CANCELLED,
+        checkIn: '2026-08-20',
+      },
+      null,
+    );
+    await expect(service.cancel('t1', 'p1', 'b1')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
+  });
+
+  it("bron topilmasa (bloklab o'qishda) NotFoundException tashlaydi", async () => {
+    const bookingRepo = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      })),
+    };
+    const service = new BookingsService(
+      bookingRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    await expect(service.cancel('t1', 'p1', 'missing')).rejects.toThrow(
+      NotFoundException,
     );
   });
 });

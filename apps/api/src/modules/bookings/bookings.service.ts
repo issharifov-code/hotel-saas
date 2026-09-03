@@ -450,7 +450,24 @@ export class BookingsService {
     propertyId: string,
     id: string,
   ): Promise<Booking> {
-    const booking = await this.findById(tenantId, propertyId, id);
+    // Bron qatorini joriy so'rov tranzaksiyasi ichida bloklab (pessimistic_write)
+    // o'qiymiz — bu ikkita bir vaqtdagi bekor qilish so'rovi (masalan tugmani
+    // ikki marta bosish) bir-birini "ko'rmasdan" ikkalasi ham eski holatni
+    // tekshirib o'tib, InvoicingService.createFeeInvoice orqali ikkita jarima
+    // hisob-fakturasi+ikkita buxgalteriya provodkasi yozib yuborishi (TOCTOU
+    // race) xavfini yopadi. Joins yo'q (SELECT FOR UPDATE nullable-tomonli
+    // outer join bilan mos kelmaydi), shuning uchun room/guest relation'lari
+    // shart bo'lmagan holatda oddiy bloklangan so'rov ishlatiladi.
+    const locked = await this.bookingRepo
+      .createQueryBuilder('booking')
+      .setLock('pessimistic_write')
+      .where('booking.id = :id', { id })
+      .andWhere('booking.tenant_id = :tenantId', { tenantId })
+      .andWhere('booking.property_id = :propertyId', { propertyId })
+      .getOne();
+    if (!locked) throw new NotFoundException('Bron topilmadi');
+    const booking = locked;
+
     if (
       [BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT].includes(
         booking.status,
@@ -459,6 +476,9 @@ export class BookingsService {
       throw new ConflictException(
         "Check-in qilingan yoki tugallangan bronni bekor qilib bo'lmaydi",
       );
+    }
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new ConflictException('Bron allaqachon bekor qilingan');
     }
     booking.status = BookingStatus.CANCELLED;
 
