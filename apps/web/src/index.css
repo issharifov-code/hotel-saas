@@ -36,26 +36,31 @@
   }
 
   /* F1 logotipi — ikkinchi darajali navigatsiya panelining "brend belgisi"
-     (2026-09, foydalanuvchi so'rovi): yumshoq, minimalistik "ko'tarilgan"
-     hissi — gradient yoki yaltiroq (glossy) effekt YO'Q, faqat qatlamli
-     soya (tashqi yumshoq soya + ichki yuqori nur/pastki xira chiziq) orqali
-     chuqurlik ko'rsatiladi. Windows 7 Start tugmasining vizual salmog'idan
+     (2026-09, qayta ko'rib chiqildi): foydalanuvchi fikri — 3D/soyali uslub
+     olib tashlandi, YAXTA fon + ingichka border bilan butunlay tekis
+     (gradient/gloss/bevel YO'Q). Vizual salmoq endi faqat o'lcham (h-12,
+     avvalgi h-11'dan biroz kattaroq) va AppLayout'da qo'llaniladigan
+     negative-margin (`-my-3`) orqali beriladi — shu hisobga panel undan
+     "yirib chiqadi" (nav panelining yuqori va pastki chiziqlaridan biroz
+     tashqariga chiqadi), Windows 7 Start tugmasining vizual salmog'idan
      ilhomlangan, lekin uning dizayni (gloss/bevel/refleksiya) ataylab
-     nusxalanmagan — bg-slate-50 tekis fon, faqat box-shadow orqali "3D".
+     nusxalanmagan.
   */
   .f1-brand-mark {
-    @apply flex items-center justify-center h-11 w-11 rounded-2xl bg-slate-50 border border-slate-200/70 transition-shadow duration-150;
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.06),
-      0 10px 18px -10px rgba(15, 23, 42, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 0 rgba(15, 23, 42, 0.05);
+    @apply flex items-center justify-center h-12 w-12 rounded-2xl bg-white border border-slate-200 transition-colors duration-150;
   }
   .f1-brand-mark:hover {
-    box-shadow:
-      0 2px 4px rgba(15, 23, 42, 0.08),
-      0 14px 22px -10px rgba(15, 23, 42, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 0 rgba(15, 23, 42, 0.07);
+    @apply bg-slate-50;
+  }
+
+  /* "Tanlangan variant" (chip/tab/segment) uslubi — butun ilova bo'ylab
+     izchil (2026-09, foydalanuvchi fikri): avvalgi to'liq brand-navy fon
+     ("to'q ko'k rang ko'payib ketyapti") o'rniga faqat ATROFI (ring) va
+     yengil fon bilan ajratiladi — Login sahifasidagi TenantSelectStep
+     uslubiga mos (bg-brand-navy-light + navy chegara, to'liq fon EMAS).
+     `ring-inset` ishlatiladi — shunda active/inactive holatlar orasida
+     hech qanday o'lcham (layout) sakrashi bo'lmaydi. */
+  .chip-active {
+    @apply bg-brand-navy-light text-brand-navy font-semibold ring-2 ring-inset ring-brand-navy;
   }
 }
