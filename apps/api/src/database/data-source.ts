@@ -47,6 +47,8 @@ import { ChannelSyncLog } from '../modules/channel-manager/entities/channel-sync
 import { DemoRequest } from '../modules/marketing/entities/demo-request.entity';
 import { PayrollRun } from '../modules/payroll/entities/payroll-run.entity';
 import { PayslipEntry } from '../modules/payroll/entities/payslip-entry.entity';
+import { AttendanceRecord } from '../modules/attendance/entities/attendance-record.entity';
+import { LeaveRequest } from '../modules/attendance/entities/leave-request.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -105,6 +107,8 @@ export const AppDataSource = new DataSource({
     DemoRequest,
     PayrollRun,
     PayslipEntry,
+    AttendanceRecord,
+    LeaveRequest,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
