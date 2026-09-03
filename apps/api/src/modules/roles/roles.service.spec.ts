@@ -182,8 +182,9 @@ describe('RolesService', () => {
 
       await service.seedSystemRolesForTenant('t1');
 
+      const sqlMatcher: unknown = expect.stringContaining('set_config');
       expect(queries[0]).toMatchObject({
-        sql: expect.stringContaining('set_config'),
+        sql: sqlMatcher,
         params: ['app.tenant_id', 't1'],
       });
     });
