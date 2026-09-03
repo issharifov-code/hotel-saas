@@ -1,8 +1,14 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
 import { ContextIdFactory, ModuleRef } from '@nestjs/core';
 import { Observable, from, of, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { RlsContextService } from './rls-context.service';
+import { RequestWithUser } from '../interfaces/request-with-user.interface';
 
 /**
  * Global interceptor: har bir so'rov tugaganda RlsContextService ochgan
@@ -24,10 +30,12 @@ export class RlsTransactionInterceptor implements NestInterceptor {
   constructor(private readonly moduleRef: ModuleRef) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const contextId = ContextIdFactory.getByRequest(request);
 
-    return from(this.moduleRef.resolve(RlsContextService, contextId, { strict: false })).pipe(
+    return from(
+      this.moduleRef.resolve(RlsContextService, contextId, { strict: false }),
+    ).pipe(
       switchMap((rlsContext) =>
         // Guard'lar (JwtAuthGuard va h.k.) shu nuqtada allaqachon ishlab
         // bo'lgan — `request.user` to'ldirilgan. `applyTenantContext()` shu
@@ -37,8 +45,14 @@ export class RlsTransactionInterceptor implements NestInterceptor {
         from(rlsContext.applyTenantContext()).pipe(
           switchMap(() =>
             next.handle().pipe(
-              switchMap((result) => from(rlsContext.commit()).pipe(switchMap(() => of(result)))),
-              catchError((err) => from(rlsContext.rollback()).pipe(switchMap(() => throwError(() => err)))),
+              switchMap((result) =>
+                from(rlsContext.commit()).pipe(switchMap(() => of(result))),
+              ),
+              catchError((err: unknown) =>
+                from(rlsContext.rollback()).pipe(
+                  switchMap(() => throwError(() => err)),
+                ),
+              ),
             ),
           ),
         ),

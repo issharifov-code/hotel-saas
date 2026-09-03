@@ -6,7 +6,7 @@ import { RlsContextService } from './rls-context.service';
 // @nestjs/typeorm'ning ichki `EntityClassOrSchema` turi tashqariga eksport
 // qilinmagan — shu yerda mos keladigan minimal turni o'zimiz belgilaymiz
 // (haqiqiy entity klasslari yoki EntitySchema instansiyalari).
-type EntityLike = Function | EntitySchema<any>;
+type EntityLike = (new (...args: any[]) => object) | EntitySchema<any>;
 
 /**
  * `TypeOrmModule.forFeature([...])`ning RLS-himoyalangan varianti.
