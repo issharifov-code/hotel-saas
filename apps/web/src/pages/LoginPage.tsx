@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type LoginResult, type TenantOption } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import folioOneLogo from '../assets/folio-one-logo.png';
+import folioOneLogoFull from '../assets/folio-one-logo-full.png';
 import { LoginIllustration } from '../components/LoginIllustration';
 import { LoginIllustrationBooking } from '../components/LoginIllustrationBooking';
 import { LoginIllustrationStaff } from '../components/LoginIllustrationStaff';
@@ -149,6 +150,15 @@ import { LoginCarousel, type LoginCarouselSlide } from '../components/LoginCarou
 // slayder ko'rsatilmaydi. Desktop'dagi chap panel carousel'i o'zgarishsiz.
 // `LoginCarousel`ning `compact` prop'i komponentda saqlanib qoldi (kelajakda
 // kerak bo'lishi mumkin), lekin hozircha hech qayerda ishlatilmaydi.
+//
+// 2026-09-03: foydalanuvchi aniqladi — badge'da faqat F1 belgisi emas, aynan
+// o'zi bergan to'liq logotip (F1 belgisi + ostida "FolioOne" yozuvi bitta
+// rasmda) ko'rsatilishi kerak edi. Kvadrat oq badge qutisi (h-14 w-14,
+// icon-only) olib tashlandi, o'rniga to'liq lockup rasmi (`folio-one-logo-full.png`,
+// asl fayldan faqat tashqi shaffof bo'shliq kesilgan holda) to'g'ridan-to'g'ri,
+// konteynersiz, h-16 balandlikda ko'rsatiladi. Bu fayl faqat login badge'ida
+// ishlatiladi — footer'dagi kichik icon-only logotip (`folio-one-logo.png`,
+// "Folio One" havola matni bilan yonma-yon) o'zgarishsiz qoldi.
 
 const SLIDES: LoginCarouselSlide[] = [
   {
@@ -306,9 +316,7 @@ export function LoginPage() {
             {step === 'credentials' && (
               <>
                 <div className="mb-7 flex justify-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-                    <img src={folioOneLogo} alt="" aria-hidden="true" className="h-9 w-9" />
-                  </div>
+                  <img src={folioOneLogoFull} alt="Folio One" aria-hidden="true" className="h-16 w-auto" />
                 </div>
                 <h1 className="mb-1 text-2xl font-semibold text-slate-900">Xush kelibsiz!</h1>
                 <p className="mb-5 text-sm text-slate-600">Tizimga kirish uchun email va parolingizni kiriting</p>
