@@ -10,7 +10,8 @@ import { JournalEntryLine } from './journal-entry-line.entity';
 
 // Yozuv qaysi modul/harakat orqali avtomatik yaratilganini bildiradi (audit-trail).
 // 'manual' — buxgalter tomonidan qo'lda kiritilgan yozuv.
-export type JournalEntrySourceModule = 'invoicing' | 'pos' | 'warehouse' | 'manual';
+export type JournalEntrySourceModule =
+  'invoicing' | 'pos' | 'warehouse' | 'payroll' | 'manual';
 
 // Bosh kitob yozuvi (jurnal yozuvi boshi). Bitta yozuv >=2 qatorga (JournalEntryLine)
 // ega, va har doim debet jami = kredit jami (AccountingService.postJournalEntry
@@ -45,7 +46,9 @@ export class JournalEntry {
   @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
   createdByUserId: string | null;
 
-  @OneToMany(() => JournalEntryLine, (line) => line.journalEntry, { cascade: true })
+  @OneToMany(() => JournalEntryLine, (line) => line.journalEntry, {
+    cascade: true,
+  })
   lines: JournalEntryLine[];
 
   @CreateDateColumn({ name: 'created_at' })
