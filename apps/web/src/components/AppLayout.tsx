@@ -126,6 +126,15 @@ function isRouteActive(pathname: string, to: string) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
+// Mehmonxonaning o'zi hali haqiqiy logotip-rasm yuklamagan (bazada bunday
+// maydon yo'q) — vaqtinchalik o'rniga nomining bosh harfi bilan piktogramma
+// ko'rsatiladi (2026-09, foydalanuvchi fikri: hamburger o'rnida hotel
+// logosi bo'lsin). Haqiqiy logo-yuklash funksiyasi keyingi bosqich.
+function propertyInitial(name?: string | null): string {
+  const trimmed = (name ?? '').trim();
+  return trimmed ? trimmed[0].toUpperCase() : 'F';
+}
+
 function HamburgerIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -160,6 +169,16 @@ function AdminShieldIcon() {
     <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10 2.5l6 2.2v4.3c0 4-2.6 6.9-6 8.5-3.4-1.6-6-4.5-6-8.5V4.7l6-2.2z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.2 10l1.9 1.9L12.8 8" />
+    </svg>
+  );
+}
+
+// Breadcrumb qatoridagi "Bosh sahifaga qaytish" havolasi uchun (2026-09,
+// OPERA Cloud'dagi "< Back to Dashboard" uslubiga moslab).
+function BackArrowIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12.5 4.5L6.5 10l6 5.5" />
     </svg>
   );
 }
@@ -218,6 +237,18 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     visibleAdminItems.some((item) => isRouteActive(location.pathname, item.to)) ||
     (showRolesItem && isRouteActive(location.pathname, ROLES_ITEM.to));
 
+  // Breadcrumb (2026-09, foydalanuvchi fikri — OPERA Cloud'dagi
+  // "Dashboard / Client Relations / Profiles / Manage Profile" +
+  // "< Back to Dashboard" uslubi): sahifa sarlavhasi endi ortiqcha joy
+  // egallamasligi uchun kichraytirildi, o'rniga shu ingichka trail
+  // qo'shildi. Bosh sahifaning o'zida ko'rsatilmaydi (u yerda "orqaga"
+  // degan narsa mazmunsiz).
+  const isDashboard = location.pathname === '/' || location.pathname.startsWith('/dashboard');
+  const activeSection = visibleSections.find((section) =>
+    section.items.some((item) => isRouteActive(location.pathname, item.to)),
+  );
+  const breadcrumbSectionLabel = activeSection?.label ?? (adminMenuActive ? 'Administratsiya' : null);
+
   // Yuqori gorizontal panel: faqat bitta dropdown (modul guruhi yoki
   // Administratsiya menyusi) bir vaqtda ochiq bo'lishi mumkin, bosilganda
   // ochiladi/yopiladi (hover emas). Sahifadan tashqariga bosilganda
@@ -253,14 +284,57 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      {/* Yuqori panel: hamburger, mehmonxonaning o'z nomi/logotipi, moliyaviy sana, foydalanuvchi.
+      {/* Yuqori panel: mehmonxonaning o'z belgisi/nomi, moliyaviy sana, foydalanuvchi, menyular.
           2026-09 (uslub yangilanishi): fon endi neytral kulrang o'rniga
           brend rangi (`bg-brand-navy`) — Login sahifasida ishlatiladigan
           xuddi shu rang, butun ilova bo'ylab izchil brend identifikatsiyasi
           uchun. Icon-tugmalar endi `rounded-full` (Login'dagi pill/yumaloq
-          uslubga mos), oldingi to'rtburchak `rounded` o'rniga. */}
+          uslubga mos), oldingi to'rtburchak `rounded` o'rniga.
+          2026-09 (qayta joylashtirish, foydalanuvchi fikri): hamburgerlar
+          (mobil to'liq-menyu va desktop Administratsiya) chap chetdan
+          Yordam belgisidan keyinga, o'ng tomonga ko'chirildi. Ularning
+          o'rnida endi mehmonxonaning o'z belgi-piktogrammasi (pastga
+          qarang, propertyInitial) ko'rsatiladi. */}
       <header className="shrink-0 h-14 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Mehmonxonaning o'zi hali logotip-rasm yuklamagan — vaqtinchalik
+              nomining bosh harfi bilan piktogramma (qarang propertyInitial). */}
+          <span
+            className="flex items-center justify-center h-8 w-8 rounded-lg bg-white text-brand-navy text-sm font-bold shrink-0"
+            aria-hidden="true"
+          >
+            {propertyInitial(property?.name)}
+          </span>
+          {/* Mehmonxonaning o'z nomi (OPERA'da ham yuqori panelda PMS logotipi
+              o'rniga mulkning o'z brendi ko'rsatiladi — Folio One logotipi esa
+              pastdagi modul panelining chetida, quyiga qarang). */}
+          <p className="text-sm font-semibold truncate">{property?.name ?? 'Folio One'}</p>
+        </div>
+        <div className="flex items-center gap-4 sm:gap-6 shrink-0">
+          {property && (
+            <>
+              <p className="hidden sm:block text-xs text-white/80">{formatBusinessDate(property.businessDate)}</p>
+              {/* OPERA'dagi kabi bo'limlar orasidagi ingichka ajratuvchi chiziq */}
+              <span className="hidden sm:block h-5 w-px bg-white/25" aria-hidden="true" />
+            </>
+          )}
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-white/80 min-w-0">
+            <UserIcon />
+            <span className="truncate max-w-[160px]">{user?.fullName || user?.email}</span>
+          </div>
+          <span className="hidden md:block h-5 w-px bg-white/25" aria-hidden="true" />
+          <Link
+            to="/help"
+            aria-label="Yordam"
+            title="Yordam"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+          >
+            <HelpIcon />
+          </Link>
+          {/* Yordam va hamburger(lar) orasidagi ajratuvchi (2026-09,
+              foydalanuvchi fikri) — yuqoridagi bo'limlar orasidagi xuddi shu
+              uslub. */}
+          <span className="hidden sm:block h-5 w-px bg-white/25" aria-hidden="true" />
           {/* Mobilda (`lg:`dan tor) hamburger — barcha modullar + Administratsiya
               bitta to'liq ro'yxatli ochiladigan menyuni boshqaradi. */}
           <button
@@ -291,7 +365,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 <HamburgerIcon />
               </button>
               {openGroup === ADMIN_MENU_KEY && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 text-left shadow-lg overflow-hidden">
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 text-left shadow-lg overflow-hidden">
                   {visibleAdminItems.length > 0 && (
                     <>
                       <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -337,32 +411,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               )}
             </div>
           )}
-          {/* Mehmonxonaning o'z nomi (OPERA'da ham yuqori panelda PMS logotipi
-              o'rniga mulkning o'z brendi ko'rsatiladi — Folio One logotipi esa
-              endi pastdagi modul panelining chetida, quyiga qarang). */}
-          <p className="text-sm font-semibold truncate">{property?.name ?? 'Folio One'}</p>
-        </div>
-        <div className="flex items-center gap-4 sm:gap-6 shrink-0">
-          {property && (
-            <>
-              <p className="hidden sm:block text-xs text-white/80">{formatBusinessDate(property.businessDate)}</p>
-              {/* OPERA'dagi kabi bo'limlar orasidagi ingichka ajratuvchi chiziq */}
-              <span className="hidden sm:block h-5 w-px bg-white/25" aria-hidden="true" />
-            </>
-          )}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-white/80 min-w-0">
-            <UserIcon />
-            <span className="truncate max-w-[160px]">{user?.fullName || user?.email}</span>
-          </div>
-          <span className="hidden md:block h-5 w-px bg-white/25" aria-hidden="true" />
-          <Link
-            to="/help"
-            aria-label="Yordam"
-            title="Yordam"
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-          >
-            <HelpIcon />
-          </Link>
           {user?.isPlatformAdmin && (
             <Link
               to="/admin"
@@ -384,11 +432,16 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           tugmalar/inputlar uslubiga mos yumaloq (`rounded-full`) chip'lar —
           faol/hover holatida orqa fon bilan ajratiladi, chiziq bilan emas. */}
       <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-2 relative z-20">
-        {/* F1 logotipi — nav panelining brend belgisi (2026-09, kattalashtirish
-            + yumshoq "ko'tarilgan" uslub, qarang index.css .f1-brand-mark). */}
-        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="mr-2 shrink-0">
+        {/* F1 logotipi — nav panelining brend belgisi (2026-09, qayta ko'rib
+            chiqildi: 3D/soyali uslub olib tashlandi, o'rniga faqat o'lcham
+            (h-12, avvalgi h-11'dan biroz kattaroq) va negative-margin
+            (`-my-3`) orqali panelning yuqori (header bilan chegara) va
+            pastki (kontent bilan chegara) chiziqlaridan "yirib chiqadigan"
+            vizual salmoq — Windows 7 Start tugmasi taassurotiga yaqinroq,
+            lekin gradient/gloss/bevel'siz, qarang index.css .f1-brand-mark). */}
+        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="mr-2 shrink-0 -my-3">
           <span className="f1-brand-mark">
-            <img src={folioOneLogo} alt="" className="h-8 w-8" />
+            <img src={folioOneLogo} alt="" className="h-9 w-9" />
           </span>
         </Link>
         {visibleSections.map((section) =>
@@ -399,7 +452,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 onClick={() => toggleGroup(section.key)}
                 className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   activeGroupKey === section.key
-                    ? 'bg-brand-navy text-white'
+                    ? 'chip-active'
                     : `text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light ${
                         openGroup === section.key ? 'bg-brand-navy-light text-brand-navy' : ''
                       }`
@@ -437,9 +490,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 to={item.to}
                 className={({ isActive }) =>
                   `flex items-center whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                    isActive
-                      ? 'bg-brand-navy text-white'
-                      : 'text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light'
+                    isActive ? 'chip-active' : 'text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light'
                   }`
                 }
               >
@@ -480,7 +531,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         className={({ isActive }) =>
                           `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                             isActive
-                              ? 'bg-brand-navy text-white'
+                              ? 'chip-active'
                               : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                           }`
                         }
@@ -507,7 +558,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                             className={({ isActive }) =>
                               `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                                 isActive
-                                  ? 'bg-brand-navy text-white'
+                                  ? 'chip-active'
                                   : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                               }`
                             }
@@ -526,7 +577,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         className={({ isActive }) =>
                           `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                             isActive
-                              ? 'bg-brand-navy text-white'
+                              ? 'chip-active'
                               : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
                           }`
                         }
@@ -549,13 +600,40 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       )}
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {/* 2026-09 (yakuniy sayqal): sahifa sarlavhasi endi text-xl (avvalgi
-            text-lg) — bo'lim sarlavhalari (masalan Dashboard'dagi "Bugungi
-            holat", "Modullar", h2, text-lg) bilan aniq farqlanadigan
-            tipografik iyerarxiya uchun; vertikal bo'shliq ham biroz oshirildi
-            (py-4 -> py-5). */}
-        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-5">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        {/* 2026-09 (breadcrumb qo'shildi, foydalanuvchi fikri): sahifa
+            sarlavhasi endi qayta text-lg'ga kichraytirildi (avvalgi
+            "yakuniy sayqal" bosqichida text-xl'ga oshirilgan edi) — "qayerda
+            turgan bo'lsang, o'sha joy nomi juda katta joy egallab turibdi"
+            degan izohga javoban. O'rniga ustida ingichka breadcrumb trail +
+            "Bosh sahifaga qaytish" havolasi (OPERA Cloud uslubida) — "qayerda
+            ekanligimiz" haqidagi ma'lumot endi og'ir sarlavha emas, yengil
+            trail orqali beriladi. Bosh sahifaning o'zida ko'rsatilmaydi. */}
+        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-3">
+          {!isDashboard && (
+            <div className="flex items-center justify-between gap-4 mb-1">
+              <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-500">
+                <Link to="/dashboard" className="shrink-0 hover:text-brand-navy hover:underline">
+                  Bosh sahifa
+                </Link>
+                {breadcrumbSectionLabel && (
+                  <>
+                    <span aria-hidden="true">/</span>
+                    <span className="shrink-0">{breadcrumbSectionLabel}</span>
+                  </>
+                )}
+                <span aria-hidden="true">/</span>
+                <span className="truncate font-medium text-slate-600">{title}</span>
+              </nav>
+              <Link
+                to="/dashboard"
+                className="flex shrink-0 items-center gap-1 text-xs text-slate-500 hover:text-brand-navy hover:underline"
+              >
+                <BackArrowIcon />
+                Bosh sahifaga qaytish
+              </Link>
+            </div>
+          )}
+          <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
         </header>
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
           <SampleDataBanner />
