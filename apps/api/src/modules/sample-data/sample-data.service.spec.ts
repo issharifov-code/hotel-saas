@@ -14,7 +14,11 @@ describe('SampleDataService', () => {
   function createFakeManager() {
     const queries: Array<{ sql: string; params: unknown[] }> = [];
     const saved: Record<string, Array<Record<string, unknown>>> = {};
-    const updateCalls: Array<{ entity: string; criteria: unknown; partial: unknown }> = [];
+    const updateCalls: Array<{
+      entity: string;
+      criteria: unknown;
+      partial: unknown;
+    }> = [];
     let idCounter = 0;
     const nextId = () => `id-${++idCounter}`;
 
@@ -23,7 +27,11 @@ describe('SampleDataService', () => {
     // to'g'ridan-to'g'ri tayanadigan default'larni (Guest.loyaltyPoints va h.k.) qo'lda
     // taqlid qilamiz, aks holda `guest.loyaltyPoints += points` NaN beradi.
     const ENTITY_DEFAULTS: Record<string, Record<string, unknown>> = {
-      Guest: { loyaltyPoints: 0, lifetimePoints: 0, loyaltyTier: LoyaltyTier.BRONZE },
+      Guest: {
+        loyaltyPoints: 0,
+        lifetimePoints: 0,
+        loyaltyTier: LoyaltyTier.BRONZE,
+      },
     };
 
     const repoFor = (entityClass: { name: string }) => {
@@ -33,33 +41,45 @@ describe('SampleDataService', () => {
       return {
         create: (data: unknown) =>
           Array.isArray(data)
-            ? data.map((d) => ({ ...defaults, ...d }))
+            ? (data as unknown[]).map((d) => ({
+                ...defaults,
+                ...(d as object),
+              }))
             : { ...defaults, ...(data as object) },
-        save: jest.fn(async (entityOrEntities: unknown) => {
+        save: jest.fn((entityOrEntities: unknown) => {
           const isArray = Array.isArray(entityOrEntities);
-          const list = (isArray ? entityOrEntities : [entityOrEntities]) as Array<
-            Record<string, unknown>
-          >;
+          const list = (
+            isArray ? entityOrEntities : [entityOrEntities]
+          ) as Array<Record<string, unknown>>;
           const result = list.map((e) => {
-            const withId = { ...e, id: (e.id as string | undefined) ?? nextId() };
+            const withId = {
+              ...e,
+              id: (e.id as string | undefined) ?? nextId(),
+            };
             saved[name].push(withId);
             return withId;
           });
-          return isArray ? result : result[0];
+          return Promise.resolve(isArray ? result : result[0]);
         }),
       };
     };
 
     const manager = {
-      query: jest.fn(async (sql: string, params: unknown[] = []) => {
+      query: jest.fn((sql: string, params: unknown[] = []) => {
         queries.push({ sql, params });
-        return [];
+        return Promise.resolve([]);
       }),
-      getRepository: jest.fn((entityClass: { name: string }) => repoFor(entityClass)),
+      getRepository: jest.fn((entityClass: { name: string }) =>
+        repoFor(entityClass),
+      ),
       update: jest.fn(
-        async (entityClass: { name: string }, criteria: unknown, partial: unknown) => {
+        (
+          entityClass: { name: string },
+          criteria: unknown,
+          partial: unknown,
+        ) => {
           updateCalls.push({ entity: entityClass.name, criteria, partial });
-          return {};
+          return Promise.resolve({});
         },
       ),
     };
@@ -71,11 +91,16 @@ describe('SampleDataService', () => {
     const fake = createFakeManager();
     const dataSource = {
       manager: {
-        transaction: jest.fn(async (cb: (manager: unknown) => Promise<void>) => cb(fake.manager)),
+        transaction: jest.fn(async (cb: (manager: unknown) => Promise<void>) =>
+          cb(fake.manager),
+        ),
       },
     };
     const tenantRepo = { findOneBy: jest.fn() };
-    const service = new SampleDataService(dataSource as never, tenantRepo as never);
+    const service = new SampleDataService(
+      dataSource as never,
+      tenantRepo as never,
+    );
     return { service, dataSource, tenantRepo, ...fake };
   }
 
@@ -90,13 +115,14 @@ describe('SampleDataService', () => {
     it("tranzaksiya boshida app.tenant_id'ni RLS uchun o'rnatadi", async () => {
       const { service, queries } = createService();
       await service.seedForTenant(params);
+      const sqlMatcher: unknown = expect.stringContaining('set_config');
       expect(queries[0]).toMatchObject({
-        sql: expect.stringContaining('set_config'),
+        sql: sqlMatcher,
         params: ['app.tenant_id', 't1'],
       });
     });
 
-    it("kutilgan miqdorda namunaviy yozuvlarni yaratadi", async () => {
+    it('kutilgan miqdorda namunaviy yozuvlarni yaratadi', async () => {
       const { service, saved } = createService();
       await service.seedForTenant(params);
 
@@ -128,24 +154,34 @@ describe('SampleDataService', () => {
       await service.seedForTenant(params);
 
       // Aziz — invoiceB (700000, PAID): 700000 * 0.1 = 70000 ball -> PLATINUM
-      const azizEntries = saved.Guest.filter((g) => g.fullName === 'Aziz Karimov');
+      const azizEntries = saved.Guest.filter(
+        (g) => g.fullName === 'Aziz Karimov',
+      );
       const finalAziz = azizEntries[azizEntries.length - 1];
       expect(finalAziz.loyaltyPoints).toBe(70000);
       expect(finalAziz.lifetimePoints).toBe(70000);
       expect(finalAziz.loyaltyTier).toBe(LoyaltyTier.PLATINUM);
 
       // Malika — invoiceD (1155000, PAID): 1155000 * 0.1 = 115500 ball -> PLATINUM
-      const malikaEntries = saved.Guest.filter((g) => g.fullName === 'Malika Yusupova');
+      const malikaEntries = saved.Guest.filter(
+        (g) => g.fullName === 'Malika Yusupova',
+      );
       const finalMalika = malikaEntries[malikaEntries.length - 1];
       expect(finalMalika.loyaltyPoints).toBe(115500);
       expect(finalMalika.loyaltyTier).toBe(LoyaltyTier.PLATINUM);
 
       // John va Elyor va Nodira uchun to'lov yo'q — loyalty tranzaksiyasi yo'q
-      const johnEntries = saved.Guest.filter((g) => g.fullName === 'John Smith');
-      expect(johnEntries.every((g) => (g.loyaltyPoints as number) === 0)).toBe(true);
+      const johnEntries = saved.Guest.filter(
+        (g) => g.fullName === 'John Smith',
+      );
+      expect(johnEntries.every((g) => (g.loyaltyPoints as number) === 0)).toBe(
+        true,
+      );
 
       expect(
-        saved.LoyaltyTransaction.every((tx) => tx.type === LoyaltyTransactionType.EARN),
+        saved.LoyaltyTransaction.every(
+          (tx) => tx.type === LoyaltyTransactionType.EARN,
+        ),
       ).toBe(true);
     });
 
@@ -166,7 +202,9 @@ describe('SampleDataService', () => {
       const { service, tenantRepo, dataSource } = createService();
       tenantRepo.findOneBy.mockResolvedValue(null);
 
-      await expect(service.removeSampleData('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.removeSampleData('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(dataSource.manager.transaction).not.toHaveBeenCalled();
     });
 
@@ -177,25 +215,41 @@ describe('SampleDataService', () => {
       await service.removeSampleData('t1');
 
       // Birinchi so'rov — RLS uchun app.tenant_id
+      const sqlMatcher: unknown = expect.stringContaining('set_config');
       expect(queries[0]).toMatchObject({
-        sql: expect.stringContaining('set_config'),
+        sql: sqlMatcher,
         params: ['app.tenant_id', 't1'],
       });
 
       const sqlList = queries.map((q) => q.sql);
-      const idxOf = (needle: string) => sqlList.findIndex((sql) => sql.includes(needle));
+      const idxOf = (needle: string) =>
+        sqlList.findIndex((sql) => sql.includes(needle));
 
       // Bolalar jadvallari ota-jadvaldan OLDIN o'chirilishi kerak (FK buzilmasligi uchun).
       expect(idxOf('loyalty_transactions')).toBeGreaterThan(0);
-      expect(idxOf('loyalty_transactions')).toBeLessThan(idxOf('DELETE FROM guests'));
-      expect(idxOf('invoice_lines')).toBeLessThan(idxOf('DELETE FROM invoices'));
-      expect(idxOf('invoice_payments')).toBeLessThan(idxOf('DELETE FROM invoices'));
-      expect(idxOf('pos_order_items')).toBeLessThan(idxOf('DELETE FROM pos_orders'));
-      expect(idxOf('purchase_order_items')).toBeLessThan(idxOf('DELETE FROM purchase_orders'));
+      expect(idxOf('loyalty_transactions')).toBeLessThan(
+        idxOf('DELETE FROM guests'),
+      );
+      expect(idxOf('invoice_lines')).toBeLessThan(
+        idxOf('DELETE FROM invoices'),
+      );
+      expect(idxOf('invoice_payments')).toBeLessThan(
+        idxOf('DELETE FROM invoices'),
+      );
+      expect(idxOf('pos_order_items')).toBeLessThan(
+        idxOf('DELETE FROM pos_orders'),
+      );
+      expect(idxOf('purchase_order_items')).toBeLessThan(
+        idxOf('DELETE FROM purchase_orders'),
+      );
 
       // Xona turlari/xonalar o'chirilmaydi — faqat holat tozalanadi.
-      expect(sqlList.some((sql) => sql.includes('DELETE FROM room_types'))).toBe(false);
-      expect(sqlList.some((sql) => sql.includes('DELETE FROM rooms'))).toBe(false);
+      expect(
+        sqlList.some((sql) => sql.includes('DELETE FROM room_types')),
+      ).toBe(false);
+      expect(sqlList.some((sql) => sql.includes('DELETE FROM rooms'))).toBe(
+        false,
+      );
       const roomsUpdate = queries.find((q) => q.sql.includes('UPDATE rooms'));
       expect(roomsUpdate).toBeDefined();
       expect(roomsUpdate?.sql).toContain("status = 'available'");
