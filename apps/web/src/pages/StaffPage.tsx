@@ -8,6 +8,8 @@ import type {
   PermissionDto,
   PermissionModuleKey,
   RoleDto,
+  SalaryType,
+  StaffSalaryDto,
   StaffUserDto,
   UserRoleAssignmentDto,
   UserStatus,
@@ -31,6 +33,7 @@ const MODULE_LABELS: Record<PermissionModuleKey, string> = {
   billing: "Obuna va to'lovlar",
   users_roles: 'Xodimlar va ruxsatlar',
   tenant_settings: 'Tizim sozlamalari',
+  payroll: 'Ish haqi (Payroll)',
 };
 
 const MODULE_ORDER: PermissionModuleKey[] = [
@@ -46,6 +49,7 @@ const MODULE_ORDER: PermissionModuleKey[] = [
   'billing',
   'users_roles',
   'tenant_settings',
+  'payroll',
 ];
 
 const ACTION_LABELS: Record<PermissionActionKey, string> = {
@@ -85,10 +89,12 @@ export function StaffPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [assignFor, setAssignFor] = useState<StaffUserDto | null>(null);
   const [resetFor, setResetFor] = useState<StaffUserDto | null>(null);
+  const [salaryFor, setSalaryFor] = useState<StaffUserDto | null>(null);
   const [roleForm, setRoleForm] = useState<RoleDto | 'new' | null>(null);
 
   const canCreate = can('users_roles', 'create');
   const canEdit = can('users_roles', 'edit') || canCreate;
+  const canSalaryEdit = can('payroll', 'edit') || can('payroll', 'create');
 
   const loadAll = async () => {
     setLoading(true);
@@ -228,15 +234,24 @@ export function StaffPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {canEdit && (
+                          {(canEdit || canSalaryEdit) && (
                             <div className="flex justify-end gap-3 text-xs">
-                              <button onClick={() => setAssignFor(u)} className="text-brand-navy underline">
-                                Rol biriktirish
-                              </button>
-                              <button onClick={() => setResetFor(u)} className="text-brand-navy underline">
-                                Parolni tiklash
-                              </button>
-                              {!isSelf && (
+                              {canEdit && (
+                                <>
+                                  <button onClick={() => setAssignFor(u)} className="text-brand-navy underline">
+                                    Rol biriktirish
+                                  </button>
+                                  <button onClick={() => setResetFor(u)} className="text-brand-navy underline">
+                                    Parolni tiklash
+                                  </button>
+                                </>
+                              )}
+                              {canSalaryEdit && (
+                                <button onClick={() => setSalaryFor(u)} className="text-brand-navy underline">
+                                  Maosh belgilash
+                                </button>
+                              )}
+                              {canEdit && !isSelf && (
                                 <button onClick={() => toggleStatus(u)} className="text-brand-navy underline">
                                   {u.status === 'disabled' ? 'Faollashtirish' : "O'chirish"}
                                 </button>
@@ -326,6 +341,14 @@ export function StaffPage() {
           targetUser={resetFor}
           onClose={() => setResetFor(null)}
           onSaved={() => setResetFor(null)}
+        />
+      )}
+
+      {salaryFor && (
+        <SetSalaryModal
+          targetUser={salaryFor}
+          onClose={() => setSalaryFor(null)}
+          onSaved={() => setSalaryFor(null)}
         />
       )}
 
@@ -530,6 +553,90 @@ function ResetPasswordModal({
           {submitting ? 'Saqlanmoqda...' : 'Parolni tiklash'}
         </button>
       </form>
+    </Modal>
+  );
+}
+
+function SetSalaryModal({
+  targetUser,
+  onClose,
+  onSaved,
+}: {
+  targetUser: StaffUserDto;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [salaryType, setSalaryType] = useState<SalaryType>('monthly');
+  const [salaryAmount, setSalaryAmount] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    apiFetch<StaffSalaryDto>(`/users/${targetUser.id}/salary`)
+      .then((s) => {
+        if (s.salaryType) setSalaryType(s.salaryType);
+        if (s.salaryAmount) setSalaryAmount(s.salaryAmount);
+      })
+      .catch((e) => setError(e instanceof ApiError ? e.message : 'Maoshni yuklashda xatolik'))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetUser.id]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/users/${targetUser.id}/salary`, {
+        method: 'PATCH',
+        body: JSON.stringify({ salaryType, salaryAmount }),
+      });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Maoshni saqlashda xatolik');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal title={`${targetUser.fullName} — maosh`} onClose={onClose}>
+      {loading ? (
+        <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+      ) : (
+        <form onSubmit={submit} className="space-y-3">
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Maosh turi</span>
+            <select
+              value={salaryType}
+              onChange={(e) => setSalaryType(e.target.value as SalaryType)}
+              className="input"
+            >
+              <option value="monthly">Oylik</option>
+              <option value="hourly">Soatlik</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">
+              {salaryType === 'monthly' ? "Oylik maosh summasi" : "Bir soatlik stavka"}
+            </span>
+            <input
+              type="number"
+              required
+              min={0}
+              step="0.01"
+              value={salaryAmount}
+              onChange={(e) => setSalaryAmount(e.target.value)}
+              className="input"
+            />
+          </label>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+          <button type="submit" disabled={submitting} className="btn-primary w-full">
+            {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
+        </form>
+      )}
     </Modal>
   );
 }
