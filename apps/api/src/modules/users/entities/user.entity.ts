@@ -42,6 +42,12 @@ export class User {
   @Column({ name: 'full_name', length: 200 })
   fullName: string;
 
+  // Ixtiyoriy lavozim/rol matni (masalan "Egasi", "Bosh menejer") — hozircha
+  // faqat ro'yxatdan o'tish formasida so'raladi. `type: 'varchar'` aniq
+  // ko'rsatilgan — sababi `roomsCountHint`dagi izohda tushuntirilgan.
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  position: string | null;
+
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
 
