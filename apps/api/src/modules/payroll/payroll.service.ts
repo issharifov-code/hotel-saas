@@ -199,6 +199,29 @@ export class PayrollService {
     await this.runRepo.update({ id: runId }, { totalAmount: total.toFixed(2) });
   }
 
+  // Run qatorini joriy so'rov tranzaksiyasi ichida bloklab (pessimistic_write)
+  // qayta o'qiydi — bu ikkita bir vaqtdagi finalize/mark-paid so'rovi (masalan
+  // ikki marta bosilgan tugma yoki ikkita xodim sessiyasi) bir-birini
+  // "ko'rmasdan" ikkalasi ham eski (hali DRAFT/FINALIZED) holatni tekshirib
+  // o'tib, ikkalasi ham buxgalteriya provodkasini qo'shib yuborishi (TOCTOU
+  // race, InvoicingService.persistPayment'da avval tuzatilgan bir xil naqsh)
+  // xavfini yopadi.
+  private async lockRun(
+    tenantId: string,
+    propertyId: string,
+    runId: string,
+  ): Promise<PayrollRun> {
+    const locked = await this.runRepo
+      .createQueryBuilder('run')
+      .setLock('pessimistic_write')
+      .where('run.id = :id', { id: runId })
+      .andWhere('run.tenant_id = :tenantId', { tenantId })
+      .andWhere('run.property_id = :propertyId', { propertyId })
+      .getOne();
+    if (!locked) throw new NotFoundException('Payroll topilmadi');
+    return locked;
+  }
+
   // Yakunlash: qoralama endi tahrirlanmaydigan bo'ladi, va bitta jamlangan
   // xarajat+majburiyat provodkasi yoziladi (Debet 6109 Payroll-Related
   // Expenses / Kredit 2300 Xodimlarga to'lanadigan ish haqi). Har bir xodim
@@ -212,7 +235,7 @@ export class PayrollService {
     runId: string,
     userId: string,
   ): Promise<PayrollRun> {
-    const run = await this.getRun(tenantId, propertyId, runId);
+    const run = await this.lockRun(tenantId, propertyId, runId);
     if (run.status !== PayrollRunStatus.DRAFT) {
       throw new ConflictException('Payroll allaqachon yakunlangan');
     }
@@ -243,7 +266,7 @@ export class PayrollService {
     runId: string,
     userId: string,
   ): Promise<PayrollRun> {
-    const run = await this.getRun(tenantId, propertyId, runId);
+    const run = await this.lockRun(tenantId, propertyId, runId);
     if (run.status !== PayrollRunStatus.FINALIZED) {
       throw new ConflictException(
         "Faqat yakunlangan (finalized) payrollni to'langan deb belgilash mumkin",

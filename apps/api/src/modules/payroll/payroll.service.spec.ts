@@ -40,6 +40,12 @@ describe('PayrollService', () => {
         Promise.resolve({ id: 'run-1', ...data }),
       ),
       update: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...baseRun }),
+      })),
     };
     const entryRepo = {
       create: jest.fn((data: unknown) => data),
@@ -292,6 +298,21 @@ describe('PayrollService', () => {
   });
 
   describe('finalizeRun', () => {
+    it("bloklab o'qishda run topilmasa NotFoundException tashlaydi (masalan boshqa tenant)", async () => {
+      const { service, runRepo } = createService({
+        run: { status: PayrollRunStatus.DRAFT },
+      });
+      runRepo.createQueryBuilder = jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      }));
+      await expect(
+        service.finalizeRun('t1', 'prop-1', 'run-1', 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it("DRAFT bo'lmagan payrollni yakunlashga urinishda ConflictException tashlaydi", async () => {
       const { service } = createService({
         run: { status: PayrollRunStatus.FINALIZED },
