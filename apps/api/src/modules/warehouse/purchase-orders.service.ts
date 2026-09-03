@@ -1,7 +1,15 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PurchaseOrder, PurchaseOrderStatus } from './entities/purchase-order.entity';
+import { In, Repository } from 'typeorm';
+import {
+  PurchaseOrder,
+  PurchaseOrderStatus,
+} from './entities/purchase-order.entity';
 import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
 import { StockItem } from './entities/stock-item.entity';
 import { Supplier } from './entities/supplier.entity';
@@ -19,10 +27,14 @@ const OPEN_STATUSES = [
 @Injectable()
 export class PurchaseOrdersService {
   constructor(
-    @InjectRepository(PurchaseOrder) private readonly poRepo: Repository<PurchaseOrder>,
-    @InjectRepository(PurchaseOrderItem) private readonly poItemRepo: Repository<PurchaseOrderItem>,
-    @InjectRepository(StockItem) private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(Supplier) private readonly supplierRepo: Repository<Supplier>,
+    @InjectRepository(PurchaseOrder)
+    private readonly poRepo: Repository<PurchaseOrder>,
+    @InjectRepository(PurchaseOrderItem)
+    private readonly poItemRepo: Repository<PurchaseOrderItem>,
+    @InjectRepository(StockItem)
+    private readonly stockItemRepo: Repository<StockItem>,
+    @InjectRepository(Supplier)
+    private readonly supplierRepo: Repository<Supplier>,
     private readonly stockService: StockService,
   ) {}
 
@@ -33,16 +45,34 @@ export class PurchaseOrdersService {
     userId: string,
     dto: CreatePurchaseOrderDto,
   ): Promise<PurchaseOrder> {
-    const supplier = await this.supplierRepo.findOneBy({ id: dto.supplierId, tenantId });
+    const supplier = await this.supplierRepo.findOneBy({
+      id: dto.supplierId,
+      tenantId,
+    });
     if (!supplier) throw new NotFoundException("Ta'minotchi topilmadi");
 
+    // N+1 tuzatish (2026-09-02, polish audit): avval har bir band uchun
+    // alohida `findOneBy` so'rovi yuborilardi. Endi barcha tovar ID'lari
+    // bitta `IN (...)` so'roviga yig'iladi.
+    const stockItemIds = [
+      ...new Set(dto.items.map((line) => line.stockItemId)),
+    ];
+    const foundStockItems = await this.stockItemRepo.find({
+      where: { id: In(stockItemIds), tenantId },
+    });
+    const foundIds = new Set(foundStockItems.map((item) => item.id));
     for (const line of dto.items) {
-      const item = await this.stockItemRepo.findOneBy({ id: line.stockItemId, tenantId });
-      if (!item) throw new NotFoundException(`Tovar topilmadi: ${line.stockItemId}`);
+      if (!foundIds.has(line.stockItemId)) {
+        throw new NotFoundException(`Tovar topilmadi: ${line.stockItemId}`);
+      }
     }
 
     const totalAmount = dto.items
-      .reduce((sum, line) => sum + Number(line.quantityOrdered) * Number(line.unitCost), 0)
+      .reduce(
+        (sum, line) =>
+          sum + Number(line.quantityOrdered) * Number(line.unitCost),
+        0,
+      )
       .toFixed(2);
 
     const po = this.poRepo.create({
@@ -67,15 +97,25 @@ export class PurchaseOrdersService {
     return this.poRepo.save(po);
   }
 
-  async listByProperty(tenantId: string, propertyId: string, status?: PurchaseOrderStatus): Promise<PurchaseOrder[]> {
+  async listByProperty(
+    tenantId: string,
+    propertyId: string,
+    status?: PurchaseOrderStatus,
+  ): Promise<PurchaseOrder[]> {
     return this.poRepo.find({
-      where: status ? { tenantId, propertyId, status } : { tenantId, propertyId },
+      where: status
+        ? { tenantId, propertyId, status }
+        : { tenantId, propertyId },
       relations: { items: { stockItem: true } },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findById(tenantId: string, propertyId: string, id: string): Promise<PurchaseOrder> {
+  async findById(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+  ): Promise<PurchaseOrder> {
     const po = await this.poRepo.findOne({
       where: { id, tenantId, propertyId },
       relations: { items: { stockItem: true } },
@@ -84,7 +124,12 @@ export class PurchaseOrdersService {
     return po;
   }
 
-  async approve(tenantId: string, propertyId: string, id: string, approverUserId: string): Promise<PurchaseOrder> {
+  async approve(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+    approverUserId: string,
+  ): Promise<PurchaseOrder> {
     const po = await this.findById(tenantId, propertyId, id);
     if (po.status !== PurchaseOrderStatus.PENDING_APPROVAL) {
       throw new ConflictException(
@@ -97,7 +142,12 @@ export class PurchaseOrdersService {
     return this.poRepo.save(po);
   }
 
-  async reject(tenantId: string, propertyId: string, id: string, approverUserId: string): Promise<PurchaseOrder> {
+  async reject(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+    approverUserId: string,
+  ): Promise<PurchaseOrder> {
     const po = await this.findById(tenantId, propertyId, id);
     if (po.status !== PurchaseOrderStatus.PENDING_APPROVAL) {
       throw new ConflictException(
@@ -110,7 +160,11 @@ export class PurchaseOrdersService {
     return this.poRepo.save(po);
   }
 
-  async cancel(tenantId: string, propertyId: string, id: string): Promise<PurchaseOrder> {
+  async cancel(
+    tenantId: string,
+    propertyId: string,
+    id: string,
+  ): Promise<PurchaseOrder> {
     const po = await this.findById(tenantId, propertyId, id);
     if (!OPEN_STATUSES.includes(po.status)) {
       throw new ConflictException(
@@ -131,7 +185,10 @@ export class PurchaseOrdersService {
     userId: string,
   ): Promise<PurchaseOrder> {
     const po = await this.findById(tenantId, propertyId, id);
-    if (po.status !== PurchaseOrderStatus.APPROVED && po.status !== PurchaseOrderStatus.PARTIALLY_RECEIVED) {
+    if (
+      po.status !== PurchaseOrderStatus.APPROVED &&
+      po.status !== PurchaseOrderStatus.PARTIALLY_RECEIVED
+    ) {
       throw new ConflictException(
         `Faqat "approved" yoki "partially_received" holatidagi buyurtmani qabul qilish mumkin (joriy holat: ${po.status})`,
       );
@@ -142,13 +199,17 @@ export class PurchaseOrdersService {
     for (const line of dto.lines) {
       const item = itemsById.get(line.purchaseOrderItemId);
       if (!item) {
-        throw new BadRequestException(`Buyurtma bandi topilmadi: ${line.purchaseOrderItemId}`);
+        throw new BadRequestException(
+          `Buyurtma bandi topilmadi: ${line.purchaseOrderItemId}`,
+        );
       }
       const alreadyReceived = Number(item.quantityReceived);
       const ordered = Number(item.quantityOrdered);
       const receivingNow = Number(line.quantityReceived);
       if (receivingNow <= 0) {
-        throw new BadRequestException("Qabul qilinayotgan miqdor musbat bo'lishi kerak");
+        throw new BadRequestException(
+          "Qabul qilinayotgan miqdor musbat bo'lishi kerak",
+        );
       }
       if (alreadyReceived + receivingNow > ordered + 1e-9) {
         throw new BadRequestException(
@@ -177,7 +238,9 @@ export class PurchaseOrdersService {
         purchaseOrderId: po.id,
         createdByUserId: userId,
       });
-      item.quantityReceived = (Number(item.quantityReceived) + Number(line.quantityReceived)).toFixed(3);
+      item.quantityReceived = (
+        Number(item.quantityReceived) + Number(line.quantityReceived)
+      ).toFixed(3);
       await this.poItemRepo.save(item);
     }
 
@@ -185,9 +248,12 @@ export class PurchaseOrdersService {
       where: { purchaseOrderId: po.id },
     });
     const fullyReceived = refreshedItems.every(
-      (item) => Number(item.quantityReceived) >= Number(item.quantityOrdered) - 1e-9,
+      (item) =>
+        Number(item.quantityReceived) >= Number(item.quantityOrdered) - 1e-9,
     );
-    po.status = fullyReceived ? PurchaseOrderStatus.RECEIVED : PurchaseOrderStatus.PARTIALLY_RECEIVED;
+    po.status = fullyReceived
+      ? PurchaseOrderStatus.RECEIVED
+      : PurchaseOrderStatus.PARTIALLY_RECEIVED;
     return this.poRepo.save(po);
   }
 }
