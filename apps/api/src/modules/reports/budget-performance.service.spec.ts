@@ -49,6 +49,8 @@ describe('ReportsService.getBudgetPerformance', () => {
       budgetRepo as never,
       // Maintenance repo — bu testlar getInsights'ni chaqirmaydi.
       { count: jest.fn().mockResolvedValue(0) } as never,
+      // Tavsiya-yopish repo — xuddi shu sababdan bo'sh.
+      { find: jest.fn().mockResolvedValue([]) } as never,
     );
   }
 
@@ -65,7 +67,7 @@ describe('ReportsService.getBudgetPerformance', () => {
     });
   });
 
-  it('budjetni to\'g\'ri oyga bog\'laydi va raqamga aylantiradi', async () => {
+  it("budjetni to'g'ri oyga bog'laydi va raqamga aylantiradi", async () => {
     const service = createService({
       totalRooms: 10,
       budgets: [
@@ -123,7 +125,7 @@ describe('ReportsService.getBudgetPerformance', () => {
     expect(yanvar.actual.occupancyRatePct).toBe(1.61);
   });
 
-  it('bronni CHECK-IN oyiga bog\'laydi (oy chegarasida ham)', async () => {
+  it("bronni CHECK-IN oyiga bog'laydi (oy chegarasida ham)", async () => {
     // 31-yanvarda check-in, 2-fevralda check-out — daromad YANVARGA tegishli
     // (getOverview'dagi "davr ichida check-in qilgan" ta'rifi bilan bir xil).
     const service = createService({
@@ -172,7 +174,7 @@ describe('ReportsService.getBudgetPerformance', () => {
     expect(result.months.every((m) => m.actual.roomsRevenue === 0)).toBe(true);
   });
 
-  it('xona yo\'q bo\'lsa 0ga bo\'lmaydi', async () => {
+  it("xona yo'q bo'lsa 0ga bo'lmaydi", async () => {
     const service = createService({
       totalRooms: 0,
       bookings: [
@@ -198,6 +200,7 @@ describe('ReportsService.getBudgetPerformance', () => {
       {} as never,
       { find: budgetRepoFind } as never,
       { count: jest.fn().mockResolvedValue(0) } as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
     );
 
     await service.getBudgetPerformance('t1', 'p1', 2026);

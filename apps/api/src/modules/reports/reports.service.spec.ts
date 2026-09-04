@@ -182,6 +182,8 @@ describe('ReportsService', () => {
       // Maintenance repo — bu yerdagi testlar getInsights'ni chaqirmaydi
       // (uning o'z alohida test fayli bor).
       { count: jest.fn().mockResolvedValue(0) } as never,
+      // Tavsiya-yopish repo — xuddi shu sababdan bo'sh.
+      { find: jest.fn().mockResolvedValue([]) } as never,
     );
   }
 
