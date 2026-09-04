@@ -126,6 +126,11 @@ const NAV_SECTIONS: NavSection[] = [
 // obunasi, mehmonxona moliyaviy hisobotlaridan farqli — hisob boshqaruvi
 // tusidagi narsa) ham shu yerga, HR/administrativ guruhga qo'shildi.
 const ADMIN_ITEMS: LeafNavItem[] = [
+  {
+    to: '/property-settings',
+    label: 'Mehmonxona sozlamalari',
+    moduleKey: 'tenant_settings',
+  },
   { to: '/staff', label: 'Xodimlar' },
   { to: '/payroll', label: 'Ish haqi', moduleKey: 'payroll' },
   { to: '/attendance', label: "Davomat va ta'til", moduleKey: 'payroll' },
@@ -358,14 +363,26 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           qarang, propertyInitial) ko'rsatiladi. */}
       <header className="relative z-30 shrink-0 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 py-[5px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
         <div className="flex items-center gap-2.5 min-w-0">
-          {/* Mehmonxonaning o'zi hali logotip-rasm yuklamagan — vaqtinchalik
-              nomining bosh harfi bilan piktogramma (qarang propertyInitial). */}
-          <span
-            className="flex items-center justify-center h-6 w-6 rounded-md bg-white text-brand-navy text-[11px] font-bold shrink-0"
-            aria-hidden="true"
-          >
-            {propertyInitial(property?.name)}
-          </span>
+          {/* Mehmonxonaning o'z logotipi (2026-09-04, "Mehmonxona
+              sozlamalari" sahifasidan yuklanadi). Yuklanmagan bo'lsa —
+              avvalgidek nomining bosh harfi bilan piktogramma. Ikkala
+              holatda ham o'lcham bir xil, ya'ni panel balandligi
+              o'zgarmaydi (u navigatsiya qatori bilan tenglashtirilgan). */}
+          {property?.logoUrl ? (
+            <img
+              src={property.logoUrl}
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-6 shrink-0 rounded-md bg-white object-contain"
+            />
+          ) : (
+            <span
+              className="flex items-center justify-center h-6 w-6 rounded-md bg-white text-brand-navy text-[11px] font-bold shrink-0"
+              aria-hidden="true"
+            >
+              {propertyInitial(property?.name)}
+            </span>
+          )}
           {/* Mehmonxonaning o'z nomi (OPERA'da ham yuqori panelda PMS logotipi
               o'rniga mulkning o'z brendi ko'rsatiladi — Folio One logotipi esa
               pastdagi modul panelining chetida, quyiga qarang). */}
