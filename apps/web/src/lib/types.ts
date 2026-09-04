@@ -326,6 +326,21 @@ export interface PropertyDto {
   logoUrl: string | null;
 }
 
+// --- Budjet (oylik moliyaviy reja) ---
+
+// Uch ko'rsatkich ham `null` bo'lishi mumkin — mehmonxona faqat o'ziga
+// kerakligini rejalashtiradi. Pul/foiz qiymatlari matn sifatida (backend'da
+// numeric ustunlar, float xatoliklarisiz).
+export interface BudgetDto {
+  id: string;
+  propertyId: string;
+  year: number;
+  month: number;
+  roomsRevenue: string | null;
+  occupancyRatePct: string | null;
+  adr: string | null;
+}
+
 // --- Night Audit ("kunni yopish") ---
 
 export interface NightAuditStatusDto {
