@@ -27,6 +27,7 @@ import {
   RatePlan,
 } from '../rooms/entities/rate-plan.entity';
 import { GuestsService } from '../guests/guests.service';
+import { ProfileType } from '../guests/entities/guest.entity';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
 import { InvoicingService } from '../invoicing/invoicing.service';
@@ -71,6 +72,17 @@ export class BookingsService {
         "check-out sanasi check-in sanasidan keyin bo'lishi kerak",
       );
     }
+
+    // 🔴 Bron egasi FAQAT jismoniy mehmon profili bo'lishi mumkin
+    // (2026-09-04). Frontend'dagi tanlagich allaqachon shunday filtrlaydi,
+    // lekin API'ning o'zi tekshirmasa, kompaniya profilini bron egasi qilib
+    // qo'yish mumkin bo'lardi — va u check-in/folio/sodiqlik mantig'ini
+    // ma'nosiz qilardi.
+    await this.guestsService.findByType(
+      tenantId,
+      dto.guestId,
+      ProfileType.GUEST,
+    );
 
     const room = await this.roomsService.findById(
       tenantId,
@@ -131,6 +143,17 @@ export class BookingsService {
       corporateAccountId = account.id;
     }
 
+    // Manba profili (ixtiyoriy) — MANBA turida ekani tekshiriladi.
+    let sourceProfileId: string | null = null;
+    if (dto.sourceProfileId) {
+      const src = await this.guestsService.findByType(
+        tenantId,
+        dto.sourceProfileId,
+        ProfileType.SOURCE,
+      );
+      sourceProfileId = src.id;
+    }
+
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount =
       dto.totalAmount ??
@@ -155,6 +178,7 @@ export class BookingsService {
       ratePlanId: ratePlan?.id ?? null,
       agencyId,
       corporateAccountId,
+      sourceProfileId,
       totalAmount,
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,

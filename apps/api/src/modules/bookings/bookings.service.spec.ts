@@ -50,6 +50,13 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
+      // 2026-09-04: bron egasi FAQAT mehmon profili bo'lishi kerak, manba
+      // esa MANBA turida — servis buni `findByType` orqali tekshiradi.
+      findByType: jest
+        .fn()
+        .mockImplementation((_t: string, id: string, type: string) =>
+          Promise.resolve({ id, profileType: type }),
+        ),
     };
     const housekeepingService = {};
     const invoicingService = {};
@@ -360,6 +367,13 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
+      // 2026-09-04: bron egasi FAQAT mehmon profili bo'lishi kerak, manba
+      // esa MANBA turida — servis buni `findByType` orqali tekshiradi.
+      findByType: jest
+        .fn()
+        .mockImplementation((_t: string, id: string, type: string) =>
+          Promise.resolve({ id, profileType: type }),
+        ),
     };
     const housekeepingService = {};
     const invoicingService = {};
@@ -650,6 +664,13 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     };
     const guestsService = {
       findById: jest.fn().mockResolvedValue({ id: 'guest-1' }),
+      // 2026-09-04: bron egasi FAQAT mehmon profili bo'lishi kerak, manba
+      // esa MANBA turida — servis buni `findByType` orqali tekshiradi.
+      findByType: jest
+        .fn()
+        .mockImplementation((_t: string, id: string, type: string) =>
+          Promise.resolve({ id, profileType: type }),
+        ),
     };
     const housekeepingService = {};
     const invoicingService = {};
