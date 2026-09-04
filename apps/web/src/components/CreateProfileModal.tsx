@@ -148,7 +148,6 @@ function CreateProfileForm({
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [contactPerson, setContactPerson] = useState('');
-  const [commissionPct, setCommissionPct] = useState('');
   const [parentProfileId, setParentProfileId] = useState('');
   const [organizations, setOrganizations] = useState<GuestDto[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -197,9 +196,6 @@ function CreateProfileForm({
       }
       if (isOrg || type === 'group') {
         body.contactPerson = contactPerson || undefined;
-      }
-      if (type === 'travel_agent' && commissionPct.trim() !== '') {
-        body.commissionPct = Number(commissionPct);
       }
       if (type === 'contact' && parentProfileId) {
         body.parentProfileId = parentProfileId;
@@ -317,20 +313,18 @@ function CreateProfileForm({
           </label>
         )}
 
+        {/* 🔴 Komissiya bu yerda YO'Q (2026-09-04). U mulkka bog'liq pul
+            sozlamasi va "Agentliklar" sahifasida beriladi — profil esa
+            tenant darajasida, ya'ni bitta agentlikning har filialda o'z
+            komissiyasi bo'lishi mumkin. Avval bu yerda maydon bor edi va
+            server uni qabul qilmagani uchun saqlash 400 xato berardi. */}
         {type === 'travel_agent' && (
-          <label className="block">
-            <span className="mb-1 block text-xs text-slate-900">Komissiya (%)</span>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              value={commissionPct}
-              onChange={(e) => setCommissionPct(e.target.value)}
-              className="input"
-              placeholder="masalan: 12.5"
-            />
-          </label>
+          <p className="rounded-lg bg-slate-100 px-3 py-2 text-[11px] text-slate-600">
+            Komissiya foizi bu yerda emas — profil yaratilgach{' '}
+            <b className="font-medium">Bronlar → Agentliklar</b> sahifasida shu
+            profilni tanlab, komissiyani belgilaysiz. Sabab: komissiya har
+            mehmonxona uchun alohida bo&apos;lishi mumkin.
+          </p>
         )}
 
         {type === 'contact' && (
