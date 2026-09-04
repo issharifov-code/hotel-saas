@@ -24,7 +24,45 @@ import { Guest, LoyaltyTier } from '../guests/entities/guest.entity';
 import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
 import { Budget } from '../budgets/entities/budget.entity';
+import {
+  MaintenanceTicket,
+  MaintenanceTicketStatus,
+} from '../maintenance/entities/maintenance-ticket.entity';
 import { PaginationParams } from '../../common/utils/pagination.util';
+
+// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar paneli.
+//
+// NIMA UCHUN LLM EMAS (2026-09-04, foydalanuvchi qarori): bu yerdagi
+// xulosalar moliyaviy qarorlarga ta'sir qiladi, shuning uchun ular
+// (1) DETERMINISTIK — bir xil ma'lumotda doim bir xil natija,
+// (2) TUSHUNTIRILADIGAN — har bir tavsiya `detail`da nega chiqqanini aniq
+// raqam bilan aytadi, ya'ni menejer uni tekshira oladi.
+// Tashqi LLM xizmati na kalit, na oylik to'lov talab qilmaydi — kelajakda
+// qo'shilsa, shu tuzilmaning ustiga qo'shiladi.
+export type InsightSeverity = 'critical' | 'warning' | 'info' | 'positive';
+
+export interface InsightDto {
+  // Barqaror kalit — React `key` uchun va kelajakda "e'tiborga olindi"
+  // belgisini saqlash uchun (hozircha saqlanmaydi).
+  id: string;
+  severity: InsightSeverity;
+  title: string;
+  // Nega shu tavsiya chiqdi — aniq raqamlar bilan.
+  detail: string;
+  actionLabel?: string;
+  actionTo?: string;
+}
+
+// Chegaralar. Ataylab "shovqin" darajasidan yuqori: kichik tebranish har kuni
+// ogohlantirish chiqarsa, panel tez orada e'tibordan qoladi.
+const INSIGHT_THRESHOLDS = {
+  // Davrlararo o'zgarish shu foizdan oshsa — e'tiborga loyiq.
+  metricDeltaPct: 10,
+  // Budjetdan chetlanish shu foizdan oshsa.
+  budgetVariancePct: 10,
+  // Kutilayotgan tozalash: jami xonaning shu ulushidan oshsa.
+  housekeepingBacklogRatio: 0.3,
+};
 
 // "Reja vs haqiqat" — bir yilning har oyi uchun budjet va haqiqiy ko'rsatkich.
 //
@@ -211,7 +249,160 @@ export class ReportsService {
     private readonly corporateAccountRepo: Repository<CorporateAccount>,
     @InjectRepository(Budget)
     private readonly budgetRepo: Repository<Budget>,
+    @InjectRepository(MaintenanceTicket)
+    private readonly maintenanceRepo: Repository<MaintenanceTicket>,
   ) {}
+
+  // Tavsiyalar paneli. `getOverview`ni ICHKI CHAQIRADI — shunda paneldagi
+  // raqamlar Dashboard'ning qolgan qismidagi bilan kafolatli mos tushadi
+  // (qayta hisoblansa, ikkalasi vaqt o'tib bir-biridan uzoqlashishi mumkin edi).
+  //
+  // `includeBudget` — chaqiruvchi (kontroller) foydalanuvchida accounting
+  // ruxsati borligini tekshirib beradi. Budjet nozik ma'lumot, shuning uchun
+  // uni faqat shu ruxsat bilan qo'shamiz.
+  async getInsights(
+    tenantId: string,
+    propertyId: string,
+    periodDays: number,
+    includeBudget: boolean,
+  ): Promise<InsightDto[]> {
+    const overview = await this.getOverview(tenantId, propertyId, periodDays);
+    const insights: InsightDto[] = [];
+
+    // --- 1. Bandlik davrlararo o'zgarishi ---
+    const occDelta = overview.trend.occupancyRatePctDelta;
+    if (occDelta !== null && Math.abs(occDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct) {
+      const dropped = occDelta < 0;
+      insights.push({
+        id: 'occupancy-trend',
+        severity: dropped ? 'warning' : 'positive',
+        title: dropped
+          ? `Bandlik ${Math.abs(occDelta)}% pasaydi`
+          : `Bandlik ${occDelta}% o'sdi`,
+        detail: `Oxirgi ${periodDays} kunda o'rtacha bandlik ${overview.occupancy.occupancyRatePct}% — oldingi ${periodDays} kunga nisbatan ${occDelta > 0 ? '+' : ''}${occDelta}%.`,
+        actionLabel: 'Bronlarni ko\'rish',
+        actionTo: '/bookings',
+      });
+    }
+
+    // --- 2. ADR davrlararo o'zgarishi ---
+    const adrDelta = overview.trend.adrDelta;
+    if (adrDelta !== null && Math.abs(adrDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct) {
+      const dropped = adrDelta < 0;
+      insights.push({
+        id: 'adr-trend',
+        severity: dropped ? 'warning' : 'positive',
+        title: dropped
+          ? `O'rtacha narx (ADR) ${Math.abs(adrDelta)}% pasaydi`
+          : `O'rtacha narx (ADR) ${adrDelta}% o'sdi`,
+        detail: `Joriy ADR ${Math.round(overview.adr).toLocaleString('uz-UZ')} — oldingi ${periodDays} kunga nisbatan ${adrDelta > 0 ? '+' : ''}${adrDelta}%.`,
+        actionLabel: 'Narx rejalari',
+        actionTo: '/rooms',
+      });
+    }
+
+    // --- 3. Budjetdan chetlanish (joriy oy) ---
+    if (includeBudget) {
+      const now = new Date();
+      const perf = await this.getBudgetPerformance(
+        tenantId,
+        propertyId,
+        now.getUTCFullYear(),
+      );
+      const currentMonth = perf.months.find((m) => m.isPartial);
+      const planned = currentMonth?.budget.roomsRevenue ?? null;
+      if (currentMonth && planned !== null && planned > 0) {
+        // Joriy oy hali tugamagani uchun rejani O'TGAN KUNLAR ulushiga
+        // moslashtirib solishtiramiz — aks holda har oyning boshida
+        // "rejadan orqadamiz" degan yolg'on ogohlantirish chiqardi.
+        const daysInMonth = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+        ).getUTCDate();
+        const elapsed = now.getUTCDate();
+        const expectedSoFar = (planned * elapsed) / daysInMonth;
+        const actual = currentMonth.actual.roomsRevenue;
+        const variancePct =
+          expectedSoFar > 0
+            ? round2(((actual - expectedSoFar) / expectedSoFar) * 100)
+            : 0;
+
+        if (Math.abs(variancePct) >= INSIGHT_THRESHOLDS.budgetVariancePct) {
+          const behind = variancePct < 0;
+          insights.push({
+            id: 'budget-variance',
+            severity: behind ? 'critical' : 'positive',
+            title: behind
+              ? `Joriy oy rejasidan ${Math.abs(variancePct)}% orqadasiz`
+              : `Joriy oy rejasidan ${variancePct}% oldindasiz`,
+            detail: `Oyning ${elapsed}/${daysInMonth} kuni o'tdi. Shu muddatga kutilgan daromad ${Math.round(expectedSoFar).toLocaleString('uz-UZ')}, haqiqiy ${Math.round(actual).toLocaleString('uz-UZ')}.`,
+            actionLabel: 'Budjetni ko\'rish',
+            actionTo: '/budget',
+          });
+        }
+      }
+    }
+
+    // --- 4. To'lanmagan hisob-fakturalar ---
+    if (overview.outstandingInvoices.count > 0) {
+      insights.push({
+        id: 'outstanding-invoices',
+        severity: 'warning',
+        title: `${overview.outstandingInvoices.count} ta hisob-faktura to'lanmagan`,
+        detail: `Umumiy qoldiq ${Math.round(overview.outstandingInvoices.totalBalance).toLocaleString('uz-UZ')}.`,
+        actionLabel: 'Hisob-fakturalar',
+        actionTo: '/invoicing',
+      });
+    }
+
+    // --- 5. Tozalash navbati ---
+    const totalRooms = overview.occupancy.totalRooms;
+    if (
+      totalRooms > 0 &&
+      overview.housekeepingPending >
+        totalRooms * INSIGHT_THRESHOLDS.housekeepingBacklogRatio
+    ) {
+      insights.push({
+        id: 'housekeeping-backlog',
+        severity: 'warning',
+        title: `${overview.housekeepingPending} ta tozalash vazifasi kutmoqda`,
+        detail: `Bu ${totalRooms} ta xonaning sezilarli qismi — kelayotgan mehmonlarni kutib olishga ulgurmaslik xavfi bor.`,
+        actionLabel: 'Housekeeping',
+        actionTo: '/housekeeping',
+      });
+    }
+
+    // --- 6. Ochiq texnik zayavkalar ---
+    const openTickets = await this.maintenanceRepo.count({
+      where: {
+        tenantId,
+        propertyId,
+        status: In([
+          MaintenanceTicketStatus.OPEN,
+          MaintenanceTicketStatus.IN_PROGRESS,
+        ]),
+      },
+    });
+    if (openTickets > 0) {
+      insights.push({
+        id: 'open-maintenance',
+        severity: openTickets >= 5 ? 'warning' : 'info',
+        title: `${openTickets} ta texnik zayavka ochiq`,
+        detail:
+          'Hal qilinmagan zayavkalar xonani sotuvdan chiqarib turishi mumkin.',
+        actionLabel: 'Texnik xizmat',
+        actionTo: '/maintenance',
+      });
+    }
+
+    // Jiddiylik bo'yicha saralaymiz — eng muhimi tepada.
+    const order: Record<InsightSeverity, number> = {
+      critical: 0,
+      warning: 1,
+      info: 2,
+      positive: 3,
+    };
+    return insights.sort((a, b) => order[a.severity] - order[b.severity]);
+  }
 
   // "Reja vs haqiqat" — Budjet sahifasida kiritilgan oylik rejalarni o'sha
   // oylarning haqiqiy natijasi bilan yonma-yon qaytaradi.

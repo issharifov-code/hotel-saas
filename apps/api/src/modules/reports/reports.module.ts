@@ -8,6 +8,7 @@ import { Guest } from '../guests/entities/guest.entity';
 import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
 import { Budget } from '../budgets/entities/budget.entity';
+import { MaintenanceTicket } from '../maintenance/entities/maintenance-ticket.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { RolesModule } from '../roles/roles.module';
@@ -29,6 +30,7 @@ import { RlsModule } from '../../common/rls/rls.module';
       Agency,
       CorporateAccount,
       Budget,
+      MaintenanceTicket,
     ]),
     RolesModule,
   ],
