@@ -193,7 +193,7 @@ export function AdminPage() {
         {error && <p className="text-sm text-rose-600 mb-4">{error}</p>}
 
         {tab === 'tenants' && (
-          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
             {tenants.map((t) => (
               <div key={t.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -226,7 +226,7 @@ export function AdminPage() {
 
         {tab === 'billing' && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-medium text-slate-900 mb-3">Yangi hisob-faktura yaratish</p>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <select
@@ -293,7 +293,7 @@ export function AdminPage() {
               </select>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
               {invoices.map((inv) => (
                 <div key={inv.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -341,7 +341,7 @@ export function AdminPage() {
         )}
 
         {tab === 'demo-requests' && (
-          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
             {demoRequests.map((req) => (
               <div key={req.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0">

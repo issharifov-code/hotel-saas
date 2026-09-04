@@ -120,7 +120,7 @@ function AccountsView({ propertyId }: { propertyId: string }) {
   if (error) return <p className="text-sm text-rose-600">{error}</p>;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+    <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
       {accounts.length === 0 && <p className="p-4 text-sm text-slate-500">Hisoblar topilmadi</p>}
       {accounts.map((a) => (
         <div key={a.id} className="p-3 flex items-center justify-between text-sm">
@@ -216,7 +216,7 @@ function JournalEntriesView({ propertyId, canCreate }: { propertyId: string; can
       ) : error ? (
         <p className="text-sm text-rose-600">{error}</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
           {entries.length === 0 && <p className="p-4 text-sm text-slate-500">Jurnal yozuvlari topilmadi</p>}
           {entries.map((entry) => {
             const total = (entry.lines ?? []).reduce((sum, l) => sum + Number(l.debit), 0);
@@ -456,7 +456,7 @@ function TrialBalanceView({ propertyId }: { propertyId: string }) {
       ) : error ? (
         <p className="text-sm text-rose-600">{error}</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
@@ -562,7 +562,7 @@ function IncomeStatementView({ propertyId }: { propertyId: string }) {
         <p className="text-sm text-rose-600">{error}</p>
       ) : (
         <div className="space-y-6">
-          <section className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          <section className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
             <p className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase bg-slate-50">Daromadlar</p>
             {(data?.revenue ?? []).length === 0 && <p className="p-4 text-sm text-slate-500">Ma'lumot yo'q</p>}
             {(data?.revenue ?? []).map((r) => (
@@ -580,7 +580,7 @@ function IncomeStatementView({ propertyId }: { propertyId: string }) {
             </div>
           </section>
 
-          <section className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          <section className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
             <p className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase bg-slate-50">Xarajatlar</p>
             {(data?.expense ?? []).length === 0 && <p className="p-4 text-sm text-slate-500">Ma'lumot yo'q</p>}
             {(data?.expense ?? []).map((r) => (

@@ -62,23 +62,23 @@ export function AttendancePage() {
 
   return (
     <AppLayout title="Davomat va ta'til">
-      <div className="flex gap-2 mb-4 border-b border-slate-200">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setTab('attendance')}
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
             tab === 'attendance'
-              ? 'border-brand-navy text-brand-navy'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'chip-active'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
           }`}
         >
           Kunlik davomat
         </button>
         <button
           onClick={() => setTab('leave')}
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
             tab === 'leave'
-              ? 'border-brand-navy text-brand-navy'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              ? 'chip-active'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
           }`}
         >
           Ta'til so'rovlari
@@ -158,7 +158,7 @@ function AttendanceTab({ canEdit }: { canEdit: boolean }) {
       ) : roster.length === 0 ? (
         <p className="text-sm text-slate-500">Faol xodim topilmadi.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -406,7 +406,7 @@ function LeaveTab({
       ) : requests.length === 0 ? (
         <p className="text-sm text-slate-500">Hali ta'til so'rovi yo'q.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
