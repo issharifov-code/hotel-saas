@@ -325,7 +325,7 @@ function ChannelDetailModal({
           {syncNotice && <p className="text-xs text-slate-600 mb-2">{syncNotice}</p>}
           <div className="border border-slate-200 rounded-2xl overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase">
+              <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                 <tr>
                   <th className="text-left px-3 py-1.5">Xona turi</th>
                   <th className="text-left px-3 py-1.5">Narx rejasi</th>
@@ -359,7 +359,7 @@ function ChannelDetailModal({
           ) : (
             <div className="border border-slate-200 rounded-2xl max-h-48 overflow-auto">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase sticky top-0">
+                <thead className="bg-slate-50 text-xs text-slate-500 uppercase sticky top-0">
                   <tr>
                     <th className="text-left px-3 py-1.5">Sana</th>
                     <th className="text-left px-3 py-1.5">Holat</th>

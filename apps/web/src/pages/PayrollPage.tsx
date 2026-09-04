@@ -309,7 +309,7 @@ function RunDetailModal({
 
         <div className="border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 text-slate-500 uppercase">
+            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
                 <th className="text-left px-3 py-1.5">Xodim</th>
                 <th className="text-left px-3 py-1.5">Turi</th>
