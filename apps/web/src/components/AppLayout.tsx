@@ -373,6 +373,19 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = () => setDrawerOpen(false);
 
+  // Kontentni surish faqat keng ekranda (Tailwind `lg` = 64rem). Inline
+  // style'da media query ishlatib bo'lmagani uchun buni JS kuzatadi.
+  const [isWideScreen, setIsWideScreen] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 64rem)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 64rem)');
+    const onChange = () => setIsWideScreen(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   // Escape bilan yopish — panel butun ekranni egallaganda klaviatura orqali
   // chiqish yo'li bo'lishi kerak.
   useEffect(() => {
@@ -412,7 +425,26 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           `transform` qo'llangan element o'zining `position: fixed`
           farzandlari uchun yangi containing block yaratadi, ya'ni panel
           ham u bilan birga surilib ketardi. */}
-      <div className={`app-shell flex h-full flex-col ${drawerOpen ? 'app-shell-pushed' : ''}`}>
+      <div
+        className="flex h-full flex-col"
+        // 🔴 NIMA UCHUN INLINE STYLE, CSS klassi emas (2026-09-04):
+        // avval `lg:translate-x-[300px]` (Tailwind utility) va keyin qo'lda
+        // yozilgan `.app-shell-pushed` klassi sinaldi — IKKALASI HAM
+        // production'da ishlamadi: aynan shu elementda `transform` identity
+        // (0px) bo'lib qolardi, holbuki AYNAN SHU klasslar bilan yaratilgan
+        // sinov elementi 300px ni to'g'ri olardi. Sabab jonli saytda ham
+        // aniqlanmadi (kaskadda `transform` qo'yadigan boshqa mos qoida
+        // topilmadi). Inline style stylesheet'dagi har qanday qoidadan
+        // ustun, shuning uchun bu yerda u yagona ishonchli yo'l.
+        //
+        // `isWideScreen` kerak, chunki inline style'da media query bo'lmaydi:
+        // tor ekranda panel kontent USTIDAN ochiladi (300px surish 390px
+        // ekranda hech narsa qoldirmasdi).
+        style={{
+          transform: drawerOpen && isWideScreen ? 'translateX(300px)' : 'translateX(0)',
+          transition: 'transform 300ms cubic-bezier(0, 0, 0.2, 1)',
+        }}
+      >
       {/* Eng tepadagi ingichka oltin chiziq (2026-09, OPERA Cloud
           referensiga ko'ra) — sahifaning eng yuqori chetida, navy panelidan
           ham yuqorida, brend rangimizni darhol ko'rsatadigan aksent. */}
