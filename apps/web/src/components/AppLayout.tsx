@@ -217,23 +217,26 @@ function drawerLinkClass(isActive: boolean): string {
     : `${base} text-brand-navy hover:bg-brand-navy-light`;
 }
 
-// 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): chiziqlar
-// sezilarli darajada uzunroq va qalinroq — OPERA'dagi hamburger ham keng,
-// "bosiladigan blok" taassurotini beradi. viewBox 28x20 (kvadrat emas),
-// shuning uchun `w-7 h-5`: aks holda chiziqlar cho'zilib ketardi.
+// O'lchami ataylab 24x24 — yonidagi mehmonxona belgisi va pastdagi F1
+// belgisi bilan AYNAN bir xil (2026-09-04, foydalanuvchi qarori). Uchala
+// element bir o'lchamda bo'lgani uchun yuqori qator tinch ko'rinadi.
+//
+// Tarix: avval 16px edi, keyin "kengroq qilsang" so'roviga ko'ra 28x20 ga
+// oshirilgan edi; F1 belgisi 61px dan 24px ga kichraygach, keng hamburger
+// nomutanosib bo'lib qoldi va shu o'lchamga keltirildi.
 function HamburgerIcon() {
   return (
-    <svg viewBox="0 0 28 20" className="h-5 w-7" fill="none" stroke="currentColor" strokeWidth={2.2}>
-      <path strokeLinecap="round" d="M2 4h24M2 10h24M2 16h24" />
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.2}>
+      <path strokeLinecap="round" d="M3 6h18M3 12h18M3 18h18" />
     </svg>
   );
 }
 
-// Hamburger bilan ALMASHADI, shuning uchun o'lchami ham u bilan bir xil —
-// aks holda panel ochilganda tugma ichidagi belgi sakrab ketardi.
+// Hamburger bilan ALMASHADI, shuning uchun o'lchami ham u bilan bir xil
+// (24px) — aks holda panel ochilganda tugma ichidagi belgi sakrab ketardi.
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2}>
+    <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
@@ -503,11 +506,15 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               o'zgarmaydi (u navigatsiya qatori bilan tenglashtirilgan). */}
           <span className="flex min-w-0 items-center gap-2.5">
           {property?.logoUrl ? (
+            // 2026-09-04 (foydalanuvchi fikri): oq fon (`bg-white`) olib
+            // tashlandi — logotip to'g'ridan-to'g'ri navy panelga tushadi.
+            // Pastdagi zaxira variant (bosh harf) esa oq fonda qoladi: u
+            // matn, navy ustida navy matn ko'rinmasdi.
             <img
               src={property.logoUrl}
               alt=""
               aria-hidden="true"
-              className="h-6 w-6 shrink-0 rounded-md bg-white object-contain"
+              className="h-6 w-6 shrink-0 object-contain"
             />
           ) : (
             <span
@@ -562,9 +569,17 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             pastki (kontent bilan chegara) chiziqlaridan "yirib chiqadigan"
             vizual salmoq — Windows 7 Start tugmasi taassurotiga yaqinroq,
             lekin gradient/gloss/bevel'siz, qarang index.css .f1-brand-mark). */}
-        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="shrink-0 -my-3">
+        <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="shrink-0">
           <span className="f1-brand-mark">
-            <img src={folioOneLogo} alt="" className="h-[45.72px] w-[45.72px]" />
+            {/* 2026-09-04 (foydalanuvchi fikri): belgi endi tepadagi
+                mehmonxona logotipi bilan AYNAN bir o'lchamda (h-6 = 24px).
+                Avval u qatordan kattaroq bo'lib, chiziqlardan chiqib turardi
+                — endi qatorga sig'adi.
+
+                O'ROVCHI `span` eni esa 60.96px bo'lib QOLADI: yuqoridagi
+                hamburger uyasi shu enga tenglashtirilgan, ya'ni ikkala
+                ajratuvchi bir vertikalda turishi shunga bog'liq. */}
+            <img src={folioOneLogo} alt="" className="h-6 w-6" />
           </span>
         </Link>
         {/* Nozik ajratuvchi — yuqoridagi header'dagi sana/user/? oralig'idagi
