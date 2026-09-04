@@ -104,7 +104,8 @@ export interface GuestDto {
   address: string | null;
   city: string | null;
   contactPerson: string | null;
-  commissionPct: string | null;
+  // ESLATMA: komissiya profilda YO'Q — u `AgencyDto.commissionPct`da
+  // (mulkka bog'liq pul sozlamasi).
   parentProfileId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -862,6 +863,13 @@ export interface SegmentPerformanceDto {
   }[];
   byCorporateAccount: {
     corporateAccountId: string;
+    name: string;
+    bookingCount: number;
+    revenue: number;
+  }[];
+  // Nomlangan manba (2026-09-04) — `bySource` (kanal) bilan bir xil emas.
+  bySourceProfile: {
+    sourceProfileId: string;
     name: string;
     bookingCount: number;
     revenue: number;

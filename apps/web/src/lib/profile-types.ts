@@ -38,7 +38,7 @@ export const PROFILE_TYPES: ProfileTypeMeta[] = [
     key: 'travel_agent',
     label: 'Turagent profili',
     shortLabel: 'Turagent',
-    hint: 'Bron olib keladigan agentlik (komissiya bilan)',
+    hint: "Bron olib keladigan agentlik",
     nameLabel: 'Agentlik nomi',
   },
   {
