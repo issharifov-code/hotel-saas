@@ -70,9 +70,20 @@ export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjust';
 export type CommunicationPreference = 'email' | 'sms' | 'phone' | 'none';
 
+// Profil turi (2026-09-04, OPERA Cloud "Manage Profile" referensi).
+// Backend'dagi `ProfileType` enum bilan bir xil bo'lishi shart.
+export type ProfileType =
+  | 'guest'
+  | 'company'
+  | 'travel_agent'
+  | 'source'
+  | 'group'
+  | 'contact';
+
 export interface GuestDto {
   id: string;
   tenantId: string;
+  profileType: ProfileType;
   fullName: string;
   phone: string | null;
   email: string | null;
@@ -87,6 +98,14 @@ export interface GuestDto {
   loyaltyTier: LoyaltyTier;
   loyaltyPoints: number;
   lifetimePoints: number;
+  // Tashkilot profillari uchun (kompaniya / turagent / manba). Mehmon
+  // profilida bular har doim null.
+  taxId: string | null;
+  address: string | null;
+  city: string | null;
+  contactPerson: string | null;
+  commissionPct: string | null;
+  parentProfileId: string | null;
   createdAt: string;
   updatedAt: string;
 }
