@@ -353,6 +353,10 @@ export interface InsightDto {
   detail: string;
   actionLabel?: string;
   actionTo?: string;
+  // Foydalanuvchi buni "e'tiborga oldim" deb yopganmi. Backend yopilganlarni
+  // javobdan olib tashlamaydi, balki belgilaydi — shunda panel "N ta
+  // yopilgan · Ko'rsatish" havolasini chiza oladi.
+  dismissed?: boolean;
 }
 
 // "Reja vs haqiqat" — Dashboard'dagi Moliyaviy tabi uchun.
