@@ -34,8 +34,8 @@ const GUIDE_GROUPS: GuideGroup[] = [
     items: [
       {
         key: 'guests',
-        title: 'Mehmonlar',
-        body: "Barcha mehmonlaringiz bazasi. Ism, telefon yoki email bo'yicha qidiring, \"+ Mehmon qo'shish\" orqali yangi mehmon yarating. Har bir mehmon kartochkasida sodiqlik darajasi (Bronza/Kumush/Oltin/Platina) va ballari ko'rinadi; mehmon ustiga bosib uning bronlar tarixi va sodiqlik tranzaksiyalarini ko'rishingiz mumkin. Bir xil mehmon ikki marta kiritilgan bo'lsa, \"Ikkilanmalar\" orqali ularni birlashtiring.",
+        title: 'Profillarni boshqarish',
+        body: "Barcha mehmonlaringiz bazasi. Qidiruv bo'limida ism, aloqa (telefon yoki email), hujjat raqami va fuqarolik bo'yicha qidirasiz — to'ldirilgan har bir maydon ro'yxatni toraytiradi. Yangi profil \"Parametrlar\" tugmasi ostidagi \"Mehmon profili\" orqali yaratiladi. Har bir profilda sodiqlik darajasi (Bronza/Kumush/Oltin/Platina) va ballari ko'rinadi; profil ustiga bosib bronlar tarixi va sodiqlik tranzaksiyalarini ko'rishingiz mumkin. Bir xil mehmon ikki marta kiritilgan bo'lsa, \"Parametrlar\" > \"Ikkilanmalarni birlashtirish\" orqali ularni birlashtiring.",
       },
       {
         key: 'messaging',
