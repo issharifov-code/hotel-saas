@@ -56,6 +56,7 @@ import { DemoRequest } from './modules/marketing/entities/demo-request.entity';
 import { PayrollRun } from './modules/payroll/entities/payroll-run.entity';
 import { PayslipEntry } from './modules/payroll/entities/payslip-entry.entity';
 import { AttendanceRecord } from './modules/attendance/entities/attendance-record.entity';
+import { Budget } from './modules/budgets/entities/budget.entity';
 import { LeaveRequest } from './modules/attendance/entities/leave-request.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -86,6 +87,7 @@ import { CityLedgerModule } from './modules/city-ledger/city-ledger.module';
 import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
 
 @Module({
   imports: [
@@ -153,6 +155,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
           PayrollRun,
           PayslipEntry,
           AttendanceRecord,
+          Budget,
           LeaveRequest,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
@@ -195,6 +198,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
     ChannelManagerModule,
     AttendanceModule,
     PayrollModule,
+    BudgetsModule,
   ],
   controllers: [AppController],
   providers: [
