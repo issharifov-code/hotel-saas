@@ -95,7 +95,7 @@ export class Guest {
   @Column({ name: 'full_name', length: 200 })
   fullName: string;
 
-  @Column({ length: 30, nullable: true, type: 'varchar' })
+  @Column({ length: 50, nullable: true, type: 'varchar' })
   phone: string | null;
 
   @Column({ length: 255, nullable: true, type: 'varchar' })
@@ -176,10 +176,10 @@ export class Guest {
   // Jismoniy mehmonda bular bo'sh qoladi va aksincha (validatsiya buni
   // ta'minlaydi) — shu sababdan hammasi nullable.
 
-  @Column({ name: 'tax_id', length: 32, nullable: true, type: 'varchar' })
+  @Column({ name: 'tax_id', length: 50, nullable: true, type: 'varchar' })
   taxId: string | null; // O'zbekistonda — STIR
 
-  @Column({ length: 255, nullable: true, type: 'varchar' })
+  @Column({ length: 1000, nullable: true, type: 'varchar' })
   address: string | null;
 
   @Column({ length: 100, nullable: true, type: 'varchar' })
@@ -190,22 +190,16 @@ export class Guest {
   // shu tashkilotga bog'lanadi.
   @Column({
     name: 'contact_person',
-    length: 160,
+    length: 200,
     nullable: true,
     type: 'varchar',
   })
   contactPerson: string | null;
 
-  // Turagent komissiyasi (%). `numeric` TypeORM'da string bo'lib keladi —
-  // shuning uchun tipi `string | null`, hisob-kitobda `Number()` qilinadi.
-  @Column({
-    name: 'commission_pct',
-    type: 'numeric',
-    precision: 5,
-    scale: 2,
-    nullable: true,
-  })
-  commissionPct: string | null;
+  // ESLATMA: komissiya foizi bu yerda YO'Q (2026-09-04). U mulkka bog'liq
+  // pul sozlamasi va `agencies.commission_pct`da yashaydi — profil esa
+  // faqat "kim ekani"ni saqlaydi. Ikkalasida ham bo'lsa, qaysi biri haqiqiy
+  // ekani noaniq bo'lib qolardi.
 
   // CONTACT profilining tashkiloti (COMPANY/TRAVEL_AGENT/SOURCE). O'z-o'ziga
   // havola — tashkilot o'chirilsa kontakt qolib ketadi, faqat bog'lanish
