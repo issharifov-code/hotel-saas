@@ -2,10 +2,13 @@
 
 @theme {
   /* Folio One brend ranglari (logotipdan olingan) */
-  --color-brand-navy: #002283;
+  /* 2026-09-04: ranglar F1 logotipi faylidan (folio-one-logo.png) piksel
+     bo'yicha o'lchab olindi — ko'k pikselarning medianasi #002385, oltin
+     pikselarniki #e1a339. Avval taxminan (#002283 / #e0a237) edi. */
+  --color-brand-navy: #002385;
   --color-brand-navy-dark: #001a63;
   --color-brand-navy-light: #e8ecf7;
-  --color-brand-gold: #e0a237;
+  --color-brand-gold: #e1a339;
   --color-brand-gold-dark: #c98a1f;
 }
 
@@ -53,8 +56,14 @@
      ilhomlangan, lekin uning dizayni (gloss/bevel/refleksiya) ataylab
      nusxalanmagan.
   */
+  /* 2026-09-04: modul paneli 27% ga kengaygani uchun (41px -> 52.07px) bu
+     belgi ham xuddi shu nisbatda kattalashtirildi (48px -> 60.96px). Aks
+     holda u qatorning ichiga botib qolardi va avval so'ralgan "yuqori va
+     pastki chiziqlarni yirib turadigan" (Windows 7 Start tugmasi) ko'rinish
+     yo'qolardi — protruziya `-my-3` bilan emas, aynan belgi qatordan
+     KATTAROQ bo'lgani uchun hosil bo'ladi. */
   .f1-brand-mark {
-    @apply flex items-center justify-center h-12 w-12 transition-opacity duration-150;
+    @apply flex items-center justify-center h-[60.96px] w-[60.96px] transition-opacity duration-150;
   }
   .f1-brand-mark:hover {
     @apply opacity-80;
