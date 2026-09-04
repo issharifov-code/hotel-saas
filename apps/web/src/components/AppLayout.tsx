@@ -412,11 +412,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           `transform` qo'llangan element o'zining `position: fixed`
           farzandlari uchun yangi containing block yaratadi, ya'ni panel
           ham u bilan birga surilib ketardi. */}
-      <div
-        className={`flex h-full flex-col transition-transform duration-300 ease-out ${
-          drawerOpen ? 'lg:translate-x-[300px]' : ''
-        }`}
-      >
+      <div className={`app-shell flex h-full flex-col ${drawerOpen ? 'app-shell-pushed' : ''}`}>
       {/* Eng tepadagi ingichka oltin chiziq (2026-09, OPERA Cloud
           referensiga ko'ra) — sahifaning eng yuqori chetida, navy panelidan
           ham yuqorida, brend rangimizni darhol ko'rsatadigan aksent. */}
