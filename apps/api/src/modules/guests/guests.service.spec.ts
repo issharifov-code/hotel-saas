@@ -31,6 +31,9 @@ describe('GuestsService', () => {
 
     let nextNewId = 0;
     const guestRepo = {
+      // 2026-09-04: merge agentlik/korporativ hisob havolalarini xom SQL
+      // bilan ko'chiradi (ular profilga RESTRICT FK bilan bog'langan).
+      manager: { query: jest.fn().mockResolvedValue([]) },
       find: jest
         .fn()
         .mockImplementation(({ where: { tenantId } }) =>

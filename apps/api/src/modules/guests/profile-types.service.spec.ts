@@ -80,24 +80,16 @@ describe('GuestsService — profil turlari', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('komissiya faqat TURAGENT profilida ruxsat etiladi', async () => {
+    it('🔴 komissiya profilda SAQLANMAYDI', async () => {
+      // 2026-09-04: komissiya foizi `agencies.commission_pct`da yashaydi —
+      // u mulkka bog'liq pul sozlamasi. Ikkala joyda ham bo'lsa, qaysi biri
+      // haqiqiy ekani noaniq bo'lib qolardi.
       const { service, saved } = createService();
       await service.create('t1', {
         profileType: ProfileType.TRAVEL_AGENT,
         fullName: 'Silk Road Tours',
-        commissionPct: 12.5,
       });
-      // `numeric` ustun — bazaga string sifatida boradi.
-      expect(saved[0].commissionPct).toBe('12.5');
-
-      const { service: s2 } = createService();
-      await expect(
-        s2.create('t1', {
-          profileType: ProfileType.COMPANY,
-          fullName: 'Orzu MChJ',
-          commissionPct: 12.5,
-        }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(saved[0]).not.toHaveProperty('commissionPct');
     });
 
     it("bo'sh qiymat cheklovni ishga tushirmaydi", async () => {

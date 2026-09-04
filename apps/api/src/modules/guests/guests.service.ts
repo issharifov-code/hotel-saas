@@ -43,7 +43,6 @@ const FIELD_ALLOWED_TYPES: Record<string, ProfileType[]> = {
   city: ORGANIZATION_PROFILE_TYPES,
   // Aloqa shaxsi tashkilotda ham, guruhda ham ma'noli (guruh rahbari).
   contactPerson: [...ORGANIZATION_PROFILE_TYPES, ProfileType.GROUP],
-  commissionPct: [ProfileType.TRAVEL_AGENT],
   parentProfileId: [ProfileType.CONTACT],
   documentType: [ProfileType.GUEST],
   documentNumber: [ProfileType.GUEST],
@@ -122,6 +121,24 @@ export class GuestsService {
     }
   }
 
+  // Profil mavjud VA kutilgan turda ekanini tekshiradi. Boshqa modullar
+  // (masalan Bookings) shu orqali "bu haqiqatan manba profilimi?" degan
+  // savolga javob oladi — turni har bir chaqiruvchi o'zi tekshirsa, biri
+  // unutib qo'yishi muqarrar edi.
+  async findByType(
+    tenantId: string,
+    id: string,
+    expected: ProfileType,
+  ): Promise<Guest> {
+    const profile = await this.findById(tenantId, id);
+    if (profile.profileType !== expected) {
+      throw new BadRequestException(
+        `Bu profil "${PROFILE_TYPE_LABELS[expected]}" turida emas`,
+      );
+    }
+    return profile;
+  }
+
   async create(tenantId: string, dto: CreateGuestDto): Promise<Guest> {
     const profileType = dto.profileType ?? ProfileType.GUEST;
     this.assertFieldsMatchType(profileType, dto as unknown as Record<string, unknown>);
@@ -145,9 +162,6 @@ export class GuestsService {
       address: dto.address ?? null,
       city: dto.city ?? null,
       contactPerson: dto.contactPerson ?? null,
-      // `numeric` ustun — bazaga va TypeORM'ga string sifatida boradi.
-      commissionPct:
-        dto.commissionPct === undefined ? null : String(dto.commissionPct),
       parentProfileId: dto.parentProfileId ?? null,
     });
     return this.guestRepo.save(guest);
@@ -281,8 +295,6 @@ export class GuestsService {
     if (dto.city !== undefined) guest.city = dto.city || null;
     if (dto.contactPerson !== undefined)
       guest.contactPerson = dto.contactPerson || null;
-    if (dto.commissionPct !== undefined)
-      guest.commissionPct = String(dto.commissionPct);
     if (dto.parentProfileId !== undefined)
       guest.parentProfileId = dto.parentProfileId || null;
     return this.guestRepo.save(guest);
@@ -445,6 +457,21 @@ export class GuestsService {
     await this.loyaltyTxRepo.update(
       { guestId: duplicateId },
       { guestId: primaryId },
+    );
+
+    // 🔴 Agentlik va korporativ hisob profilga RESTRICT bilan bog'langan
+    // (2026-09-04) — ular ko'chirilmasa quyidagi `remove` FK xatosi bilan
+    // yiqilardi. Repository emas, xom SQL: bu jadvallar GuestsModule'ga
+    // import qilinmagan (aylanma bog'liqlik bo'lardi), lekin bir HTTP so'rov
+    // ichida barcha repository'lar bitta tranzaksiyani ulashadi, shuning
+    // uchun `manager` orqali yozish ham xuddi shu tranzaksiyada ketadi.
+    await this.guestRepo.manager.query(
+      'UPDATE agencies SET profile_id = $1 WHERE profile_id = $2',
+      [primaryId, duplicateId],
+    );
+    await this.guestRepo.manager.query(
+      'UPDATE corporate_accounts SET profile_id = $1 WHERE profile_id = $2',
+      [primaryId, duplicateId],
     );
 
     await this.guestRepo.remove(duplicate);
