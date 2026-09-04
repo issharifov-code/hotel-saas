@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { Agency } from './entities/agency.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { Guest } from '../guests/entities/guest.entity';
 import { AgenciesService } from './agencies.service';
 import { AgenciesController } from './agencies.controller';
 import { RolesModule } from '../roles/roles.module';
@@ -10,7 +11,7 @@ import { RlsModule } from '../../common/rls/rls.module';
 // — GuestsModule'ning Invoice/PosOrder naqshiga o'xshab, aylanma bog'liqlikdan
 // qochish uchun. Faqat komissiya hisobotini o'qish (getSummary) uchun kerak.
 @Module({
-  imports: [RlsModule.forFeature([Agency, Booking]), RolesModule],
+  imports: [RlsModule.forFeature([Agency, Booking, Guest]), RolesModule],
   providers: [AgenciesService],
   controllers: [AgenciesController],
   exports: [AgenciesService],

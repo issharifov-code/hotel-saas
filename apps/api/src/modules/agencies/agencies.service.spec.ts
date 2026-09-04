@@ -16,16 +16,30 @@ describe('AgenciesService', () => {
       create: jest.fn((data: unknown) => data),
       save: jest.fn().mockResolvedValue(savedAgency),
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(agency),
       findOneBy: jest.fn().mockResolvedValue(agency),
     };
     const bookingRepo = {
       find: jest.fn().mockResolvedValue(bookings),
     };
+    // 2026-09-04: agentlikning KIM ekani profilda — servis yaratishda
+    // turagent profilini ochadi yoki mavjudini ulaydi.
+    const guestRepo = {
+      create: jest.fn((x: unknown) => x),
+      save: jest.fn((x: Record<string, unknown>) =>
+        Promise.resolve({ ...x, id: 'prof1' }),
+      ),
+      findOneBy: jest.fn().mockResolvedValue({
+        id: 'prof1',
+        profileType: 'travel_agent',
+      }),
+    };
     const service = new AgenciesService(
       agencyRepo as never,
       bookingRepo as never,
+      guestRepo as never,
     );
-    return { service, agencyRepo, bookingRepo };
+    return { service, agencyRepo, bookingRepo, guestRepo };
   }
 
   it("yaratishda commissionPct berilmasa 10 (default) qo'yiladi, isActive=true", async () => {
@@ -47,7 +61,7 @@ describe('AgenciesService', () => {
 
   it('topilmagan agentlik uchun NotFoundException tashlaydi', async () => {
     const { service, agencyRepo } = createService();
-    agencyRepo.findOneBy.mockResolvedValue(null);
+    agencyRepo.findOne.mockResolvedValue(null);
     await expect(service.findById('t1', 'p1', 'no-such-id')).rejects.toThrow(
       NotFoundException,
     );
@@ -55,11 +69,14 @@ describe('AgenciesService', () => {
 
   it("update — faqat berilgan maydonlarni o'zgartiradi", async () => {
     const { service, agencyRepo } = createService();
-    agencyRepo.findOneBy.mockResolvedValue({
+    agencyRepo.findOne.mockResolvedValue({
       id: 'a1',
       name: 'ACME Travel',
       commissionPct: '10.00',
       isActive: true,
+      // Profil bo'lmasa ham update ishlashi kerak (eski, hali ko'chirilmagan
+      // yozuv) — servis `agency.profile` ni shartli tekshiradi.
+      profile: null,
     });
     agencyRepo.save.mockImplementation((x: unknown) => Promise.resolve(x));
 
@@ -106,7 +123,7 @@ describe('AgenciesService', () => {
 
   it("getSummary — mavjud bo'lmagan agentlik uchun NotFoundException tashlaydi", async () => {
     const { service, agencyRepo } = createService();
-    agencyRepo.findOneBy.mockResolvedValue(null);
+    agencyRepo.findOne.mockResolvedValue(null);
     await expect(service.getSummary('t1', 'p1', 'no-such-id')).rejects.toThrow(
       NotFoundException,
     );
