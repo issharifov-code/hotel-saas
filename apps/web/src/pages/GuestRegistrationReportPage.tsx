@@ -86,11 +86,11 @@ export function GuestRegistrationReportPage() {
       {data && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs text-slate-500">Jami turishlar</p>
               <p className="text-2xl font-semibold text-slate-900">{data.totalStays}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs text-slate-500">Hujjat ma'lumoti to'liq bo'lmaganlar</p>
               <p
                 className={`text-2xl font-semibold ${data.missingDocumentCount > 0 ? 'text-amber-700' : 'text-slate-900'}`}
@@ -100,7 +100,7 @@ export function GuestRegistrationReportPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             {data.stays.length === 0 ? (
               <p className="text-sm text-slate-500">Tanlangan davrda turish qayd etilmagan.</p>
             ) : (

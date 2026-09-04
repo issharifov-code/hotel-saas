@@ -88,7 +88,7 @@ export function GroupBookingsPage() {
       ) : groups.length === 0 ? (
         <p className="text-sm text-slate-500">Hali guruh bron yaratilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>

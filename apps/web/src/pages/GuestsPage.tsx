@@ -103,7 +103,7 @@ export function GuestsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
         {!loading && guests.length === 0 && <p className="p-4 text-sm text-slate-500">Mehmon topilmadi</p>}
         {guests.map((g) => (
           <button
@@ -270,14 +270,16 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
             <span className="text-sm text-slate-600">{guest.loyaltyPoints} ball (jami to'plangan: {guest.lifetimePoints})</span>
           </div>
 
-          <div className="flex gap-1 mb-4 border-b border-slate-200">
+          <div className="flex flex-wrap gap-2 mb-4">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => setTab(t.key)}
-                className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${
-                  tab === t.key ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500'
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  tab === t.key
+                    ? 'chip-active'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {t.label}
@@ -317,7 +319,7 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
                   )}
                 </div>
               )}
-              <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+              <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
                 {transactions.length === 0 && <p className="p-3 text-sm text-slate-500">Hali ball tranzaksiyasi yo'q</p>}
                 {transactions.map((t) => (
                   <div key={t.id} className="p-3 flex items-center justify-between text-sm">
@@ -336,7 +338,7 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
           )}
 
           {tab === 'stays' && (
-            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
               {stays.length === 0 && <p className="p-3 text-sm text-slate-500">Hali turgan kunlari yo'q</p>}
               {stays.map((s) => (
                 <div key={s.id} className="p-3 text-sm">
