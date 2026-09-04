@@ -62,6 +62,29 @@
      pastki chiziqlarni yirib turadigan" (Windows 7 Start tugmasi) ko'rinish
      yo'qolardi — protruziya `-my-3` bilan emas, aynan belgi qatordan
      KATTAROQ bo'lgani uchun hosil bo'ladi. */
+  /* Chap panel ochilganda ilova qobig'ini o'ngga suradigan klass.
+     (2026-09-04)
+
+     🔴 NIMA UCHUN QO'LDA YOZILGAN, Tailwind'ning `lg:translate-x-[300px]`
+     utility'si emas: o'sha utility production build'da yaratilsa-da,
+     elementda `translate` xossasi 0px bo'lib qolardi (Tailwind v4
+     `transform` emas, `translate` xossasini va `--tw-translate-*`
+     o'zgaruvchilarini ishlatadi — qaysidir joyda ustma-ust tushib
+     ketgan). Jonli saytda tekshirilib aniqlandi. Bu yerda oddiy
+     `transform` ishlatiladi: hech qanday o'zgaruvchiga bog'liq emas va
+     `transition: transform` uni aniq animatsiya qiladi.
+
+     Faqat `lg:`+ da: tor ekranda panel kontent ustidan ochiladi
+     (u yerda 300px surish deyarli hech narsa qoldirmasdi). */
+  .app-shell {
+    transition: transform 300ms cubic-bezier(0, 0, 0.2, 1);
+  }
+  @media (min-width: 64rem) {
+    .app-shell-pushed {
+      transform: translateX(300px);
+    }
+  }
+
   .f1-brand-mark {
     @apply flex items-center justify-center h-[60.96px] w-[60.96px] transition-opacity duration-150;
   }
