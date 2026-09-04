@@ -163,7 +163,7 @@ export function StaffPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-full px-4 py-2 text-sm font-medium ${
-              tab === t ? 'chip-active' : 'bg-white text-slate-600 border border-slate-200'
+              tab === t ? 'chip-active' : 'bg-white text-brand-navy border border-slate-200'
             }`}
           >
             {t === 'staff' ? 'Xodimlar' : 'Rollar va ruxsatlar'}
@@ -223,7 +223,7 @@ export function StaffPage() {
                                   <button
                                     type="button"
                                     onClick={() => removeRole(u.id, r.id)}
-                                    className="text-brand-navy/60 hover:text-brand-navy"
+                                    className="text-brand-navy/60"
                                     title="Rolni olib tashlash"
                                   >
                                     &times;

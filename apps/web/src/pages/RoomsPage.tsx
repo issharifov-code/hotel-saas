@@ -159,7 +159,7 @@ export function RoomsPage() {
                 {can('booking', 'edit') && (
                   <button
                     onClick={() => setRestrictionsFor(rp)}
-                    className="text-xs text-slate-500 hover:text-slate-900 underline"
+                    className="text-xs text-brand-navy underline"
                   >
                     Cheklovlar
                   </button>
@@ -167,7 +167,7 @@ export function RoomsPage() {
                 {can('booking', 'edit') && (
                   <button
                     onClick={() => toggleRatePlanActive(rp)}
-                    className="text-xs text-slate-500 hover:text-slate-900 underline"
+                    className="text-xs text-brand-navy underline"
                   >
                     {rp.isActive ? 'Nofaollashtirish' : 'Faollashtirish'}
                   </button>

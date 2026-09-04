@@ -124,7 +124,7 @@ export function WarehousePage() {
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               tab === t.key
                 ? 'chip-active'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
             }`}
           >
             {t.label}
@@ -363,7 +363,7 @@ function StockLevelsSection({
                 </td>
                 <td className="px-4 py-2.5 text-right">
                   {canEdit && (
-                    <button onClick={() => onAction(row)} className="text-xs text-slate-600 hover:text-slate-900 underline">
+                    <button onClick={() => onAction(row)} className="text-xs text-brand-navy underline">
                       Chiqim / Tuzatish
                     </button>
                   )}
@@ -431,7 +431,7 @@ function StockActionModal({
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               mode === m
                 ? 'chip-active'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
             }`}
           >
             {m === 'issue' ? 'Chiqim' : 'Inventarizatsiya tuzatishi'}
@@ -778,7 +778,7 @@ function PurchaseOrdersSection({
                 </>
               )}
               {(po.status === 'approved' || po.status === 'partially_received') && canEdit && (
-                <button onClick={() => onReceive(po)} className="text-xs font-medium text-slate-700 hover:text-slate-900 underline">
+                <button onClick={() => onReceive(po)} className="text-xs font-medium text-brand-navy underline">
                   Qabul qilish
                 </button>
               )}
@@ -786,7 +786,7 @@ function PurchaseOrdersSection({
                 <button
                   disabled={busyId === po.id}
                   onClick={() => runAction(po.id, 'cancel')}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-700 underline"
+                  className="text-xs font-medium text-brand-navy underline"
                 >
                   Bekor qilish
                 </button>
@@ -913,7 +913,7 @@ function CreatePurchaseOrderModal({
           <button
             type="button"
             onClick={() => setLines((prev) => [...prev, { stockItemId: stockItems[0]?.id ?? '', quantityOrdered: '', unitCost: '' }])}
-            className="text-xs text-slate-600 hover:text-slate-900 underline"
+            className="text-xs text-brand-navy underline"
           >
             + Band qo'shish
           </button>
