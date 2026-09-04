@@ -341,6 +341,20 @@ export interface BudgetDto {
   adr: string | null;
 }
 
+// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar.
+// Har bir tavsiya `detail`da nega chiqqanini aniq raqam bilan tushuntiradi
+// (backend: ReportsService.getInsights izohiga qarang).
+export type InsightSeverity = 'critical' | 'warning' | 'info' | 'positive';
+
+export interface InsightDto {
+  id: string;
+  severity: InsightSeverity;
+  title: string;
+  detail: string;
+  actionLabel?: string;
+  actionTo?: string;
+}
+
 // "Reja vs haqiqat" — Dashboard'dagi Moliyaviy tabi uchun.
 // Haqiqiy qiymatlar Dashboard'ning boshqa joylaridagi bilan bir xil ta'rifda
 // hisoblanadi (backend: ReportsService.getBudgetPerformance izohiga qarang).
