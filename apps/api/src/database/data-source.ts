@@ -50,6 +50,7 @@ import { PayslipEntry } from '../modules/payroll/entities/payslip-entry.entity';
 import { AttendanceRecord } from '../modules/attendance/entities/attendance-record.entity';
 import { Budget } from '../modules/budgets/entities/budget.entity';
 import { LeaveRequest } from '../modules/attendance/entities/leave-request.entity';
+import { InsightDismissal } from '../modules/reports/entities/insight-dismissal.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -111,6 +112,7 @@ export const AppDataSource = new DataSource({
     AttendanceRecord,
     Budget,
     LeaveRequest,
+    InsightDismissal,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.
