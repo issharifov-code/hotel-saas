@@ -20,6 +20,7 @@ describe('ReportsController (HTTP)', () => {
     getOverview: jest.Mock;
     getSegmentPerformance: jest.Mock;
     getGuestRegistrationReport: jest.Mock;
+    getBudgetPerformance: jest.Mock;
   };
   let rolesService: { getEffectivePermissions: jest.Mock };
 
@@ -28,6 +29,7 @@ describe('ReportsController (HTTP)', () => {
       getOverview: jest.fn(),
       getSegmentPerformance: jest.fn(),
       getGuestRegistrationReport: jest.fn(),
+      getBudgetPerformance: jest.fn(),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
@@ -144,6 +146,86 @@ describe('ReportsController (HTTP)', () => {
         .expect(200);
 
       expect(reportsService.getOverview).toHaveBeenCalledWith('t1', 'p1', 30);
+    });
+  });
+
+  // Bu endpoint budjet raqamlarini qaytaradi, ya'ni Budjet sahifasi bilan bir
+  // xil darajada nozik — shuning uchun REPORTS emas, ACCOUNTING ruxsati.
+  // Aks holda reports:view bor xodim budjetni sahifadan ko'ra olmasa-da,
+  // shu endpoint orqali ko'rib olardi.
+  describe('GET /properties/:propertyId/reports/budget-performance', () => {
+    it("token bo'lmasa 401 qaytaradi", async () => {
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/budget-performance')
+        .expect(401);
+      expect(reportsService.getBudgetPerformance).not.toHaveBeenCalled();
+    });
+
+    it("reports:view yetarli EMAS — accounting:view talab qilinadi (403)", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/budget-performance?year=2026')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(403);
+
+      expect(reportsService.getBudgetPerformance).not.toHaveBeenCalled();
+    });
+
+    it('accounting:view bilan ishlaydi', async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['accounting:view']),
+      );
+      reportsService.getBudgetPerformance.mockResolvedValue({});
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/budget-performance?year=2026')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(reportsService.getBudgetPerformance).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        2026,
+      );
+    });
+
+    it("yil ko'rsatilmasa joriy yil ishlatiladi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['accounting:view']),
+      );
+      reportsService.getBudgetPerformance.mockResolvedValue({});
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/budget-performance')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(reportsService.getBudgetPerformance).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        new Date().getUTCFullYear(),
+      );
+    });
+
+    it("ma'nosiz yil berilsa joriy yilga qaytadi (xato o'rniga)", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['accounting:view']),
+      );
+      reportsService.getBudgetPerformance.mockResolvedValue({});
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/budget-performance?year=abc')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(reportsService.getBudgetPerformance).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        new Date().getUTCFullYear(),
+      );
     });
   });
 
