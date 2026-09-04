@@ -1,4 +1,12 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Room } from '../../rooms/entities/room.entity';
 
 export enum HousekeepingTaskStatus {
@@ -13,6 +21,7 @@ export enum HousekeepingTaskStatus {
 // (masalan mehmon turishi davomida qo'shimcha tozalash) yaratiladi.
 @Entity('housekeeping_tasks')
 @Index(['tenantId', 'propertyId'])
+@Index(['tenantId', 'propertyId', 'status']) // kutilayotgan tozalash navbati
 export class HousekeepingTask {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -30,7 +39,11 @@ export class HousekeepingTask {
   @JoinColumn({ name: 'room_id' })
   room: Room;
 
-  @Column({ type: 'enum', enum: HousekeepingTaskStatus, default: HousekeepingTaskStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: HousekeepingTaskStatus,
+    default: HousekeepingTaskStatus.PENDING,
+  })
   status: HousekeepingTaskStatus;
 
   @Column({ name: 'assigned_to_user_id', type: 'uuid', nullable: true })
