@@ -162,7 +162,8 @@ export function GuestsPage() {
             (hujjati, fuqaroligi, sodiqlik ballari bilan).{' '}
             <b className="font-medium">Kompaniya</b> — xodimlarini joylashtiradigan
             tashkilot. <b className="font-medium">Turagent</b> — bron olib keladigan
-            agentlik (komissiya bilan). <b className="font-medium">Manba</b> — bronlar
+            agentlik (komissiya foizi &quot;Agentliklar&quot; sahifasida beriladi).{' '}
+            <b className="font-medium">Manba</b> — bronlar
             qayerdan kelayotgani. <b className="font-medium">Guruh</b> — bir nechta bron
             uchun umumiy nom. <b className="font-medium">Kontakt</b> — tashkilotdagi
             aniq odam.
@@ -521,7 +522,6 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
   const [address, setAddress] = useState(guest.address ?? '');
   const [city, setCity] = useState(guest.city ?? '');
   const [contactPerson, setContactPerson] = useState(guest.contactPerson ?? '');
-  const [commissionPct, setCommissionPct] = useState(guest.commissionPct ?? '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -554,9 +554,6 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
         body.city = city || undefined;
       }
       if (hasContactPerson) body.contactPerson = contactPerson || undefined;
-      if (guest.profileType === 'travel_agent' && commissionPct.trim() !== '') {
-        body.commissionPct = Number(commissionPct);
-      }
       await apiFetch(`/guests/${guest.id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -664,20 +661,13 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
             />
           </label>
         )}
+        {/* Komissiya profilda emas (2026-09-04) — u "Agentliklar"
+            sahifasida, mulk darajasida. Qarang: CreateProfileModal. */}
         {guest.profileType === 'travel_agent' && (
-          <label className="block">
-            <span className="block text-xs font-medium text-slate-600 mb-1">Komissiya (%)</span>
-            <input
-              disabled={!canEdit}
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              value={commissionPct}
-              onChange={(e) => setCommissionPct(e.target.value)}
-              className="input"
-            />
-          </label>
+          <p className="col-span-2 rounded-lg bg-slate-100 px-3 py-2 text-[11px] text-slate-600">
+            Komissiya foizi <b className="font-medium">Bronlar → Agentliklar</b>{' '}
+            sahifasida belgilanadi — u har mehmonxona uchun alohida.
+          </p>
         )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa afzalligi</span>

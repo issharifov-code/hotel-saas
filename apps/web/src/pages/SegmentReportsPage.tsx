@@ -167,6 +167,43 @@ export function SegmentReportsPage() {
               )}
             </SectionCard>
 
+            {/* Nomlangan manba (2026-09-04). Yuqoridagi "Kanal" jadvali
+                bilan yonma-yon turadi va uni almashtirmaydi: kanal — bron
+                texnik jihatdan qayerdan tushgani, manba esa uni kim/nima
+                olib kelgani. Bitta bron sayt orqali tushib, manbasi
+                "Instagram reklamasi" bo'lishi mumkin. */}
+            <SectionCard title="Manba bo'yicha">
+              {data.bySourceProfile.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Tanlangan davrda manba ko&apos;rsatilgan bron bo&apos;lmagan. Manba
+                  bron yaratishda tanlanadi.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="table-head">
+                        <th className="py-2 pr-4">Manba</th>
+                        <th className="py-2 pr-4">Bronlar</th>
+                        <th className="py-2 pr-4">Daromad</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {data.bySourceProfile.map((sp) => (
+                        <tr key={sp.sourceProfileId}>
+                          <td className="py-2 pr-4 text-slate-800">{sp.name}</td>
+                          <td className="py-2 pr-4 text-slate-600">{sp.bookingCount}</td>
+                          <td className="py-2 pr-4 font-medium text-slate-800">
+                            {money(sp.revenue, currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+
             <SectionCard title="Korporativ hisoblar (City Ledger) bo'yicha">
               {data.byCorporateAccount.length === 0 ? (
                 <p className="text-sm text-slate-500">Tanlangan davrda korporativ hisob orqali bron bo'lmagan.</p>
