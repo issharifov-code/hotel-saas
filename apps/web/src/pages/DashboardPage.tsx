@@ -7,6 +7,8 @@ import type {
   AccountDepartment,
   BudgetPerformanceDto,
   HousekeepingStatus,
+  InsightDto,
+  InsightSeverity,
   HousekeepingTaskDto,
   HousekeepingTaskStatus,
   IncomeStatementDto,
@@ -453,6 +455,71 @@ function FrontDeskTab({
         Bronlar taqvimini ko'rish →
       </Link>
     </>
+  );
+}
+
+// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar paneli.
+// Har bir tavsiya nega chiqqanini aniq raqam bilan tushuntiradi, shuning
+// uchun menejer uni tekshirib, ishonishi mumkin (backend izohiga qarang).
+const INSIGHT_STYLES: Record<
+  InsightSeverity,
+  { dot: string; label: string; labelClass: string }
+> = {
+  critical: { dot: 'bg-rose-500', label: 'Muhim', labelClass: 'text-rose-700' },
+  warning: { dot: 'bg-amber-500', label: 'Diqqat', labelClass: 'text-amber-700' },
+  info: { dot: 'bg-sky-500', label: "Ma'lumot", labelClass: 'text-sky-700' },
+  positive: { dot: 'bg-emerald-500', label: 'Yaxshi', labelClass: 'text-emerald-700' },
+};
+
+function InsightsCard({ insights }: { insights: InsightDto[] }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">FolioOne Intelligence</h3>
+        <span className="text-xs text-slate-400">
+          {insights.length > 0 ? `${insights.length} ta tavsiya` : ''}
+        </span>
+      </div>
+
+      {insights.length === 0 ? (
+        <p className="py-4 text-sm text-slate-500">
+          Hozircha e'tibor talab qiladigan holat yo'q — ko'rsatkichlar barqaror.
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {insights.map((i) => {
+            const style = INSIGHT_STYLES[i.severity];
+            return (
+              <li key={i.id} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="text-sm font-medium text-slate-900">{i.title}</p>
+                      <span className={`text-[11px] font-medium ${style.labelClass}`}>
+                        {style.label}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500">{i.detail}</p>
+                    {i.actionTo && i.actionLabel && (
+                      <Link
+                        to={i.actionTo}
+                        className="mt-1.5 inline-block text-xs font-medium text-brand-navy hover:underline"
+                      >
+                        {i.actionLabel} →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -922,6 +989,9 @@ export function DashboardPage() {
   const [tab, setTab] = useState<Tab>('umumiy');
   const [overview, setOverview] = useState<ReportsOverviewDto | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  // Tavsiyalar paneli — ikkinchi darajali: yuklanmasa Dashboard'ni xato
+  // bilan to'ldirmaymiz, shunchaki ko'rsatmaymiz.
+  const [insights, setInsights] = useState<InsightDto[] | null>(null);
 
   const hasAccess = (moduleKey: string) => permissions.some((p) => p.startsWith(`${moduleKey}:`));
 
@@ -934,6 +1004,11 @@ export function DashboardPage() {
     apiFetch<ReportsOverviewDto>(`/properties/${property.id}/reports/overview`)
       .then(setOverview)
       .catch(() => setOverviewError("Hisobotni yuklashda xatolik yuz berdi"));
+    if (hasAccess('reports')) {
+      apiFetch<InsightDto[]>(`/properties/${property.id}/reports/insights`)
+        .then(setInsights)
+        .catch(() => setInsights(null));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property?.id]);
 
@@ -991,6 +1066,9 @@ export function DashboardPage() {
 
       {activeTab === 'umumiy' && (
         <div className="space-y-8">
+          {hasAccess('reports') && insights !== null && (
+            <InsightsCard insights={insights} />
+          )}
           {hasAccess('reports') && (
             <section>
               <div className="flex items-baseline justify-between mb-3">
