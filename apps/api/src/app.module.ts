@@ -58,6 +58,7 @@ import { PayslipEntry } from './modules/payroll/entities/payslip-entry.entity';
 import { AttendanceRecord } from './modules/attendance/entities/attendance-record.entity';
 import { Budget } from './modules/budgets/entities/budget.entity';
 import { LeaveRequest } from './modules/attendance/entities/leave-request.entity';
+import { InsightDismissal } from './modules/reports/entities/insight-dismissal.entity';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -157,6 +158,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
           AttendanceRecord,
           Budget,
           LeaveRequest,
+          InsightDismissal,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
