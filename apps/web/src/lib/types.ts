@@ -320,6 +320,10 @@ export interface PropertyDto {
   currency: string;
   businessDate: string;
   createdAt: string;
+  // Mehmonxonaning o'z logotipi — `data:image/...;base64,...` matni
+  // (Render API'sida doimiy disk yo'q, shuning uchun rasm bazada saqlanadi).
+  // `null` bo'lsa yuqori panelda nomining bosh harfi ko'rsatiladi.
+  logoUrl: string | null;
 }
 
 // --- Night Audit ("kunni yopish") ---
