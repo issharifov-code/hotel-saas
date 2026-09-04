@@ -91,7 +91,7 @@ export function SegmentReportsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                  <tr className="table-head">
                     <th className="py-2 pr-4">Segment</th>
                     <th className="py-2 pr-4">Bronlar</th>
                     <th className="py-2 pr-4">Kecha-xona</th>
@@ -118,7 +118,7 @@ export function SegmentReportsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                  <tr className="table-head">
                     <th className="py-2 pr-4">Kanal</th>
                     <th className="py-2 pr-4">Bronlar</th>
                     <th className="py-2 pr-4">Daromad</th>
@@ -145,7 +145,7 @@ export function SegmentReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                      <tr className="table-head">
                         <th className="py-2 pr-4">Agentlik</th>
                         <th className="py-2 pr-4">Bronlar</th>
                         <th className="py-2 pr-4">Daromad</th>
@@ -174,7 +174,7 @@ export function SegmentReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                      <tr className="table-head">
                         <th className="py-2 pr-4">Kompaniya</th>
                         <th className="py-2 pr-4">Bronlar</th>
                         <th className="py-2 pr-4">Daromad</th>

@@ -107,7 +107,7 @@ export function GuestRegistrationReportPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                    <tr className="table-head">
                       <th className="py-2 pr-4">Mehmon</th>
                       <th className="py-2 pr-4">Fuqaroligi</th>
                       <th className="py-2 pr-4">Hujjat</th>
