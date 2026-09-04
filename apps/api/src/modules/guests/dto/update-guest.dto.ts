@@ -1,12 +1,20 @@
 import {
   IsDateString,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
 import { CommunicationPreference } from '../entities/guest.entity';
 
+// `profileType` ATAYLAB yo'q: mavjud profilning turini o'zgartirib bo'lmaydi.
+// Kompaniya profilini mehmonga aylantirish uning bronlari, hisob-fakturalari
+// va sodiqlik tarixini ma'nosiz qilib qo'yardi — kerak bo'lsa yangi profil
+// ochib, eskisini birlashtirish (merge) to'g'ri yo'l.
 export class UpdateGuestDto {
   @IsOptional()
   @IsString()
@@ -52,4 +60,32 @@ export class UpdateGuestDto {
   @IsOptional()
   @IsEnum(CommunicationPreference)
   communicationPreference?: CommunicationPreference;
+
+  // --- Tashkilot profillari uchun -----------------------------------------
+
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPerson?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  commissionPct?: number;
+
+  @IsOptional()
+  @IsUUID()
+  parentProfileId?: string;
 }
