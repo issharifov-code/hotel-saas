@@ -1,4 +1,15 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { RolesService } from '../roles/roles.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -12,6 +23,7 @@ import {
 } from '../../common/enums/permission.enum';
 import { parsePagination } from '../../common/utils/pagination.util';
 import { parseDaysParam } from '../../common/utils/days-param.util';
+import { DismissInsightDto } from './dto/dismiss-insight.dto';
 
 @Controller('properties/:propertyId/reports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -64,8 +76,51 @@ export class ReportsController {
     return this.reportsService.getInsights(
       user.tenantId!,
       propertyId,
+      user.userId,
       periodDays,
       includeBudget,
+    );
+  }
+
+  // Tavsiyani "e'tiborga oldim" deb yopish.
+  //
+  // Ruxsat — REPORTS:VIEW, ya'ni tavsiyani KO'RA oladigan har kim uni o'zi
+  // uchun yopa ham oladi. Alohida EDIT ruxsati ataylab talab qilinmaydi:
+  // yopish hech kimning ma'lumotini o'zgartirmaydi va faqat yopgan odamning
+  // o'z ko'rinishiga ta'sir qiladi (`user.userId` bo'yicha saqlanadi).
+  @Post('insights/:insightId/dismiss')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission(PermissionModule.REPORTS, PermissionAction.VIEW)
+  async dismissInsight(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('insightId') insightId: string,
+    @Body() dto: DismissInsightDto,
+  ) {
+    await this.reportsService.dismissInsight(
+      user.tenantId!,
+      propertyId,
+      user.userId,
+      insightId,
+      dto.severity,
+    );
+  }
+
+  // Yopilganlarni qaytarish. `insightId` berilmasa — shu mulkdagi barcha
+  // yopishlar tozalanadi ("Hammasini qaytarish" havolasi).
+  @Delete('insights/dismissals')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission(PermissionModule.REPORTS, PermissionAction.VIEW)
+  async restoreInsights(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Query('insightId') insightId?: string,
+  ) {
+    await this.reportsService.restoreInsights(
+      user.tenantId!,
+      propertyId,
+      user.userId,
+      insightId,
     );
   }
 

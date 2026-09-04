@@ -5,6 +5,7 @@ import {
   In,
   LessThanOrEqual,
   MoreThanOrEqual,
+  MoreThan,
   Repository,
 } from 'typeorm';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
@@ -28,6 +29,7 @@ import {
   MaintenanceTicket,
   MaintenanceTicketStatus,
 } from '../maintenance/entities/maintenance-ticket.entity';
+import { InsightDismissal } from './entities/insight-dismissal.entity';
 import { PaginationParams } from '../../common/utils/pagination.util';
 
 // "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar paneli.
@@ -42,8 +44,8 @@ import { PaginationParams } from '../../common/utils/pagination.util';
 export type InsightSeverity = 'critical' | 'warning' | 'info' | 'positive';
 
 export interface InsightDto {
-  // Barqaror kalit — React `key` uchun va kelajakda "e'tiborga olindi"
-  // belgisini saqlash uchun (hozircha saqlanmaydi).
+  // Barqaror kalit — React `key` uchun va "e'tiborga olindi" belgisini
+  // saqlash uchun (`insight_dismissals.insight_id`).
   id: string;
   severity: InsightSeverity;
   title: string;
@@ -51,7 +53,32 @@ export interface InsightDto {
   detail: string;
   actionLabel?: string;
   actionTo?: string;
+  // Foydalanuvchi buni "e'tiborga oldim" deb yopganmi.
+  //
+  // NIMA UCHUN JAVOBDAN OLIB TASHLANMAYDI, balki belgilanadi: (1) frontend
+  // "N ta yopilgan — ko'rsatish" havolasini chizishi uchun ro'yxatni bilishi
+  // kerak; (2) maydon ixtiyoriy bo'lgani uchun eski frontend yangi API bilan
+  // ham buzilmaydi (deploy oynasida ikki servis bir-biriga mos kelmay
+  // turadi) — u shunchaki hammasini ko'rsatadi.
+  dismissed?: boolean;
 }
+
+// Yopilgan tavsiya shu muddatdan keyin QAYTADAN chiqadi.
+//
+// "Abadiy yopish" ataylab qilinmadi: bir marta yopilgan haqiqiy muammo
+// (masalan to'lanmagan hisob-fakturalar) ko'zdan butunlay yo'qolardi.
+// Bir hafta — bir marta e'tibor berib, keyin unutib yuborish uchun yetarli
+// uzoq, lekin muammoni yashirib qo'yish uchun juda qisqa.
+const INSIGHT_DISMISSAL_DAYS = 7;
+
+// Jiddiylik tartibi — ham saralash, ham "holat yomonlashdimi" tekshiruvi
+// uchun. Kichik raqam = jiddiyroq.
+const INSIGHT_SEVERITY_ORDER: Record<InsightSeverity, number> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+  positive: 3,
+};
 
 // Chegaralar. Ataylab "shovqin" darajasidan yuqori: kichik tebranish har kuni
 // ogohlantirish chiqarsa, panel tez orada e'tibordan qoladi.
@@ -251,6 +278,8 @@ export class ReportsService {
     private readonly budgetRepo: Repository<Budget>,
     @InjectRepository(MaintenanceTicket)
     private readonly maintenanceRepo: Repository<MaintenanceTicket>,
+    @InjectRepository(InsightDismissal)
+    private readonly dismissalRepo: Repository<InsightDismissal>,
   ) {}
 
   // Tavsiyalar paneli. `getOverview`ni ICHKI CHAQIRADI — shunda paneldagi
@@ -263,6 +292,7 @@ export class ReportsService {
   async getInsights(
     tenantId: string,
     propertyId: string,
+    userId: string,
     periodDays: number,
     includeBudget: boolean,
   ): Promise<InsightDto[]> {
@@ -271,7 +301,10 @@ export class ReportsService {
 
     // --- 1. Bandlik davrlararo o'zgarishi ---
     const occDelta = overview.trend.occupancyRatePctDelta;
-    if (occDelta !== null && Math.abs(occDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct) {
+    if (
+      occDelta !== null &&
+      Math.abs(occDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct
+    ) {
       const dropped = occDelta < 0;
       insights.push({
         id: 'occupancy-trend',
@@ -280,14 +313,17 @@ export class ReportsService {
           ? `Bandlik ${Math.abs(occDelta)}% pasaydi`
           : `Bandlik ${occDelta}% o'sdi`,
         detail: `Oxirgi ${periodDays} kunda o'rtacha bandlik ${overview.occupancy.occupancyRatePct}% — oldingi ${periodDays} kunga nisbatan ${occDelta > 0 ? '+' : ''}${occDelta}%.`,
-        actionLabel: 'Bronlarni ko\'rish',
+        actionLabel: "Bronlarni ko'rish",
         actionTo: '/bookings',
       });
     }
 
     // --- 2. ADR davrlararo o'zgarishi ---
     const adrDelta = overview.trend.adrDelta;
-    if (adrDelta !== null && Math.abs(adrDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct) {
+    if (
+      adrDelta !== null &&
+      Math.abs(adrDelta) >= INSIGHT_THRESHOLDS.metricDeltaPct
+    ) {
       const dropped = adrDelta < 0;
       insights.push({
         id: 'adr-trend',
@@ -335,7 +371,7 @@ export class ReportsService {
               ? `Joriy oy rejasidan ${Math.abs(variancePct)}% orqadasiz`
               : `Joriy oy rejasidan ${variancePct}% oldindasiz`,
             detail: `Oyning ${elapsed}/${daysInMonth} kuni o'tdi. Shu muddatga kutilgan daromad ${Math.round(expectedSoFar).toLocaleString('uz-UZ')}, haqiqiy ${Math.round(actual).toLocaleString('uz-UZ')}.`,
-            actionLabel: 'Budjetni ko\'rish',
+            actionLabel: "Budjetni ko'rish",
             actionTo: '/budget',
           });
         }
@@ -394,14 +430,110 @@ export class ReportsService {
       });
     }
 
+    await this.markDismissed(tenantId, propertyId, userId, insights);
+
     // Jiddiylik bo'yicha saralaymiz — eng muhimi tepada.
-    const order: Record<InsightSeverity, number> = {
-      critical: 0,
-      warning: 1,
-      info: 2,
-      positive: 3,
-    };
-    return insights.sort((a, b) => order[a.severity] - order[b.severity]);
+    return insights.sort(
+      (a, b) =>
+        INSIGHT_SEVERITY_ORDER[a.severity] - INSIGHT_SEVERITY_ORDER[b.severity],
+    );
+  }
+
+  // Ro'yxatdagi tavsiyalarni foydalanuvchining yopishlariga qarab belgilaydi.
+  //
+  // Tavsiya YASHIRILADI (dismissed: true), agar:
+  //   1. u oxirgi INSIGHT_DISMISSAL_DAYS kun ichida yopilgan bo'lsa, VA
+  //   2. hozirgi jiddiyligi yopilgan paytdagidan yomon bo'lmasa.
+  //
+  // Ikkinchi shart eng muhimi: "2 ta zayavka ochiq" (info) yopilgandan keyin
+  // ular 7 taga chiqib `warning`ga aylansa, bu YANGI xabar — uni eski yopish
+  // bilan yashirish xavfli bo'lardi.
+  private async markDismissed(
+    tenantId: string,
+    propertyId: string,
+    userId: string,
+    insights: InsightDto[],
+  ): Promise<void> {
+    if (insights.length === 0) return;
+
+    const since = new Date(
+      Date.now() - INSIGHT_DISMISSAL_DAYS * 24 * 60 * 60 * 1000,
+    );
+    const rows = await this.dismissalRepo.find({
+      where: {
+        tenantId,
+        propertyId,
+        userId,
+        insightId: In(insights.map((i) => i.id)),
+        dismissedAt: MoreThan(since),
+      },
+    });
+    if (rows.length === 0) return;
+
+    const bySeverity = new Map(rows.map((r) => [r.insightId, r.severity]));
+    for (const insight of insights) {
+      const dismissedAs = bySeverity.get(insight.id);
+      if (dismissedAs === undefined) continue;
+      // Noma'lum daraja (masalan kelajakda enum kengaysa) — eng past deb
+      // qaraymiz, ya'ni har qanday hozirgi daraja "yomonlashish" hisoblanadi
+      // va tavsiya ko'rinaveradi. Xatoga qarab YASHIRMASLIK tarafida turamiz.
+      const dismissedRank =
+        INSIGHT_SEVERITY_ORDER[dismissedAs as InsightSeverity] ??
+        Number.POSITIVE_INFINITY;
+      if (INSIGHT_SEVERITY_ORDER[insight.severity] >= dismissedRank) {
+        insight.dismissed = true;
+      }
+    }
+  }
+
+  // Tavsiyani yopish. Qayta yopilganda yangi qator emas, mavjudi yangilanadi
+  // (UNIQUE user+property+insight) — shunda "yopish muddati" har safar
+  // noldan boshlanadi.
+  async dismissInsight(
+    tenantId: string,
+    propertyId: string,
+    userId: string,
+    insightId: string,
+    severity: InsightSeverity,
+  ): Promise<void> {
+    const existing = await this.dismissalRepo.findOne({
+      where: { tenantId, propertyId, userId, insightId },
+    });
+    const dismissedAt = new Date();
+
+    if (existing) {
+      existing.severity = severity;
+      existing.dismissedAt = dismissedAt;
+      await this.dismissalRepo.save(existing);
+      return;
+    }
+
+    await this.dismissalRepo.save(
+      this.dismissalRepo.create({
+        tenantId,
+        propertyId,
+        userId,
+        insightId,
+        severity,
+        dismissedAt,
+      }),
+    );
+  }
+
+  // Yopilganlarni qaytarish. `insightId` berilmasa — shu mulkdagi
+  // foydalanuvchining barcha yopishlari tozalanadi ("Hammasini qaytarish").
+  async restoreInsights(
+    tenantId: string,
+    propertyId: string,
+    userId: string,
+    insightId?: string,
+  ): Promise<void> {
+    await this.dismissalRepo.delete({
+      tenantId,
+      propertyId,
+      userId,
+      ...(insightId ? { insightId } : {}),
+    });
   }
 
   // "Reja vs haqiqat" — Budjet sahifasida kiritilgan oylik rejalarni o'sha

@@ -9,6 +9,7 @@ import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
 import { Budget } from '../budgets/entities/budget.entity';
 import { MaintenanceTicket } from '../maintenance/entities/maintenance-ticket.entity';
+import { InsightDismissal } from './entities/insight-dismissal.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { RolesModule } from '../roles/roles.module';
@@ -31,6 +32,10 @@ import { RlsModule } from '../../common/rls/rls.module';
       CorporateAccount,
       Budget,
       MaintenanceTicket,
+      // Reports modulining O'Z entity'si — u yozish uchun ham ishlatiladi
+      // (tavsiyani yopish). Yuqoridagi "faqat o'qish" qoidasi boshqa
+      // modullarning entity'lariga tegishli.
+      InsightDismissal,
     ]),
     RolesModule,
   ],
