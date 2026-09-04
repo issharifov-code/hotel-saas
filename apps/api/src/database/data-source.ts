@@ -48,6 +48,7 @@ import { DemoRequest } from '../modules/marketing/entities/demo-request.entity';
 import { PayrollRun } from '../modules/payroll/entities/payroll-run.entity';
 import { PayslipEntry } from '../modules/payroll/entities/payslip-entry.entity';
 import { AttendanceRecord } from '../modules/attendance/entities/attendance-record.entity';
+import { Budget } from '../modules/budgets/entities/budget.entity';
 import { LeaveRequest } from '../modules/attendance/entities/leave-request.entity';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
@@ -108,6 +109,7 @@ export const AppDataSource = new DataSource({
     PayrollRun,
     PayslipEntry,
     AttendanceRecord,
+    Budget,
     LeaveRequest,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
