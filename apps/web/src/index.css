@@ -67,15 +67,6 @@
   .f1-brand-mark {
     @apply flex items-center justify-center w-[60.96px] transition-opacity duration-150;
   }
-  /* 2026-09-04 (foydalanuvchi so'rovi): belgiga yengil hajm — qog'ozdan bir
-     oz ko'tarilgandek. `box-shadow` EMAS, `drop-shadow`: birinchisi to'rtburchak
-     konteynerga soya solardi, ikkinchisi esa rasmning alfa-shakliga ergashadi,
-     ya'ni soya aynan F1 harflarining konturi bo'yicha tushadi.
-     Daraja ataylab past: belgi 24px, kuchliroq soya shu o'lchamda hajm emas,
-     dog' bo'lib ko'rinardi (to'rtta variant yonma-yon solishtirilgan). */
-  .f1-brand-mark img {
-    filter: drop-shadow(0 1px 1px rgb(15 23 42 / 0.35));
-  }
   .f1-brand-mark:hover {
     @apply opacity-80;
   }
