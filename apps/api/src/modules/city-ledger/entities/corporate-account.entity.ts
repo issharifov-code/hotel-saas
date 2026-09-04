@@ -2,11 +2,14 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  ManyToOne,
+  JoinColumn,
   OneToMany,
   CreateDateColumn,
   Index,
 } from 'typeorm';
 import { Booking } from '../../bookings/entities/booking.entity';
+import { Guest } from '../../guests/entities/guest.entity';
 
 // City Ledger / Korporativ hisob (Corporate Account) — mehmonxona bilan
 // to'g'ridan-to'g'ri "kredit"da ishlaydigan kompaniya: mehmonlar check-out
@@ -32,6 +35,18 @@ export class CorporateAccount {
   @Column({ name: 'property_id', type: 'uuid' })
   propertyId: string;
 
+  // 🔴 KIM ekani PROFILDA (2026-09-04) — Agency bilan bir xil naqsh.
+  // Kompaniyaning nomi, STIRi, manzili va aloqa ma'lumotlari profildan
+  // o'qiladi; bu jadval faqat MOLIYAVIY sozlamani (kredit limiti, to'lov
+  // shartlari) saqlaydi.
+  @Column({ name: 'profile_id', type: 'uuid' })
+  profileId: string;
+
+  @ManyToOne(() => Guest, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'profile_id' })
+  profile: Guest;
+
+  // ESKI ustunlar — O'QILMAYDI, tarixiy yozuv (yuqoriga qarang).
   @Column({ length: 200 })
   name: string;
 
