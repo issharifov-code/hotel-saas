@@ -47,6 +47,8 @@ describe('ReportsService.getBudgetPerformance', () => {
       {} as never,
       {} as never,
       budgetRepo as never,
+      // Maintenance repo — bu testlar getInsights'ni chaqirmaydi.
+      { count: jest.fn().mockResolvedValue(0) } as never,
     );
   }
 
@@ -195,6 +197,7 @@ describe('ReportsService.getBudgetPerformance', () => {
       {} as never,
       {} as never,
       { find: budgetRepoFind } as never,
+      { count: jest.fn().mockResolvedValue(0) } as never,
     );
 
     await service.getBudgetPerformance('t1', 'p1', 2026);

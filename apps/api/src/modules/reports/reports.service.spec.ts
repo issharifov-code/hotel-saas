@@ -179,6 +179,9 @@ describe('ReportsService', () => {
       // (uning o'z alohida test faylida to'liq qamrovi bor), shuning uchun
       // bo'sh ro'yxat qaytaruvchi minimal mock kifoya.
       { find: jest.fn().mockResolvedValue([]) } as never,
+      // Maintenance repo — bu yerdagi testlar getInsights'ni chaqirmaydi
+      // (uning o'z alohida test fayli bor).
+      { count: jest.fn().mockResolvedValue(0) } as never,
     );
   }
 

@@ -21,6 +21,7 @@ describe('ReportsController (HTTP)', () => {
     getSegmentPerformance: jest.Mock;
     getGuestRegistrationReport: jest.Mock;
     getBudgetPerformance: jest.Mock;
+    getInsights: jest.Mock;
   };
   let rolesService: { getEffectivePermissions: jest.Mock };
 
@@ -30,6 +31,7 @@ describe('ReportsController (HTTP)', () => {
       getSegmentPerformance: jest.fn(),
       getGuestRegistrationReport: jest.fn(),
       getBudgetPerformance: jest.fn(),
+      getInsights: jest.fn(),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
@@ -146,6 +148,68 @@ describe('ReportsController (HTTP)', () => {
         .expect(200);
 
       expect(reportsService.getOverview).toHaveBeenCalledWith('t1', 'p1', 30);
+    });
+  });
+
+  // Tavsiyalar paneli: endpoint REPORTS:VIEW bilan ochiladi, LEKIN budjet
+  // qismi faqat ACCOUNTING:VIEW ham bo'lsa qo'shiladi (servisga
+  // `includeBudget` orqali uzatiladi). Shu ikkisi chalkashib ketmasligi
+  // muhim — aks holda budjet reports:view bor har kimga ko'rinardi.
+  describe('GET /properties/:propertyId/reports/insights', () => {
+    it("token bo'lmasa 401", async () => {
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/insights')
+        .expect(401);
+      expect(reportsService.getInsights).not.toHaveBeenCalled();
+    });
+
+    it("reports:view bo'lmasa 403", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['accounting:view']),
+      );
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/insights')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(403);
+      expect(reportsService.getInsights).not.toHaveBeenCalled();
+    });
+
+    it("faqat reports:view bo'lsa budjetsiz chaqiriladi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+      reportsService.getInsights.mockResolvedValue([]);
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/insights')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(reportsService.getInsights).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        30,
+        false,
+      );
+    });
+
+    it('accounting:view ham bo\'lsa budjet bilan chaqiriladi', async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view', 'accounting:view']),
+      );
+      reportsService.getInsights.mockResolvedValue([]);
+
+      await request(app.getHttpServer())
+        .get('/properties/p1/reports/insights')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(reportsService.getInsights).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        30,
+        true,
+      );
     });
   });
 
