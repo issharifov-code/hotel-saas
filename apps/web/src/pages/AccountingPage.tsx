@@ -79,7 +79,7 @@ export function AccountingPage() {
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               view === v
                 ? 'chip-active'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
             }`}
           >
             {VIEW_LABELS[v]}
@@ -387,7 +387,7 @@ function NewJournalEntryModal({
           ))}
         </div>
 
-        <button type="button" onClick={addLine} className="text-xs text-slate-600 hover:text-slate-900 underline">
+        <button type="button" onClick={addLine} className="text-xs text-brand-navy underline">
           + Qator qo'shish
         </button>
 

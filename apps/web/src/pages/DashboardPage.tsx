@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { useAuth } from '../context/AuthContext';
@@ -224,7 +224,7 @@ function RevenueChartCard({ overview, currency }: { overview: ReportsOverviewDto
               type="button"
               onClick={() => setMetric(m)}
               className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                metric === m ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+                metric === m ? 'bg-white text-brand-navy shadow-sm' : 'text-brand-navy/70'
               }`}
             >
               {CHART_METRIC_LABELS[m]}
@@ -602,7 +602,7 @@ function InsightsCard({
             <button
               type="button"
               onClick={() => setShowDismissed((v) => !v)}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700"
+              className="text-xs font-medium text-brand-navy hover:underline"
             >
               {dismissed.length} ta yopilgan · {showDismissed ? 'Yashirish' : "Ko'rsatish"}
             </button>
@@ -707,7 +707,7 @@ function BudgetVsActualCard({
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 metric === m
                   ? 'chip-active'
-                  : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
+                  : 'text-brand-navy hover:bg-brand-navy-light'
               }`}
             >
               {BUDGET_METRIC_LABELS[m]}
@@ -1138,14 +1138,21 @@ export function DashboardPage() {
           fikri: dashboard yuqorisida ortiqcha bo'sh joy KPI'larni pastga
           surib yubormasligi kerak. Chiqish havolasi endi kichik/subtle,
           ism yonida. */}
-      <div className="mb-4 flex items-baseline gap-3 flex-wrap">
-        <p className="text-xl font-semibold text-slate-900">Salom, {firstName}!</p>
+      <div className="mb-4 flex items-baseline gap-x-2 gap-y-1 flex-wrap">
+        <p className="text-xl font-normal text-slate-900">Salom, {firstName}!</p>
+        {/* 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): oldingi
+            quruq "Tizimdan chiqish" o'rniga OPERA'dagi "Not you? Sign in as a
+            different user." naqshi — savol oddiy matn, amal esa havola.
+            Ikkalasi ham ism bilan BIR QATORDA qoladi (avvalgi ixchamlashtirish
+            qarori: dashboard yuqorisida ortiqcha bo'sh joy KPI'larni pastga
+            surib yubormasligi kerak). */}
+        <span className="text-xs text-slate-900">Siz emasmisiz?</span>
         <button
           type="button"
           onClick={logout}
-          className="text-xs text-slate-400 hover:text-brand-navy hover:underline"
+          className="text-xs text-brand-navy hover:underline"
         >
-          Tizimdan chiqish
+          Boshqa foydalanuvchi sifatida kiring.
         </button>
       </div>
 
@@ -1154,16 +1161,23 @@ export function DashboardPage() {
           segmentli tanlagich — konteyner rounded-full, faol tab `.chip-active`
           (atrofi + yengil fon, to'liq brand-navy EMAS, qarang index.css). */}
       <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white p-1 mb-4 shadow-sm">
-        {visibleTabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-5 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
-              activeTab === t ? 'chip-active' : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
-            }`}
-          >
-            {TAB_LABELS[t]}
-          </button>
+        {visibleTabs.map((t, i) => (
+          <Fragment key={t}>
+            {/* Tablar orasidagi ingichka ajratuvchi (2026-09-04, foydalanuvchi
+                fikri — OPERA'dagi tab qatorida ham har bir tab chiziq bilan
+                ajratilgan). Uslub butun ilovadagi boshqa ajratuvchilar bilan
+                bir xil (h-5 w-px bg-slate-200). Birinchisidan oldin
+                qo'yilmaydi. */}
+            {i > 0 && <span className="h-5 w-px bg-slate-200" aria-hidden="true" />}
+            <button
+              onClick={() => setTab(t)}
+              className={`px-5 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+                activeTab === t ? 'chip-active' : 'text-brand-navy hover:bg-brand-navy-light'
+              }`}
+            >
+              {TAB_LABELS[t]}
+            </button>
+          </Fragment>
         ))}
       </div>
 

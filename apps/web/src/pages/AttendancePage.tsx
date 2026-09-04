@@ -68,7 +68,7 @@ export function AttendancePage() {
           className={`rounded-full px-3 py-1.5 text-sm font-medium ${
             tab === 'attendance'
               ? 'chip-active'
-              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+              : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
           }`}
         >
           Kunlik davomat
@@ -78,7 +78,7 @@ export function AttendancePage() {
           className={`rounded-full px-3 py-1.5 text-sm font-medium ${
             tab === 'leave'
               ? 'chip-active'
-              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+              : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
           }`}
         >
           Ta'til so'rovlari
@@ -460,7 +460,7 @@ function LeaveTab({
                       <button
                         onClick={() => decide(r.id, 'cancel')}
                         disabled={busyId === r.id}
-                        className="text-xs text-slate-500 underline"
+                        className="text-xs text-brand-navy underline"
                       >
                         Bekor qilish
                       </button>

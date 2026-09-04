@@ -170,7 +170,7 @@ export function AdminPage() {
           </div>
           <p className="text-xs text-slate-500 truncate">{user?.email}</p>
         </div>
-        <button onClick={logout} className="shrink-0 text-sm text-slate-600 hover:text-slate-900 underline">
+        <button onClick={logout} className="shrink-0 text-sm text-brand-navy underline">
           Chiqish
         </button>
       </header>
@@ -182,7 +182,7 @@ export function AdminPage() {
               key={t}
               onClick={() => setTab(t)}
               className={`rounded-full px-4 py-2 text-sm font-medium ${
-                tab === t ? 'chip-active' : 'bg-white text-slate-600 border border-slate-200'
+                tab === t ? 'chip-active' : 'bg-white text-brand-navy border border-slate-200'
               }`}
             >
               {t === 'tenants' ? 'Tenantlar' : t === 'billing' ? 'Billing' : "Demo so'rovlar"}
