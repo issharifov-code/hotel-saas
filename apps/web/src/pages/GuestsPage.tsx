@@ -128,7 +128,7 @@ export function GuestsPage() {
     // Profil turi ham MEZON hisoblanadi: faqat "Kompaniya" tanlab qidirish
     // to'liq ma'noli so'rov.
     if (Object.values(f).every((v) => v.trim() === '')) {
-      setOgohlantirish('Qidirish uchun kamida bitta mezon kiriting');
+      setOgohlantirish('Qidirish uchun kamida bitta mezon kiriting!');
       return;
     }
     setQollanilgan(f);
@@ -228,12 +228,23 @@ export function GuestsPage() {
             </div>
             <label className="block">
               <span className="mb-1 block text-xs text-slate-900">Profil turi</span>
+              {/* Yopiq holatda ham qalin ko'rinishi uchun `select`ning O'ZIGA
+                  shart bilan beriladi: brauzerlar yopiq `select` matnini
+                  tanlangan `option`ning uslubi bilan emas, `select`niki
+                  bilan chizadi. Ya'ni "Barchasi" turganda qalin, aniq bir
+                  tur tanlanganda oddiy. */}
               <select
                 value={profileType}
                 onChange={(e) => setProfileType(e.target.value as ProfileType | '')}
-                className="input"
+                className={`input ${profileType === '' ? 'font-semibold' : ''}`}
               >
-                <option value="">Barchasi</option>
+                {/* "Barchasi" — standart holat, ya'ni "filtr yo'q". Ro'yxatda
+                    qalin turadi: qolgan variantlar aniq bir turni tanlaydi,
+                    bu esa ularning hammasini bekor qiladi — boshqa tartibdagi
+                    element. */}
+                <option value="" className="font-semibold">
+                  Barchasi
+                </option>
                 {PROFILE_TYPES.map((t) => (
                   <option key={t.key} value={t.key}>
                     {t.shortLabel}
