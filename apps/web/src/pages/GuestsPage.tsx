@@ -173,10 +173,10 @@ export function GuestsPage() {
             <b className="font-medium"> Mehmon</b> turidagi profillar taklif qilinadi.
           </p>
           <p>
-            Yangi profil <b className="font-medium">&quot;Yaratish&quot;</b> tugmasi
+            Yangi profil <b className="font-medium">&quot;Parametrlar&quot;</b> tugmasi
             orqali ochiladi — avval turi tanlanadi, keyin shu turga mos forma
             chiqadi. Bir odam uchun xato bilan ikkita profil ochilgan bo&apos;lsa,
-            o&apos;sha oynadagi &quot;Ikkilanmalarni birlashtirish&quot; yordam beradi.
+            o&apos;sha oynadagi &quot;Dublikat profillarni birlashtirish&quot; yordam beradi.
           </p>
         </>
       }
