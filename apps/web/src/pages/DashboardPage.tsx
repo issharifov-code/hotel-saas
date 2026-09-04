@@ -471,53 +471,156 @@ const INSIGHT_STYLES: Record<
   positive: { dot: 'bg-emerald-500', label: 'Yaxshi', labelClass: 'text-emerald-700' },
 };
 
-function InsightsCard({ insights }: { insights: InsightDto[] }) {
+function InsightsCard({
+  insights,
+  propertyId,
+  onChange,
+}: {
+  insights: InsightDto[];
+  propertyId: string;
+  onChange: (next: InsightDto[]) => void;
+}) {
+  // Yopilganlarni vaqtincha ko'rsatish (qaytarish uchun). Bu faqat ko'rinish
+  // holati — serverda saqlanmaydi.
+  const [showDismissed, setShowDismissed] = useState(false);
+
+  const active = insights.filter((i) => !i.dismissed);
+  const dismissed = insights.filter((i) => i.dismissed);
+
+  // Optimistik yangilash: tugma bosilishi bilan ro'yxat o'zgaradi, so'rov
+  // fon rejimida ketadi. Xato bo'lsa avvalgi holat qaytariladi — panel
+  // ikkinchi darajali bo'lgani uchun xato xabari ko'rsatilmaydi.
+  const setDismissed = (insight: InsightDto, value: boolean) => {
+    const previous = insights;
+    onChange(
+      insights.map((i) => (i.id === insight.id ? { ...i, dismissed: value } : i)),
+    );
+
+    const request = value
+      ? apiFetch<void>(
+          `/properties/${propertyId}/reports/insights/${insight.id}/dismiss`,
+          { method: 'POST', body: JSON.stringify({ severity: insight.severity }) },
+        )
+      : apiFetch<void>(
+          `/properties/${propertyId}/reports/insights/dismissals?insightId=${encodeURIComponent(insight.id)}`,
+          { method: 'DELETE' },
+        );
+
+    request.catch(() => onChange(previous));
+  };
+
+  const restoreAll = () => {
+    const previous = insights;
+    onChange(insights.map((i) => ({ ...i, dismissed: false })));
+    setShowDismissed(false);
+    apiFetch<void>(`/properties/${propertyId}/reports/insights/dismissals`, {
+      method: 'DELETE',
+    }).catch(() => onChange(previous));
+  };
+
+  const renderItem = (i: InsightDto) => {
+    const style = INSIGHT_STYLES[i.severity];
+    return (
+      <li key={i.id} className={`py-3 first:pt-0 last:pb-0 ${i.dismissed ? 'opacity-60' : ''}`}>
+        <div className="flex items-start gap-3">
+          <span
+            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <p className="text-sm font-medium text-slate-900">{i.title}</p>
+              <span className={`text-[11px] font-medium ${style.labelClass}`}>
+                {style.label}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500">{i.detail}</p>
+            {i.actionTo && i.actionLabel && (
+              <Link
+                to={i.actionTo}
+                className="mt-1.5 inline-block text-xs font-medium text-brand-navy hover:underline"
+              >
+                {i.actionLabel} →
+              </Link>
+            )}
+          </div>
+          {i.dismissed ? (
+            <button
+              type="button"
+              onClick={() => setDismissed(i, false)}
+              className="shrink-0 rounded-full px-2 py-1 text-xs font-medium text-brand-navy hover:bg-slate-100"
+            >
+              Qaytarish
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDismissed(i, true)}
+              // Sarlavhani ham o'z ichiga oladi — ekran o'quvchi qaysi
+              // tavsiya yopilayotganini aytib bersin.
+              aria-label={`Yopish: ${i.title}`}
+              title="E'tiborga oldim"
+              className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+                <path
+                  d="M6 6l8 8M14 6l-8 8"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      </li>
+    );
+  };
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">FolioOne Intelligence</h3>
         <span className="text-xs text-slate-400">
-          {insights.length > 0 ? `${insights.length} ta tavsiya` : ''}
+          {active.length > 0 ? `${active.length} ta tavsiya` : ''}
         </span>
       </div>
 
-      {insights.length === 0 ? (
+      {active.length === 0 ? (
         <p className="py-4 text-sm text-slate-500">
-          Hozircha e'tibor talab qiladigan holat yo'q — ko'rsatkichlar barqaror.
+          {dismissed.length > 0
+            ? "Barcha tavsiyalar e'tiborga olindi."
+            : "Hozircha e'tibor talab qiladigan holat yo'q — ko'rsatkichlar barqaror."}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
-          {insights.map((i) => {
-            const style = INSIGHT_STYLES[i.severity];
-            return (
-              <li key={i.id} className="py-3 first:pt-0 last:pb-0">
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <p className="text-sm font-medium text-slate-900">{i.title}</p>
-                      <span className={`text-[11px] font-medium ${style.labelClass}`}>
-                        {style.label}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-slate-500">{i.detail}</p>
-                    {i.actionTo && i.actionLabel && (
-                      <Link
-                        to={i.actionTo}
-                        className="mt-1.5 inline-block text-xs font-medium text-brand-navy hover:underline"
-                      >
-                        {i.actionLabel} →
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <ul className="divide-y divide-slate-100">{active.map(renderItem)}</ul>
+      )}
+
+      {dismissed.length > 0 && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button
+              type="button"
+              onClick={() => setShowDismissed((v) => !v)}
+              className="text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
+              {dismissed.length} ta yopilgan · {showDismissed ? 'Yashirish' : "Ko'rsatish"}
+            </button>
+            <button
+              type="button"
+              onClick={restoreAll}
+              className="text-xs font-medium text-brand-navy hover:underline"
+            >
+              Hammasini qaytarish
+            </button>
+          </div>
+          {showDismissed && (
+            <ul className="mt-2 divide-y divide-slate-100">{dismissed.map(renderItem)}</ul>
+          )}
+          <p className="mt-2 text-[11px] text-slate-400">
+            Yopilgan tavsiya bir haftadan keyin, holat yomonlashsa esa darhol qaytadi.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -1066,8 +1169,12 @@ export function DashboardPage() {
 
       {activeTab === 'umumiy' && (
         <div className="space-y-8">
-          {hasAccess('reports') && insights !== null && (
-            <InsightsCard insights={insights} />
+          {hasAccess('reports') && insights !== null && property && (
+            <InsightsCard
+              insights={insights}
+              propertyId={property.id}
+              onChange={setInsights}
+            />
           )}
           {hasAccess('reports') && (
             <section>
