@@ -1,4 +1,5 @@
 import { GuestsService } from './guests.service';
+import { ProfileType } from './entities/guest.entity';
 
 // Profil qidiruvi (2026-09-04, OPERA Cloud "Manage Profile" referensi).
 //
@@ -87,5 +88,33 @@ describe('GuestsService.list — qidiruv maydonlari', () => {
     const { service, calls } = createService();
     await service.list('t1', { name: '  Ali  ' });
     expect(calls[0].params).toEqual({ name: '%Ali%' });
+  });
+
+  describe('profil turi filtri', () => {
+    it("tur berilmasa BARCHA turlar qaytadi", async () => {
+      // Profillar sahifasining standarti — "Barchasi". Agar bu yerda
+      // jimgina `guest` qo'yib yuborsak, kompaniya profillari sahifada
+      // umuman ko'rinmay qolardi.
+      const { service, calls } = createService();
+      await service.list('t1', {});
+      expect(calls).toHaveLength(0);
+    });
+
+    it('tur berilsa shu tur bo\'yicha filtrlanadi', async () => {
+      const { service, calls } = createService();
+      await service.list('t1', { profileType: ProfileType.COMPANY });
+      expect(calls).toHaveLength(1);
+      expect(calls[0].sql).toContain('profile_type');
+      expect(calls[0].params).toEqual({ profileType: 'company' });
+    });
+
+    it('tur boshqa filtrlar bilan birga ishlaydi', async () => {
+      const { service, calls } = createService();
+      await service.list('t1', {
+        name: 'Orzu',
+        profileType: ProfileType.TRAVEL_AGENT,
+      });
+      expect(calls).toHaveLength(2);
+    });
   });
 });
