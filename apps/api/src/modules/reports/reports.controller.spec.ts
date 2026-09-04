@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
@@ -22,6 +22,8 @@ describe('ReportsController (HTTP)', () => {
     getGuestRegistrationReport: jest.Mock;
     getBudgetPerformance: jest.Mock;
     getInsights: jest.Mock;
+    dismissInsight: jest.Mock;
+    restoreInsights: jest.Mock;
   };
   let rolesService: { getEffectivePermissions: jest.Mock };
 
@@ -32,6 +34,8 @@ describe('ReportsController (HTTP)', () => {
       getGuestRegistrationReport: jest.fn(),
       getBudgetPerformance: jest.fn(),
       getInsights: jest.fn(),
+      dismissInsight: jest.fn(),
+      restoreInsights: jest.fn(),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
@@ -51,6 +55,15 @@ describe('ReportsController (HTTP)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    // main.ts bilan bir xil — yopish endpointidagi `severity` validatsiyasi
+    // shu pipe orqali ishlaydi.
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
     jwtService = moduleRef.get(JwtService);
   });
@@ -188,12 +201,13 @@ describe('ReportsController (HTTP)', () => {
       expect(reportsService.getInsights).toHaveBeenCalledWith(
         't1',
         'p1',
+        'u1',
         30,
         false,
       );
     });
 
-    it('accounting:view ham bo\'lsa budjet bilan chaqiriladi', async () => {
+    it("accounting:view ham bo'lsa budjet bilan chaqiriladi", async () => {
       rolesService.getEffectivePermissions.mockResolvedValue(
         new Set(['reports:view', 'accounting:view']),
       );
@@ -207,6 +221,7 @@ describe('ReportsController (HTTP)', () => {
       expect(reportsService.getInsights).toHaveBeenCalledWith(
         't1',
         'p1',
+        'u1',
         30,
         true,
       );
@@ -225,7 +240,7 @@ describe('ReportsController (HTTP)', () => {
       expect(reportsService.getBudgetPerformance).not.toHaveBeenCalled();
     });
 
-    it("reports:view yetarli EMAS — accounting:view talab qilinadi (403)", async () => {
+    it('reports:view yetarli EMAS — accounting:view talab qilinadi (403)', async () => {
       rolesService.getEffectivePermissions.mockResolvedValue(
         new Set(['reports:view']),
       );
@@ -362,6 +377,118 @@ describe('ReportsController (HTTP)', () => {
         30,
         { page: 1, pageSize: 50, skip: 0, take: 50 },
       );
+    });
+  });
+  describe('tavsiyani yopish / qaytarish', () => {
+    it("reports:view bo'lmasa yopib bo'lmaydi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(new Set());
+
+      await request(app.getHttpServer())
+        .post('/properties/p1/reports/insights/open-maintenance/dismiss')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .send({ severity: 'info' })
+        .expect(403);
+
+      expect(reportsService.dismissInsight).not.toHaveBeenCalled();
+    });
+
+    it('reports:view yetarli — alohida EDIT ruxsati talab qilinmaydi', async () => {
+      // Yopish hech kimning ma'lumotini o'zgartirmaydi, faqat yopgan
+      // odamning o'z ko'rinishiga ta'sir qiladi.
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .post('/properties/p1/reports/insights/open-maintenance/dismiss')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .send({ severity: 'warning' })
+        .expect(204);
+
+      // 🔴 `userId` tokendan olinadi — mijoz uni o'zi yubora olmaydi,
+      // ya'ni boshqa xodim nomidan yopib bo'lmaydi.
+      expect(reportsService.dismissInsight).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        'u1',
+        'open-maintenance',
+        'warning',
+      );
+    });
+
+    it("noto'g'ri severity rad etiladi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .post('/properties/p1/reports/insights/open-maintenance/dismiss')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .send({ severity: 'juda-yomon' })
+        .expect(400);
+
+      expect(reportsService.dismissInsight).not.toHaveBeenCalled();
+    });
+
+    it('severity umuman yuborilmasa ham rad etiladi', async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .post('/properties/p1/reports/insights/open-maintenance/dismiss')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .send({})
+        .expect(400);
+    });
+
+    it('insightId bilan bitta tavsiyani qaytaradi', async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .delete(
+          '/properties/p1/reports/insights/dismissals?insightId=open-maintenance',
+        )
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(204);
+
+      expect(reportsService.restoreInsights).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        'u1',
+        'open-maintenance',
+      );
+    });
+
+    it("insightId'siz hammasini qaytaradi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['reports:view']),
+      );
+
+      await request(app.getHttpServer())
+        .delete('/properties/p1/reports/insights/dismissals')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(204);
+
+      expect(reportsService.restoreInsights).toHaveBeenCalledWith(
+        't1',
+        'p1',
+        'u1',
+        undefined,
+      );
+    });
+
+    it("reports:view bo'lmasa qaytarib ham bo'lmaydi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(new Set());
+
+      await request(app.getHttpServer())
+        .delete('/properties/p1/reports/insights/dismissals')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(403);
+
+      expect(reportsService.restoreInsights).not.toHaveBeenCalled();
     });
   });
 });

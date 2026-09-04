@@ -33,13 +33,15 @@ describe('ReportsService.getInsights', () => {
         revParDelta: null,
       },
       ...over,
-    } as ReportsOverviewDto;
+    };
   }
 
   function createService(opts: {
     overview?: Partial<ReportsOverviewDto>;
     openTickets?: number;
     budgetMonths?: { month: number; roomsRevenue: string | null }[];
+    // Foydalanuvchi avval yopgan tavsiyalar (`insight_dismissals` qatorlari).
+    dismissals?: { insightId: string; severity: string }[];
   }) {
     const maintenanceRepo = {
       count: jest.fn().mockResolvedValue(opts.openTickets ?? 0),
@@ -54,9 +56,19 @@ describe('ReportsService.getInsights', () => {
         })),
       ),
     };
+    const dismissalRepo = {
+      find: jest.fn().mockResolvedValue(opts.dismissals ?? []),
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((x: unknown) => x),
+      save: jest.fn((x: unknown) => Promise.resolve(x)),
+      delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    };
     const service = new ReportsService(
       { count: jest.fn().mockResolvedValue(10) } as never,
-      { find: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) } as never,
+      {
+        find: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      } as never,
       {} as never,
       {} as never,
       {} as never,
@@ -65,6 +77,7 @@ describe('ReportsService.getInsights', () => {
       {} as never,
       budgetRepo as never,
       maintenanceRepo as never,
+      dismissalRepo as never,
     );
     jest
       .spyOn(service, 'getOverview')
@@ -72,9 +85,9 @@ describe('ReportsService.getInsights', () => {
     return service;
   }
 
-  it('hech qanday signal bo\'lmasa bo\'sh ro\'yxat qaytaradi', async () => {
+  it("hech qanday signal bo'lmasa bo'sh ro'yxat qaytaradi", async () => {
     const service = createService({});
-    const result = await service.getInsights('t1', 'p1', 30, true);
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
     expect(result).toEqual([]);
   });
 
@@ -84,17 +97,21 @@ describe('ReportsService.getInsights', () => {
         trend: { occupancyRatePctDelta: 7, adrDelta: -8, revParDelta: null },
       },
     });
-    const result = await service.getInsights('t1', 'p1', 30, true);
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
     expect(result).toEqual([]);
   });
 
-  it("bandlik sezilarli pasaysa ogohlantirish chiqaradi", async () => {
+  it('bandlik sezilarli pasaysa ogohlantirish chiqaradi', async () => {
     const service = createService({
       overview: {
-        trend: { occupancyRatePctDelta: -18, adrDelta: null, revParDelta: null },
+        trend: {
+          occupancyRatePctDelta: -18,
+          adrDelta: null,
+          revParDelta: null,
+        },
       },
     });
-    const result = await service.getInsights('t1', 'p1', 30, true);
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
     const it0 = result.find((i) => i.id === 'occupancy-trend');
 
     expect(it0?.severity).toBe('warning');
@@ -109,26 +126,28 @@ describe('ReportsService.getInsights', () => {
         trend: { occupancyRatePctDelta: 22, adrDelta: null, revParDelta: null },
       },
     });
-    const result = await service.getInsights('t1', 'p1', 30, true);
-    expect(result.find((i) => i.id === 'occupancy-trend')?.severity).toBe('positive');
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
+    expect(result.find((i) => i.id === 'occupancy-trend')?.severity).toBe(
+      'positive',
+    );
   });
 
   it("to'lanmagan hisob-fakturalar haqida xabar beradi", async () => {
     const service = createService({
       overview: { outstandingInvoices: { count: 5, totalBalance: 1250000 } },
     });
-    const result = await service.getInsights('t1', 'p1', 30, true);
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
     const inv = result.find((i) => i.id === 'outstanding-invoices');
 
     expect(inv?.title).toContain('5 ta');
     expect(inv?.actionTo).toBe('/invoicing');
   });
 
-  it('tozalash navbati faqat xonalar soniga nisbatan katta bo\'lsa chiqadi', async () => {
+  it("tozalash navbati faqat xonalar soniga nisbatan katta bo'lsa chiqadi", async () => {
     // 10 xona, chegara 30% = 3. 2 ta vazifa — chiqmasligi kerak.
     const kam = createService({ overview: { housekeepingPending: 2 } });
     expect(
-      (await kam.getInsights('t1', 'p1', 30, true)).find(
+      (await kam.getInsights('t1', 'p1', 'u1', 30, true)).find(
         (i) => i.id === 'housekeeping-backlog',
       ),
     ).toBeUndefined();
@@ -136,23 +155,25 @@ describe('ReportsService.getInsights', () => {
     // 6 ta vazifa — chiqishi kerak.
     const kop = createService({ overview: { housekeepingPending: 6 } });
     expect(
-      (await kop.getInsights('t1', 'p1', 30, true)).find(
+      (await kop.getInsights('t1', 'p1', 'u1', 30, true)).find(
         (i) => i.id === 'housekeeping-backlog',
       ),
     ).toBeDefined();
   });
 
-  it('ochiq texnik zayavkalar ko\'p bo\'lsa jiddiyligi oshadi', async () => {
+  it("ochiq texnik zayavkalar ko'p bo'lsa jiddiyligi oshadi", async () => {
     const oz = createService({ openTickets: 2 });
     expect(
-      (await oz.getInsights('t1', 'p1', 30, true)).find((i) => i.id === 'open-maintenance')
-        ?.severity,
+      (await oz.getInsights('t1', 'p1', 'u1', 30, true)).find(
+        (i) => i.id === 'open-maintenance',
+      )?.severity,
     ).toBe('info');
 
     const kop = createService({ openTickets: 7 });
     expect(
-      (await kop.getInsights('t1', 'p1', 30, true)).find((i) => i.id === 'open-maintenance')
-        ?.severity,
+      (await kop.getInsights('t1', 'p1', 'u1', 30, true)).find(
+        (i) => i.id === 'open-maintenance',
+      )?.severity,
     ).toBe('warning');
   });
 
@@ -172,7 +193,11 @@ describe('ReportsService.getInsights', () => {
         months: [
           {
             month: 6,
-            budget: { roomsRevenue: 3000000, occupancyRatePct: null, adr: null },
+            budget: {
+              roomsRevenue: 3000000,
+              occupancyRatePct: null,
+              adr: null,
+            },
             actual: { roomsRevenue: 700000, occupancyRatePct: 0, adr: 0 },
             isPartial: true,
             isFuture: false,
@@ -180,7 +205,7 @@ describe('ReportsService.getInsights', () => {
         ],
       });
 
-      const result = await service.getInsights('t1', 'p1', 30, true);
+      const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
       const b = result.find((i) => i.id === 'budget-variance');
 
       expect(b?.severity).toBe('critical');
@@ -197,7 +222,11 @@ describe('ReportsService.getInsights', () => {
         months: [
           {
             month: 6,
-            budget: { roomsRevenue: 3000000, occupancyRatePct: null, adr: null },
+            budget: {
+              roomsRevenue: 3000000,
+              occupancyRatePct: null,
+              adr: null,
+            },
             actual: { roomsRevenue: 1020000, occupancyRatePct: 0, adr: 0 },
             isPartial: true,
             isFuture: false,
@@ -205,15 +234,15 @@ describe('ReportsService.getInsights', () => {
         ],
       });
 
-      const result = await service.getInsights('t1', 'p1', 30, true);
+      const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
       expect(result.find((i) => i.id === 'budget-variance')).toBeUndefined();
     });
 
-    it('accounting ruxsati bo\'lmasa budjet tavsiyasi UMUMAN chiqmaydi', async () => {
+    it("accounting ruxsati bo'lmasa budjet tavsiyasi UMUMAN chiqmaydi", async () => {
       const service = createService({ budgetMonths });
       const spy = jest.spyOn(service, 'getBudgetPerformance');
 
-      const result = await service.getInsights('t1', 'p1', 30, false);
+      const result = await service.getInsights('t1', 'p1', 'u1', 30, false);
 
       expect(result.find((i) => i.id === 'budget-variance')).toBeUndefined();
       // Budjet umuman o'qilmasligi kerak — nafaqat javobdan olib tashlanishi
@@ -221,7 +250,7 @@ describe('ReportsService.getInsights', () => {
     });
   });
 
-  it('jiddiylik bo\'yicha saralaydi — eng muhimi tepada', async () => {
+  it("jiddiylik bo'yicha saralaydi — eng muhimi tepada", async () => {
     const service = createService({
       openTickets: 2, // info
       overview: {
@@ -242,7 +271,7 @@ describe('ReportsService.getInsights', () => {
       ],
     });
 
-    const result = await service.getInsights('t1', 'p1', 30, true);
+    const result = await service.getInsights('t1', 'p1', 'u1', 30, true);
     expect(result.map((i) => i.severity)).toEqual([
       'critical',
       'warning',
