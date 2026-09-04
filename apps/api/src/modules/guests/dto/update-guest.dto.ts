@@ -1,12 +1,9 @@
 import {
   IsDateString,
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
-  Min,
   MinLength,
 } from 'class-validator';
 import { CommunicationPreference } from '../entities/guest.entity';
@@ -78,12 +75,6 @@ export class UpdateGuestDto {
   @IsOptional()
   @IsString()
   contactPerson?: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  commissionPct?: number;
 
   @IsOptional()
   @IsUUID()

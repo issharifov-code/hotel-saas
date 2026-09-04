@@ -1,11 +1,8 @@
 import {
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
-  Min,
   MinLength,
 } from 'class-validator';
 import { CommunicationPreference, ProfileType } from '../entities/guest.entity';
@@ -71,14 +68,6 @@ export class CreateGuestDto {
   @IsOptional()
   @IsString()
   contactPerson?: string;
-
-  // Turagent komissiyasi (%). Faqat TRAVEL_AGENT turida ruxsat etiladi —
-  // buni GuestsService tekshiradi (bu yerda faqat oraliq tekshiriladi).
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  commissionPct?: number;
 
   // Kontakt profilining tashkiloti.
   @IsOptional()
