@@ -33,8 +33,16 @@
      uchun shu yerdagi yagona o'zgarish bilan hammasi bir xilga keladi.
      Zichlikni saqlash uchun padding (py-2) Login'dagidan (py-2.5/py-4)
      kichikroq qoldirildi — bu yerda ko'plab compact forma/panel bor. */
+  /* 2026-09-04 (foydalanuvchi fikri): fokus halqasi endi Login sahifasidagi
+     bilan BIR XIL — och ko'k va yumshoq (`ring-brand-navy/20`), avvalgi
+     to'liq to'q ko'k (`ring-brand-navy`) o'rniga. To'q halqa maydonni
+     "xatolik" holatidagidek qattiq ajratib ko'rsatardi; bu yerda esa
+     shunchaki "kursor shu yerda" degani.
+
+     `ring-2` + shaffof rang `ring-1` to'q rangdan kengroq, lekin ancha
+     yumshoqroq ko'rinadi — Login'da aynan shu nisbat tanlangan edi. */
   .input {
-    @apply w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy;
+    @apply w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors hover:border-slate-400 focus:border-brand-navy/70 focus:outline-none focus:ring-2 focus:ring-brand-navy/20;
   }
 
   .btn-primary {
