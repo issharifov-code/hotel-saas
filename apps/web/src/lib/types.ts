@@ -341,6 +341,31 @@ export interface BudgetDto {
   adr: string | null;
 }
 
+// "Reja vs haqiqat" — Dashboard'dagi Moliyaviy tabi uchun.
+// Haqiqiy qiymatlar Dashboard'ning boshqa joylaridagi bilan bir xil ta'rifda
+// hisoblanadi (backend: ReportsService.getBudgetPerformance izohiga qarang).
+export interface BudgetPerformanceMonthDto {
+  month: number;
+  budget: {
+    roomsRevenue: number | null;
+    occupancyRatePct: number | null;
+    adr: number | null;
+  };
+  actual: {
+    roomsRevenue: number;
+    occupancyRatePct: number;
+    adr: number;
+  };
+  // Joriy (tugamagan) oy — daromadi tabiiy ravishda rejadan past chiqadi.
+  isPartial: boolean;
+  isFuture: boolean;
+}
+
+export interface BudgetPerformanceDto {
+  year: number;
+  months: BudgetPerformanceMonthDto[];
+}
+
 // --- Night Audit ("kunni yopish") ---
 
 export interface NightAuditStatusDto {
