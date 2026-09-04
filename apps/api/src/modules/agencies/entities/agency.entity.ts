@@ -2,11 +2,14 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  ManyToOne,
+  JoinColumn,
   OneToMany,
   CreateDateColumn,
   Index,
 } from 'typeorm';
 import { Booking } from '../../bookings/entities/booking.entity';
+import { Guest } from '../../guests/entities/guest.entity';
 
 // Turizm agentligi / korporativ hamkor (Travel Agent / Corporate Account) —
 // mehmonxonaga muntazam mehmon yo'naltiradigan tashqi tashkilot. Har bir shu
@@ -28,6 +31,27 @@ export class Agency {
   @Column({ name: 'property_id', type: 'uuid' })
   propertyId: string;
 
+  // 🔴 KIM ekani PROFILDA (2026-09-04, foydalanuvchi qarori "Profil = shaxs,
+  // Agency = pul"). Agentlikning nomi, telefoni, emaili va aloqa shaxsi shu
+  // profildan o'qiladi — bu jadval faqat MULKKA XOS pul sozlamasini
+  // (komissiya foizi) va faollik holatini saqlaydi.
+  //
+  // Profil TENANT darajasida, agentlik esa MULK darajasida: shu sababdan
+  // bitta agentlikning har mulkda o'z komissiyasi bo'lishi mumkin.
+  //
+  // RESTRICT — profil o'chirilsa agentlik nomsiz qolib ketmasin. Amalda
+  // profil faqat birlashtirish paytida o'chadi, u yerda havolalar oldindan
+  // ko'chiriladi (GuestsService.mergeGuests).
+  @Column({ name: 'profile_id', type: 'uuid' })
+  profileId: string;
+
+  @ManyToOne(() => Guest, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'profile_id' })
+  profile: Guest;
+
+  // ESKI ustunlar (2026-09-04 dan boshlab O'QILMAYDI, faqat tarixiy yozuv
+  // sifatida qoladi — migratsiyada ular profilga ko'chirilgan). Yangi kod
+  // `profile.fullName` / `profile.phone` va hokazoni ishlatadi.
   @Column({ length: 200 })
   name: string;
 
