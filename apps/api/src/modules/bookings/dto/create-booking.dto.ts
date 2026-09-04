@@ -42,6 +42,13 @@ export class CreateBookingDto {
   @IsUUID('4')
   corporateAccountId?: string;
 
+  // Ixtiyoriy: bron qayerdan kelgani — MANBA turidagi profil. `source`
+  // (kanal) bilan aralashtirmaslik kerak: bron sayt orqali tushib, manbasi
+  // "Instagram reklamasi" bo'lishi mumkin.
+  @IsOptional()
+  @IsUUID('4')
+  sourceProfileId?: string;
+
   // Berilmasa, xona turi bazaviy narxi (yoki ratePlanId berilgan bo'lsa, shu
   // rejaning narxi) * tunlar soni asosida avtomatik hisoblanadi.
   @IsOptional()
