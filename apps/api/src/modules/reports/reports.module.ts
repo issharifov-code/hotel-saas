@@ -7,6 +7,7 @@ import { HousekeepingTask } from '../housekeeping/entities/housekeeping-task.ent
 import { Guest } from '../guests/entities/guest.entity';
 import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
+import { Budget } from '../budgets/entities/budget.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { RolesModule } from '../roles/roles.module';
@@ -27,6 +28,7 @@ import { RlsModule } from '../../common/rls/rls.module';
       Guest,
       Agency,
       CorporateAccount,
+      Budget,
     ]),
     RolesModule,
   ],

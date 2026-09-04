@@ -32,6 +32,29 @@ export class ReportsController {
     );
   }
 
+  // "Reja vs haqiqat". ACCOUNTING ruxsati talab qilinadi (REPORTS emas) —
+  // javob budjet raqamlarini oshkor qiladi, ular esa Budjet sahifasi bilan
+  // bir xil darajada nozik. Aks holda REPORTS:VIEW bor xodim budjetni
+  // sahifadan ko'ra olmasa-da, shu endpoint orqali ko'rib olardi.
+  @Get('budget-performance')
+  @RequirePermission(PermissionModule.ACCOUNTING, PermissionAction.VIEW)
+  budgetPerformance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Query('year') year?: string,
+  ) {
+    const parsed = Number(year);
+    const resolved =
+      Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
+        ? parsed
+        : new Date().getUTCFullYear();
+    return this.reportsService.getBudgetPerformance(
+      user.tenantId!,
+      propertyId,
+      resolved,
+    );
+  }
+
   @Get('segment-performance')
   @RequirePermission(PermissionModule.REPORTS, PermissionAction.VIEW)
   segmentPerformance(

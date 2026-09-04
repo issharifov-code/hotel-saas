@@ -23,7 +23,43 @@ import {
 import { Guest, LoyaltyTier } from '../guests/entities/guest.entity';
 import { Agency } from '../agencies/entities/agency.entity';
 import { CorporateAccount } from '../city-ledger/entities/corporate-account.entity';
+import { Budget } from '../budgets/entities/budget.entity';
 import { PaginationParams } from '../../common/utils/pagination.util';
+
+// "Reja vs haqiqat" — bir yilning har oyi uchun budjet va haqiqiy ko'rsatkich.
+//
+// MUHIM: haqiqiy qiymatlar `getOverview` bilan AYNAN BIR XIL ta'rifda
+// hisoblanadi (davr ichida check-in qilgan CHECKED_IN/CHECKED_OUT bronlar
+// bo'yicha: daromad = totalAmount yig'indisi, ADR = daromad/kecha-xonalar,
+// bandlik = kecha-xonalar / (jami xona × kunlar)). Aks holda Dashboard'ning
+// ikki joyida bir xil oy uchun turli raqamlar chiqib, foydalanuvchini
+// chalg'itardi.
+export interface BudgetPerformanceMonthDto {
+  month: number;
+  // Reja — kiritilmagan ko'rsatkich `null` (Budjet sahifasida bo'sh qoldirilgan).
+  budget: {
+    roomsRevenue: number | null;
+    occupancyRatePct: number | null;
+    adr: number | null;
+  };
+  actual: {
+    roomsRevenue: number;
+    occupancyRatePct: number;
+    adr: number;
+  };
+  // Joriy oy hali tugamagan — daromad (yig'indi ko'rsatkich) tabiiy ravishda
+  // rejadan past chiqadi, shuning uchun frontend buni alohida belgilaydi.
+  // Bandlik/ADR (nisbiy ko'rsatkichlar) uchun maxraj o'tgan kunlar bo'yicha
+  // olinadi, ya'ni ular partial oyda ham adolatli taqqoslanadi.
+  isPartial: boolean;
+  // Kelajakdagi oy — haqiqiy ma'lumot bo'lishi mumkin emas (faqat reja).
+  isFuture: boolean;
+}
+
+export interface BudgetPerformanceDto {
+  year: number;
+  months: BudgetPerformanceMonthDto[];
+}
 
 export interface ReportsOverviewDto {
   asOfDate: string;
@@ -145,6 +181,14 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+// Budjet ustunlari `numeric` — TypeORM ularni matn sifatida qaytaradi, va
+// kiritilmagan bo'lsa `null`. Frontend'ga raqam (yoki null) borishi kerak.
+function toNumberOrNull(value: string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 // Mehmonxona uchun asosiy KPI'larni (bandlik, ADR, RevPAR, daromad tendensiyasi,
 // to'lanmagan hisob-fakturalar, loyalty taqsimoti va h.k.) yig'ib beradigan
 // faqat-o'qish (read-only) hisobot servisi. Hech qanday yozish operatsiyasi yo'q —
@@ -165,7 +209,92 @@ export class ReportsService {
     @InjectRepository(Agency) private readonly agencyRepo: Repository<Agency>,
     @InjectRepository(CorporateAccount)
     private readonly corporateAccountRepo: Repository<CorporateAccount>,
+    @InjectRepository(Budget)
+    private readonly budgetRepo: Repository<Budget>,
   ) {}
+
+  // "Reja vs haqiqat" — Budjet sahifasida kiritilgan oylik rejalarni o'sha
+  // oylarning haqiqiy natijasi bilan yonma-yon qaytaradi.
+  async getBudgetPerformance(
+    tenantId: string,
+    propertyId: string,
+    year: number,
+  ): Promise<BudgetPerformanceDto> {
+    const yearStart = `${year}-01-01`;
+    // Dekabrning oxirgi kunini ham qamrab olish uchun keyingi yil boshigacha.
+    const nextYearStart = `${year + 1}-01-01`;
+
+    const [budgets, totalRooms, bookings] = await Promise.all([
+      this.budgetRepo.find({ where: { tenantId, propertyId, year } }),
+      this.roomRepo.count({ where: { tenantId, propertyId } }),
+      this.bookingRepo.find({
+        where: {
+          tenantId,
+          propertyId,
+          checkIn: Between(yearStart, nextYearStart),
+          status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+        },
+      }),
+    ]);
+
+    const budgetByMonth = new Map(budgets.map((b) => [b.month, b]));
+
+    const today = new Date();
+    const currentYear = today.getUTCFullYear();
+    const currentMonth = today.getUTCMonth() + 1; // 1-12
+
+    // Oy bo'yicha daromad va kecha-xonalarni yig'amiz — getOverview'dagi
+    // bilan bir xil: bron o'sha oyda CHECK-IN qilgan bo'lsa shu oyga tegishli.
+    const revenueByMonth = new Array<number>(13).fill(0);
+    const nightsByMonth = new Array<number>(13).fill(0);
+    for (const b of bookings) {
+      // checkIn — 'YYYY-MM-DD' matni, oyni to'g'ridan-to'g'ri kesib olamiz
+      // (Date orqali o'tkazsak vaqt mintaqasi chegaradagi kunni surib yuborishi mumkin).
+      const month = Number(b.checkIn.slice(5, 7));
+      if (month < 1 || month > 12) continue;
+      revenueByMonth[month] += Number(b.totalAmount);
+      nightsByMonth[month] += daysBetween(b.checkIn, b.checkOut);
+    }
+
+    const months: BudgetPerformanceMonthDto[] = [];
+    for (let month = 1; month <= 12; month++) {
+      const isFuture =
+        year > currentYear || (year === currentYear && month > currentMonth);
+      const isPartial = year === currentYear && month === currentMonth;
+
+      // Nisbiy ko'rsatkichlar (bandlik) uchun maxraj: tugagan oyda — oyning
+      // to'liq kunlari, joriy oyda — o'tgan kunlar. Aks holda hali tugamagan
+      // oy sun'iy ravishda past bandlik ko'rsatardi.
+      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const elapsedDays = isPartial ? today.getUTCDate() : daysInMonth;
+      const capacityDays = isFuture ? daysInMonth : elapsedDays;
+
+      const revenue = revenueByMonth[month];
+      const nights = nightsByMonth[month];
+
+      const budget = budgetByMonth.get(month);
+      months.push({
+        month,
+        budget: {
+          roomsRevenue: toNumberOrNull(budget?.roomsRevenue),
+          occupancyRatePct: toNumberOrNull(budget?.occupancyRatePct),
+          adr: toNumberOrNull(budget?.adr),
+        },
+        actual: {
+          roomsRevenue: round2(revenue),
+          occupancyRatePct:
+            totalRooms > 0 && capacityDays > 0
+              ? round2((nights / (totalRooms * capacityDays)) * 100)
+              : 0,
+          adr: nights > 0 ? round2(revenue / nights) : 0,
+        },
+        isPartial,
+        isFuture,
+      });
+    }
+
+    return { year, months };
+  }
 
   async getOverview(
     tenantId: string,
