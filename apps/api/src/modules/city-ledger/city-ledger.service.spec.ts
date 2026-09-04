@@ -17,6 +17,7 @@ describe('CityLedgerService', () => {
       create: jest.fn((data: unknown) => data),
       save: jest.fn().mockResolvedValue(savedAccount),
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(account),
       findOneBy: jest.fn().mockResolvedValue(account),
     };
     const qb: Record<string, jest.Mock> = {};
@@ -29,11 +30,23 @@ describe('CityLedgerService', () => {
     const invoiceRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
     };
+    // 2026-09-04: hisobning KIM ekani profilda.
+    const guestRepo = {
+      create: jest.fn((x: unknown) => x),
+      save: jest.fn((x: Record<string, unknown>) =>
+        Promise.resolve({ ...x, id: 'prof1' }),
+      ),
+      findOneBy: jest.fn().mockResolvedValue({
+        id: 'prof1',
+        profileType: 'company',
+      }),
+    };
     const service = new CityLedgerService(
       accountRepo as never,
       invoiceRepo as never,
+      guestRepo as never,
     );
-    return { service, accountRepo, invoiceRepo, qb };
+    return { service, accountRepo, invoiceRepo, guestRepo, qb };
   }
 
   it("yaratishda paymentTermsDays berilmasa 30 (default) qo'yiladi, isActive=true", async () => {
@@ -55,7 +68,7 @@ describe('CityLedgerService', () => {
 
   it('topilmagan korporativ hisob uchun NotFoundException tashlaydi', async () => {
     const { service, accountRepo } = createService();
-    accountRepo.findOneBy.mockResolvedValue(null);
+    accountRepo.findOne.mockResolvedValue(null);
     await expect(service.findById('t1', 'p1', 'no-such-id')).rejects.toThrow(
       NotFoundException,
     );
@@ -63,11 +76,12 @@ describe('CityLedgerService', () => {
 
   it("update — faqat berilgan maydonlarni o'zgartiradi", async () => {
     const { service, accountRepo } = createService();
-    accountRepo.findOneBy.mockResolvedValue({
+    accountRepo.findOne.mockResolvedValue({
       id: 'ca1',
       name: 'Acme LLC',
       paymentTermsDays: 30,
       isActive: true,
+      profile: null,
     });
     accountRepo.save.mockImplementation((x: unknown) => Promise.resolve(x));
 
@@ -146,7 +160,7 @@ describe('CityLedgerService', () => {
 
   it("getStatement — mavjud bo'lmagan korporativ hisob uchun NotFoundException tashlaydi", async () => {
     const { service, accountRepo } = createService();
-    accountRepo.findOneBy.mockResolvedValue(null);
+    accountRepo.findOne.mockResolvedValue(null);
     await expect(
       service.getStatement('t1', 'p1', 'no-such-id'),
     ).rejects.toThrow(NotFoundException);

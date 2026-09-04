@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CorporateAccount } from './entities/corporate-account.entity';
+import { Guest, ProfileType } from '../guests/entities/guest.entity';
 import { Invoice, InvoiceStatus } from '../invoicing/entities/invoice.entity';
 import { CreateCorporateAccountDto } from './dto/create-corporate-account.dto';
 import { UpdateCorporateAccountDto } from './dto/update-corporate-account.dto';
@@ -37,16 +42,57 @@ export class CityLedgerService {
     private readonly accountRepo: Repository<CorporateAccount>,
     @InjectRepository(Invoice)
     private readonly invoiceRepo: Repository<Invoice>,
+      // Kompaniyaning KIM ekani shu yerda (profil) — Agency bilan bir xil
+    // naqsh. GuestsModule import qilinmaydi: aylanma bog'liqlik bo'lardi.
+    @InjectRepository(Guest) private readonly guestRepo: Repository<Guest>,
   ) {}
+
+  // Berilgan profil shu tenantga tegishli va KOMPANIYA ekanini tekshiradi.
+  private async assertCompanyProfile(
+    tenantId: string,
+    profileId: string,
+  ): Promise<void> {
+    const profile = await this.guestRepo.findOneBy({ id: profileId, tenantId });
+    if (!profile) throw new NotFoundException('Profil topilmadi');
+    if (profile.profileType !== ProfileType.COMPANY) {
+      throw new BadRequestException(
+        "Korporativ hisob faqat 'Kompaniya' turidagi profilga bog'lanadi",
+      );
+    }
+  }
 
   async create(
     tenantId: string,
     propertyId: string,
     dto: CreateCorporateAccountDto,
   ): Promise<CorporateAccount> {
+    // `profileId` berilsa mavjud kompaniya profili ulanadi, aks holda
+    // nom/aloqadan yangisi ochiladi (AgenciesService bilan bir xil naqsh).
+    let profileId = dto.profileId;
+    if (profileId) {
+      await this.assertCompanyProfile(tenantId, profileId);
+    } else {
+      const profile = await this.guestRepo.save(
+        this.guestRepo.create({
+          tenantId,
+          profileType: ProfileType.COMPANY,
+          fullName: dto.name.trim(),
+          phone: dto.contactPhone ?? null,
+          email: dto.contactEmail ?? null,
+          contactPerson: dto.contactName ?? null,
+          taxId: dto.taxId ?? null,
+          address: dto.billingAddress ?? null,
+        }),
+      );
+      profileId = profile.id;
+    }
+
     const account = this.accountRepo.create({
       tenantId,
       propertyId,
+      profileId,
+      // Eski ustunlar hamon to'ldiriladi — mavjud hisob-varaq/hisobotlar
+      // buzilmasin. Manba esa PROFIL.
       name: dto.name.trim(),
       taxId: dto.taxId ?? null,
       contactName: dto.contactName ?? null,
@@ -67,6 +113,7 @@ export class CityLedgerService {
   ): Promise<CorporateAccount[]> {
     return this.accountRepo.find({
       where: { tenantId, propertyId },
+      relations: { profile: true },
       order: { createdAt: 'ASC' },
     });
   }
@@ -76,10 +123,9 @@ export class CityLedgerService {
     propertyId: string,
     id: string,
   ): Promise<CorporateAccount> {
-    const account = await this.accountRepo.findOneBy({
-      id,
-      tenantId,
-      propertyId,
+    const account = await this.accountRepo.findOne({
+      where: { id, tenantId, propertyId },
+      relations: { profile: true },
     });
     if (!account) throw new NotFoundException('Korporativ hisob topilmadi');
     return account;
@@ -92,6 +138,19 @@ export class CityLedgerService {
     dto: UpdateCorporateAccountDto,
   ): Promise<CorporateAccount> {
     const account = await this.findById(tenantId, propertyId, id);
+
+    // KIM ekani — profilga (bitta manba).
+    const profile = account.profile;
+    if (profile) {
+      if (dto.name !== undefined) profile.fullName = dto.name.trim();
+      if (dto.taxId !== undefined) profile.taxId = dto.taxId;
+      if (dto.contactName !== undefined) profile.contactPerson = dto.contactName;
+      if (dto.contactPhone !== undefined) profile.phone = dto.contactPhone;
+      if (dto.contactEmail !== undefined) profile.email = dto.contactEmail;
+      if (dto.billingAddress !== undefined) profile.address = dto.billingAddress;
+      await this.guestRepo.save(profile);
+    }
+
     if (dto.name !== undefined) account.name = dto.name.trim();
     if (dto.taxId !== undefined) account.taxId = dto.taxId;
     if (dto.contactName !== undefined) account.contactName = dto.contactName;
