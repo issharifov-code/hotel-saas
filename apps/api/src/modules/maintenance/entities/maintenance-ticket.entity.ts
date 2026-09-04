@@ -31,6 +31,7 @@ export enum MaintenanceTicketStatus {
 // qilingach, agar boshqa ochiq so'rov qolmagan bo'lsa, AVAILABLE'ga qaytadi.
 @Entity('maintenance_tickets')
 @Index(['tenantId', 'propertyId'])
+@Index(['tenantId', 'propertyId', 'status']) // ochiq zayavkalar (tavsiyalar paneli)
 export class MaintenanceTicket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
