@@ -30,6 +30,7 @@ import { BillingPage } from './pages/BillingPage';
 import { StaffPage } from './pages/StaffPage';
 import { HelpPage } from './pages/HelpPage';
 import { PropertySettingsPage } from './pages/PropertySettingsPage';
+import { BudgetPage } from './pages/BudgetPage';
 import { AdminPage } from './pages/AdminPage';
 
 function App() {
@@ -221,6 +222,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <StaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/budget"
+            element={
+              <ProtectedRoute>
+                <BudgetPage />
               </ProtectedRoute>
             }
           />
