@@ -56,14 +56,25 @@
      ilhomlangan, lekin uning dizayni (gloss/bevel/refleksiya) ataylab
      nusxalanmagan.
   */
-  /* 2026-09-04: modul paneli 27% ga kengaygani uchun (41px -> 52.07px) bu
-     belgi ham xuddi shu nisbatda kattalashtirildi (48px -> 60.96px). Aks
-     holda u qatorning ichiga botib qolardi va avval so'ralgan "yuqori va
-     pastki chiziqlarni yirib turadigan" (Windows 7 Start tugmasi) ko'rinish
-     yo'qolardi — protruziya `-my-3` bilan emas, aynan belgi qatordan
-     KATTAROQ bo'lgani uchun hosil bo'ladi. */
+  /* 2026-09-04 (foydalanuvchi fikri): belgining O'ZI endi kichik — tepadagi
+     mehmonxona logotipi bilan bir o'lchamda (24px, AppLayout'da beriladi).
+     Avvalgi "qatordan chiqib turadigan" katta variant bekor qilindi.
+
+     Lekin bu o'rovchining ENI 60.96px bo'lib qoladi: yuqoridagi navy
+     paneldagi hamburger uyasi aynan shu enga tenglashtirilgan va ikkala
+     ajratuvchi chiziq shu hisobga bir vertikalda turadi. Enini o'zgartirsak,
+     hamburger uyasini ham (AppLayout) birga o'zgartirish shart. */
   .f1-brand-mark {
-    @apply flex items-center justify-center h-[60.96px] w-[60.96px] transition-opacity duration-150;
+    @apply flex items-center justify-center w-[60.96px] transition-opacity duration-150;
+  }
+  /* 2026-09-04 (foydalanuvchi so'rovi): belgiga yengil hajm — qog'ozdan bir
+     oz ko'tarilgandek. `box-shadow` EMAS, `drop-shadow`: birinchisi to'rtburchak
+     konteynerga soya solardi, ikkinchisi esa rasmning alfa-shakliga ergashadi,
+     ya'ni soya aynan F1 harflarining konturi bo'yicha tushadi.
+     Daraja ataylab past: belgi 24px, kuchliroq soya shu o'lchamda hajm emas,
+     dog' bo'lib ko'rinardi (to'rtta variant yonma-yon solishtirilgan). */
+  .f1-brand-mark img {
+    filter: drop-shadow(0 1px 1px rgb(15 23 42 / 0.35));
   }
   .f1-brand-mark:hover {
     @apply opacity-80;
