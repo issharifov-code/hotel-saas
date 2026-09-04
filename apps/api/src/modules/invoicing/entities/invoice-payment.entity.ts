@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -19,6 +20,10 @@ export enum InvoicePaymentMethod {
 }
 
 @Entity('invoice_payments')
+// Postgres tashqi kalit uchun indeksni AVTOMATIK yaratmaydi — bu jadvalda
+// `invoice_id` bo'yicha hech qanday indeks yo'q edi va daromad trendi
+// grafigidagi join butun jadvalni skanerlardi. Qarang: AddReportsIndexes.
+@Index(['invoiceId', 'createdAt'])
 export class InvoicePayment {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -29,6 +29,7 @@ export enum InvoiceStatus {
 // to'lanmagan qoldiq keyin kuzatiladi (biznes qoida — tasdiqlangan).
 @Entity('invoices')
 @Index(['tenantId', 'propertyId'])
+@Index(['tenantId', 'propertyId', 'status']) // to'lanmagan hisob-fakturalar
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -56,10 +57,22 @@ export class Invoice {
   @Column({ type: 'enum', enum: InvoiceStatus, default: InvoiceStatus.OPEN })
   status: InvoiceStatus;
 
-  @Column({ name: 'total_amount', type: 'numeric', precision: 12, scale: 2, default: 0 })
+  @Column({
+    name: 'total_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    default: 0,
+  })
   totalAmount: string;
 
-  @Column({ name: 'paid_amount', type: 'numeric', precision: 12, scale: 2, default: 0 })
+  @Column({
+    name: 'paid_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    default: 0,
+  })
   paidAmount: string;
 
   @Column({ type: 'varchar', length: 3, default: 'UZS' })
@@ -71,7 +84,9 @@ export class Invoice {
   @OneToMany(() => InvoiceLine, (line) => line.invoice, { cascade: true })
   lines: InvoiceLine[];
 
-  @OneToMany(() => InvoicePayment, (payment) => payment.invoice, { cascade: true })
+  @OneToMany(() => InvoicePayment, (payment) => payment.invoice, {
+    cascade: true,
+  })
   payments: InvoicePayment[];
 
   @CreateDateColumn({ name: 'created_at' })
