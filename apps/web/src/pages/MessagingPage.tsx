@@ -91,13 +91,13 @@ export function MessagingPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setTab('logs')}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'logs' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'logs' ? 'chip-active' : 'bg-slate-100 text-brand-navy'}`}
           >
             Xabarlar tarixi
           </button>
           <button
             onClick={() => setTab('templates')}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'templates' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'templates' ? 'chip-active' : 'bg-slate-100 text-brand-navy'}`}
           >
             Shablonlar
           </button>
@@ -404,14 +404,14 @@ function SendMessageModal({
             <button
               type="button"
               onClick={() => setMode('template')}
-              className={`px-2 py-1 rounded ${mode === 'template' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+              className={`px-2 py-1 rounded ${mode === 'template' ? 'chip-active' : 'bg-slate-100 text-brand-navy'}`}
             >
               Shablondan
             </button>
             <button
               type="button"
               onClick={() => setMode('adhoc')}
-              className={`px-2 py-1 rounded ${mode === 'adhoc' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+              className={`px-2 py-1 rounded ${mode === 'adhoc' ? 'chip-active' : 'bg-slate-100 text-brand-navy'}`}
             >
               Erkin matn
             </button>

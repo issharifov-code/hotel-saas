@@ -162,7 +162,7 @@ export function MaintenancePage() {
                         <button
                           disabled={busyId === t.id}
                           onClick={() => runAction(t.id, 'cancel')}
-                          className="text-xs font-medium text-slate-500 hover:text-slate-700 underline"
+                          className="text-xs font-medium text-brand-navy underline"
                         >
                           Bekor qilish
                         </button>

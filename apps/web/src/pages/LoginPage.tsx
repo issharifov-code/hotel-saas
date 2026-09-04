@@ -625,7 +625,7 @@ function TenantSelectStep({
         ))}
       </div>
       {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
-      <button type="button" onClick={onBack} className="mt-4 text-sm text-slate-500 hover:underline">
+      <button type="button" onClick={onBack} className="mt-4 text-sm text-brand-navy hover:underline">
         Orqaga
       </button>
     </div>

@@ -85,7 +85,7 @@ export function PosPage() {
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               tab === t.key
                 ? 'chip-active'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
             }`}
           >
             {t.label}
@@ -317,7 +317,7 @@ function CreatePosOrderModal({
           <button
             type="button"
             onClick={() => setLines((prev) => [...prev, { menuItemId: menuItems[0]?.id ?? '', quantity: '1' }])}
-            className="text-xs text-slate-600 hover:text-slate-900 underline"
+            className="text-xs text-brand-navy underline"
           >
             + Taom qo'shish
           </button>
@@ -603,7 +603,7 @@ function PosOrderDetailModal({
         )}
 
         {isOpen && canEdit && (
-          <button type="button" disabled={busy} onClick={cancelOrder} className="text-xs text-slate-500 hover:text-rose-600 underline">
+          <button type="button" disabled={busy} onClick={cancelOrder} className="text-xs text-brand-navy hover:text-rose-600 underline">
             Buyurtmani bekor qilish
           </button>
         )}
