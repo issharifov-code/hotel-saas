@@ -14,6 +14,15 @@ import { Invoice } from '../invoicing/entities/invoice.entity';
 import { PosOrder } from '../pos/entities/pos-order.entity';
 import { LoyaltyService } from './loyalty.service';
 
+// Profil qidiruvi parametrlari — hammasi ixtiyoriy.
+export interface GuestSearchFilters {
+  search?: string;
+  name?: string;
+  communication?: string;
+  documentNumber?: string;
+  nationality?: string;
+}
+
 @Injectable()
 export class GuestsService {
   constructor(
@@ -84,19 +93,46 @@ export class GuestsService {
     });
   }
 
-  async list(tenantId: string, search?: string): Promise<Guest[]> {
+  // Profil qidiruvi (2026-09-04, OPERA Cloud "Manage Profile" referensi).
+  //
+  // `search` — eski umumiy maydon (ism/telefon/email bo'ylab), boshqa
+  // parametrlar esa alohida-alohida. Hammasi ixtiyoriy va VA (AND) bilan
+  // birlashadi: to'ldirilgan har bir maydon natijani toraytiradi.
+  //
+  // `communication` ataylab bitta maydon: OPERA'da ham "Email / Fax / Phone /
+  // Web" bitta katakcha — reception odatda qaysi kanal ekanini bilmaydi,
+  // faqat raqam yoki manzilni biladi.
+  async list(tenantId: string, filters: GuestSearchFilters = {}): Promise<Guest[]> {
     const qb = this.guestRepo
       .createQueryBuilder('guest')
       .where('guest.tenant_id = :tenantId', { tenantId })
       .orderBy('guest.created_at', 'DESC');
 
-    if (search) {
+    const like = (v: string) => `%${v.trim()}%`;
+
+    if (filters.search?.trim()) {
       qb.andWhere(
         '(guest.full_name ILIKE :search OR guest.phone ILIKE :search OR guest.email ILIKE :search)',
-        {
-          search: `%${search}%`,
-        },
+        { search: like(filters.search) },
       );
+    }
+    if (filters.name?.trim()) {
+      qb.andWhere('guest.full_name ILIKE :name', { name: like(filters.name) });
+    }
+    if (filters.communication?.trim()) {
+      qb.andWhere('(guest.phone ILIKE :comm OR guest.email ILIKE :comm)', {
+        comm: like(filters.communication),
+      });
+    }
+    if (filters.documentNumber?.trim()) {
+      qb.andWhere('guest.document_number ILIKE :doc', {
+        doc: like(filters.documentNumber),
+      });
+    }
+    if (filters.nationality?.trim()) {
+      qb.andWhere('guest.nationality ILIKE :nat', {
+        nat: like(filters.nationality),
+      });
     }
     return qb.getMany();
   }

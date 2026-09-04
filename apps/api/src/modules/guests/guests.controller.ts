@@ -31,9 +31,21 @@ export class GuestsController {
   @RequirePermission(PermissionModule.GUEST_CRM, PermissionAction.VIEW)
   list(
     @CurrentUser() user: AuthenticatedUser,
+    // `search` — eski umumiy maydon (saqlanadi, boshqa joylarda ishlatiladi);
+    // qolganlari 2026-09-04 da qo'shilgan alohida qidiruv maydonlari.
     @Query('search') search?: string,
+    @Query('name') name?: string,
+    @Query('communication') communication?: string,
+    @Query('documentNumber') documentNumber?: string,
+    @Query('nationality') nationality?: string,
   ) {
-    return this.guestsService.list(user.tenantId!, search);
+    return this.guestsService.list(user.tenantId!, {
+      search,
+      name,
+      communication,
+      documentNumber,
+      nationality,
+    });
   }
 
   // ':id' route'idan OLDIN e'lon qilinishi shart — aks holda Nest "duplicates"ni
