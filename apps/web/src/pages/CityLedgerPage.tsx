@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { ProfilePicker } from '../components/ProfilePicker';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type { CityLedgerStatementDto, CorporateAccountDto } from '../lib/types';
@@ -248,6 +249,9 @@ function CorporateAccountFormModal({
   const [contactPhone, setContactPhone] = useState(account?.contactPhone ?? '');
   const [contactEmail, setContactEmail] = useState(account?.contactEmail ?? '');
   const [billingAddress, setBillingAddress] = useState(account?.billingAddress ?? '');
+  // Mavjud KOMPANIYA profilini ulash (2026-09-04) — Agentliklar sahifasidagi
+  // bilan bir xil naqsh.
+  const [profileId, setProfileId] = useState('');
   const [creditLimit, setCreditLimit] = useState(account?.creditLimit ?? '');
   const [paymentTermsDays, setPaymentTermsDays] = useState(String(account?.paymentTermsDays ?? 30));
   const [notes, setNotes] = useState(account?.notes ?? '');
@@ -270,6 +274,8 @@ function CorporateAccountFormModal({
         creditLimit: creditLimit || undefined,
         paymentTermsDays: paymentTermsDays ? Number(paymentTermsDays) : undefined,
         notes: notes || undefined,
+        // Faqat yaratishda: mavjud profilni ulash.
+        ...(!isEdit && profileId ? { profileId } : {}),
         ...(isEdit ? { isActive } : {}),
       };
       if (isEdit) {
@@ -294,24 +300,59 @@ function CorporateAccountFormModal({
   return (
     <Modal title={isEdit ? 'Korporativ hisobni tahrirlash' : 'Yangi korporativ hisob'} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
+        {!isEdit && (
+          <ProfilePicker
+            type="company"
+            value={profileId}
+            onChange={setProfileId}
+            onPick={(p) => {
+              setName(p?.fullName ?? '');
+              setTaxId(p?.taxId ?? '');
+              setContactName(p?.contactPerson ?? '');
+              setContactPhone(p?.phone ?? '');
+              setContactEmail(p?.email ?? '');
+              setBillingAddress(p?.address ?? '');
+            }}
+            label="Mavjud kompaniya profili"
+            noneLabel="— Yangi profil ochish —"
+            hint="Tanlansa nom, STIR va aloqa profildan olinadi"
+          />
+        )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Kompaniya nomi</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+          <input
+            required
+            disabled={!isEdit && profileId !== ''}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+          />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">STIR (ixtiyoriy)</span>
-            <input value={taxId} onChange={(e) => setTaxId(e.target.value)} className="input" />
+            <input
+              disabled={!isEdit && profileId !== ''}
+              value={taxId}
+              onChange={(e) => setTaxId(e.target.value)}
+              className="input"
+            />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa shaxsi</span>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} className="input" />
+            <input
+              disabled={!isEdit && profileId !== ''}
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              className="input"
+            />
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Telefon</span>
             <input
+              disabled={!isEdit && profileId !== ''}
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
               className="input"
@@ -322,6 +363,7 @@ function CorporateAccountFormModal({
             <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
             <input
               type="email"
+              disabled={!isEdit && profileId !== ''}
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
               className="input"
@@ -330,7 +372,12 @@ function CorporateAccountFormModal({
         </div>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Manzil (ixtiyoriy)</span>
-          <input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="input" />
+          <input
+              disabled={!isEdit && profileId !== ''}
+              value={billingAddress}
+              onChange={(e) => setBillingAddress(e.target.value)}
+              className="input"
+            />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">

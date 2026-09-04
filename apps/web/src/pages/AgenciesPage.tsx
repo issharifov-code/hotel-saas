@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { ProfilePicker } from '../components/ProfilePicker';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
 import type { AgencyDto, AgencySummaryDto } from '../lib/types';
@@ -204,6 +205,11 @@ function AgencyFormModal({
   const [commissionPct, setCommissionPct] = useState(agency?.commissionPct ?? '10');
   const [notes, setNotes] = useState(agency?.notes ?? '');
   const [isActive, setIsActive] = useState(agency?.isActive ?? true);
+  // Mavjud TURAGENT profilini ulash (2026-09-04). Tanlangan bo'lsa, nom va
+  // aloqa maydonlari profildan to'ldiriladi va bloklanadi — ular profilning
+  // ma'lumoti, bu yerda emas. Tanlanmasa, eskicha: yozilgan nomdan yangi
+  // profil ochiladi.
+  const [profileId, setProfileId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -219,6 +225,9 @@ function AgencyFormModal({
         contactEmail: contactEmail || undefined,
         commissionPct: commissionPct || undefined,
         notes: notes || undefined,
+        // Faqat YARATISHDA: mavjud profil tanlangan bo'lsa uni ulaydi.
+        // Tahrirlashda profil allaqachon bog'langan va o'zgartirilmaydi.
+        ...(!isEdit && profileId ? { profileId } : {}),
         ...(isEdit ? { isActive } : {}),
       };
       if (isEdit) {
@@ -243,18 +252,52 @@ function AgencyFormModal({
   return (
     <Modal title={isEdit ? 'Agentlikni tahrirlash' : 'Yangi agentlik'} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
+        {/* Yaratishda: avval mavjud profildan tanlash taklif qilinadi.
+            Aynan shu takrorlanishni yo'q qiladi — "Silk Road Tours" profil
+            sifatida bor bo'lsa, uni qayta yozish shart emas. */}
+        {!isEdit && (
+          <ProfilePicker
+            type="travel_agent"
+            value={profileId}
+            onChange={setProfileId}
+            onPick={(p) => {
+              // Tanlangan profil ma'lumotlari formaga tushadi (va bloklanadi).
+              // Bekor qilinsa — maydonlar bo'shatiladi, chunki ular endi
+              // yangi profil uchun kiritiladi.
+              setName(p?.fullName ?? '');
+              setContactName(p?.contactPerson ?? '');
+              setContactPhone(p?.phone ?? '');
+              setContactEmail(p?.email ?? '');
+            }}
+            label="Mavjud turagent profili"
+            noneLabel="— Yangi profil ochish —"
+            hint="Tanlansa nom va aloqa profildan olinadi"
+          />
+        )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+          <input
+            required
+            disabled={!isEdit && profileId !== ''}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+          />
         </label>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa shaxsi</span>
-          <input value={contactName} onChange={(e) => setContactName(e.target.value)} className="input" />
+          <input
+            disabled={!isEdit && profileId !== ''}
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            className="input"
+          />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Telefon</span>
             <input
+              disabled={!isEdit && profileId !== ''}
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
               className="input"
@@ -265,6 +308,7 @@ function AgencyFormModal({
             <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
             <input
               type="email"
+              disabled={!isEdit && profileId !== ''}
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
               className="input"
