@@ -103,7 +103,7 @@ export function GuestsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
         {!loading && guests.length === 0 && <p className="p-4 text-sm text-slate-500">Mehmon topilmadi</p>}
         {guests.map((g) => (
           <button
@@ -317,7 +317,7 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
                   )}
                 </div>
               )}
-              <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+              <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
                 {transactions.length === 0 && <p className="p-3 text-sm text-slate-500">Hali ball tranzaksiyasi yo'q</p>}
                 {transactions.map((t) => (
                   <div key={t.id} className="p-3 flex items-center justify-between text-sm">
@@ -336,7 +336,7 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
           )}
 
           {tab === 'stays' && (
-            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
               {stays.length === 0 && <p className="p-3 text-sm text-slate-500">Hali turgan kunlari yo'q</p>}
               {stays.map((s) => (
                 <div key={s.id} className="p-3 text-sm">
@@ -517,7 +517,7 @@ function AdjustPointsForm({
   };
 
   return (
-    <form onSubmit={submit} className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-200">
+    <form onSubmit={submit} className="bg-slate-50 rounded-2xl p-3 space-y-2 border border-slate-200">
       <div className="grid grid-cols-[120px_1fr] gap-2">
         <input
           required
@@ -618,7 +618,7 @@ function DuplicatesModal({ onClose, onMerged }: { onClose: () => void; onMerged:
       ) : (
         <div className="space-y-4">
           {groups.map((group, i) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-3">
+            <div key={i} className="border border-slate-200 rounded-2xl p-3">
               <div className="space-y-2 mb-3">
                 {group.map((g) => (
                   <label key={g.id} className="flex items-center gap-2 text-sm">

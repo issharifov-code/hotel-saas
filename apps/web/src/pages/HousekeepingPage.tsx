@@ -137,7 +137,7 @@ export function HousekeepingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {rooms.length === 0 && <p className="text-sm text-slate-500">Hali xona yo'q</p>}
           {rooms.map((room) => (
-            <div key={room.id} className="bg-white rounded-lg border border-slate-200 p-3">
+            <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="font-semibold text-slate-900">№ {room.roomNumber}</p>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${HK_STYLES[room.housekeepingStatus]}`}>
@@ -159,7 +159,7 @@ export function HousekeepingPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {tasks.length === 0 && <p className="p-4 text-sm text-slate-500">Hali vazifa yo'q</p>}
           {tasks.map((task) => (
             <div key={task.id} className="p-4 flex items-center justify-between gap-3">

@@ -181,7 +181,7 @@ export function AdminPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-md px-4 py-2 text-sm font-medium ${
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
                 tab === t ? 'chip-active' : 'bg-white text-slate-600 border border-slate-200'
               }`}
             >
@@ -193,7 +193,7 @@ export function AdminPage() {
         {error && <p className="text-sm text-rose-600 mb-4">{error}</p>}
 
         {tab === 'tenants' && (
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
             {tenants.map((t) => (
               <div key={t.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -207,7 +207,7 @@ export function AdminPage() {
                     {TENANT_STATUS_LABELS[t.status]}
                   </span>
                   <select
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    className="rounded-full border border-slate-300 px-2.5 py-1 text-xs"
                     value={t.status}
                     onChange={(e) => changeTenantStatus(t.id, e.target.value as TenantStatus)}
                   >
@@ -226,11 +226,11 @@ export function AdminPage() {
 
         {tab === 'billing' && (
           <div className="space-y-6">
-            <div className="rounded-lg border border-slate-200 bg-white p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-sm font-medium text-slate-900 mb-3">Yangi hisob-faktura yaratish</p>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <select
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="rounded-full border border-slate-300 px-3 py-2 text-sm"
                   value={genTenantId}
                   onChange={(e) => setGenTenantId(e.target.value)}
                 >
@@ -243,20 +243,20 @@ export function AdminPage() {
                 </select>
                 <input
                   type="date"
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="rounded-full border border-slate-300 px-3 py-2 text-sm"
                   value={genPeriodStart}
                   onChange={(e) => setGenPeriodStart(e.target.value)}
                 />
                 <input
                   type="date"
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="rounded-full border border-slate-300 px-3 py-2 text-sm"
                   value={genPeriodEnd}
                   onChange={(e) => setGenPeriodEnd(e.target.value)}
                 />
                 <button
                   onClick={generateInvoice}
                   disabled={genBusy}
-                  className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-dark disabled:opacity-50"
+                  className="rounded-full bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-dark disabled:opacity-50"
                 >
                   {genBusy ? 'Yaratilmoqda...' : 'Yaratish'}
                 </button>
@@ -270,7 +270,7 @@ export function AdminPage() {
 
             <div className="flex flex-wrap gap-3">
               <select
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-full border border-slate-300 px-3 py-2 text-sm"
                 value={filterTenantId}
                 onChange={(e) => setFilterTenantId(e.target.value)}
               >
@@ -282,7 +282,7 @@ export function AdminPage() {
                 ))}
               </select>
               <select
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-full border border-slate-300 px-3 py-2 text-sm"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -293,7 +293,7 @@ export function AdminPage() {
               </select>
             </div>
 
-            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
               {invoices.map((inv) => (
                 <div key={inv.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -311,13 +311,13 @@ export function AdminPage() {
                       <>
                         <button
                           onClick={() => markPaid(inv.id)}
-                          className="rounded-md bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700"
+                          className="rounded-full bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700"
                         >
                           To'landi deb belgilash
                         </button>
                         <button
                           onClick={() => cancelInvoice(inv.id)}
-                          className="rounded-md border border-slate-300 text-xs font-medium px-3 py-1.5 hover:bg-slate-100"
+                          className="rounded-full border border-slate-300 text-xs font-medium px-3 py-1.5 hover:bg-slate-100"
                         >
                           Bekor qilish
                         </button>
@@ -341,7 +341,7 @@ export function AdminPage() {
         )}
 
         {tab === 'demo-requests' && (
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
             {demoRequests.map((req) => (
               <div key={req.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -364,7 +364,7 @@ export function AdminPage() {
                   </span>
                   <button
                     onClick={() => toggleContacted(req)}
-                    className="rounded-md border border-slate-300 text-xs font-medium px-3 py-1.5 hover:bg-slate-100"
+                    className="rounded-full border border-slate-300 text-xs font-medium px-3 py-1.5 hover:bg-slate-100"
                   >
                     {req.contacted ? "Kutilmoqda deb belgilash" : "Bog'lanildi deb belgilash"}
                   </button>

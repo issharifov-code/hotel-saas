@@ -55,7 +55,7 @@ export function CityLedgerPage() {
       ) : accounts.length === 0 ? (
         <p className="text-sm text-slate-500">Hali korporativ hisob qo'shilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -182,7 +182,7 @@ function CorporateAccountDetailModal({
               {statement.lines.length === 0 ? (
                 <p className="text-sm text-slate-500">Hali hisob-faktura yo'q.</p>
               ) : (
-                <div className="border border-slate-200 rounded-md overflow-x-auto">
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50 text-slate-500 uppercase">
                       <tr>
@@ -377,7 +377,7 @@ function CorporateAccountFormModal({
 
 function SummaryStat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="bg-slate-50 rounded-md p-3">
+    <div className="bg-slate-50 rounded-2xl p-3">
       <p className="text-xs text-slate-500">{label}</p>
       <p className={`text-sm font-semibold mt-0.5 ${danger ? 'text-rose-600' : 'text-slate-900'}`}>{value}</p>
     </div>

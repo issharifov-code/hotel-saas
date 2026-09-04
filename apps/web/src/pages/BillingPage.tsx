@@ -67,7 +67,7 @@ export function BillingPage() {
 
         {subscription && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-1 rounded-lg border border-slate-200 bg-white p-5">
+            <div className="md:col-span-1 rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-xs text-slate-500">Joriy reja</p>
               <p className="text-2xl font-semibold text-slate-900 mt-1">{subscription.pricing.label}</p>
               <span
@@ -83,7 +83,7 @@ export function BillingPage() {
               </p>
             </div>
 
-            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-white p-5">
+            <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-sm font-medium text-slate-900 mb-3">So'nggi hisob-faktura</p>
               {subscription.latestInvoice ? (
                 <div className="flex items-center justify-between">
@@ -115,7 +115,7 @@ export function BillingPage() {
 
         <div>
           <h2 className="text-lg font-semibold text-slate-900 mb-3">Hisob-fakturalar tarixi</h2>
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
             {invoices.length === 0 && <p className="p-4 text-sm text-slate-500">Hisob-fakturalar mavjud emas</p>}
             {invoices.map((inv) => {
               const badge = invoiceStatusBadge(inv);
@@ -148,7 +148,7 @@ export function BillingPage() {
             {plans.map((p) => (
               <div
                 key={p.plan}
-                className={`rounded-lg border p-5 ${
+                className={`rounded-2xl border p-5 ${
                   subscription?.plan === p.plan ? 'border-slate-900 ring-1 ring-slate-900' : 'border-slate-200'
                 } bg-white`}
               >

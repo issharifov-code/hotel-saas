@@ -91,13 +91,13 @@ export function MessagingPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setTab('logs')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${tab === 'logs' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'logs' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
           >
             Xabarlar tarixi
           </button>
           <button
             onClick={() => setTab('templates')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${tab === 'templates' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium ${tab === 'templates' ? 'chip-active' : 'bg-slate-100 text-slate-600'}`}
           >
             Shablonlar
           </button>
@@ -125,7 +125,7 @@ export function MessagingPage() {
           <p className="text-sm text-slate-500">Hali xabar yuborilmagan.</p>
         ) : (
           <>
-            <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                   <tr>
@@ -162,7 +162,7 @@ export function MessagingPage() {
       ) : templates.length === 0 ? (
         <p className="text-sm text-slate-500">Hali xabar shabloni yo'q.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>

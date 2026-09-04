@@ -55,7 +55,7 @@ export function AgenciesPage() {
       ) : agencies.length === 0 ? (
         <p className="text-sm text-slate-500">Hali agentlik qo'shilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -304,7 +304,7 @@ function AgencyFormModal({
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-slate-50 rounded-md p-3">
+    <div className="bg-slate-50 rounded-2xl p-3">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="text-sm font-semibold text-slate-900 mt-0.5">{value}</p>
     </div>

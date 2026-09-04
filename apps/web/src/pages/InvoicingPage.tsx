@@ -88,7 +88,7 @@ export function InvoicingPage() {
       {loading ? (
         <p className="text-sm text-slate-500">Yuklanmoqda...</p>
       ) : (
-        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {invoices.length === 0 && <p className="p-4 text-sm text-slate-500">Hali hisob-faktura yo'q</p>}
           {invoices.map((inv) => {
             const balance = (Number(inv.totalAmount) - Number(inv.paidAmount)).toFixed(2);
@@ -288,7 +288,7 @@ function InvoiceDetailModal({
 
         <div>
           <p className="text-xs font-medium text-slate-600 mb-1">Qatorlar</p>
-          <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+          <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl">
             {(invoice.lines ?? []).map((line) => (
               <li key={line.id} className="px-3 py-2 flex items-center justify-between text-sm">
                 <span>
@@ -347,7 +347,7 @@ function InvoiceDetailModal({
         {(invoice.payments ?? []).length > 0 && (
           <div>
             <p className="text-xs font-medium text-slate-600 mb-1">To'lovlar</p>
-            <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+            <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl">
               {(invoice.payments ?? []).map((p) => (
                 <li key={p.id} className="px-3 py-2 flex items-center justify-between text-sm">
                   <span>

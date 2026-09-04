@@ -162,7 +162,7 @@ export function StaffPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-md px-4 py-2 text-sm font-medium ${
+            className={`rounded-full px-4 py-2 text-sm font-medium ${
               tab === t ? 'chip-active' : 'bg-white text-slate-600 border border-slate-200'
             }`}
           >
@@ -191,7 +191,7 @@ export function StaffPage() {
           ) : users.length === 0 ? (
             <p className="text-sm text-slate-500">Hali xodim qo'shilmagan.</p>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                   <tr>
@@ -291,7 +291,7 @@ export function StaffPage() {
           {loading ? (
             <p className="text-sm text-slate-500">Yuklanmoqda...</p>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
               {roles.map((r) => (
                 <button
                   key={r.id}
@@ -708,7 +708,7 @@ function RoleFormModal({
           </label>
         )}
 
-        <div className="border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase">
               <tr>

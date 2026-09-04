@@ -113,7 +113,7 @@ export function PosPage() {
               <button
                 key={o.id}
                 onClick={() => setDetailOrder(o)}
-                className="text-left bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-400"
+                className="text-left bg-white rounded-2xl border border-slate-200 p-4 hover:border-slate-400"
               >
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-medium text-slate-900">{o.tableNumber ? `Stol № ${o.tableNumber}` : 'Buyurtma'}</p>
@@ -139,7 +139,7 @@ export function PosPage() {
               </button>
             )}
           </div>
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
             {menuItems.length === 0 && <p className="p-4 text-sm text-slate-500">Hali menyu bo'sh</p>}
             {menuItems.map((m) => (
               <div key={m.id} className="p-4 flex items-center justify-between">
@@ -532,7 +532,7 @@ function PosOrderDetailModal({
           {ORDER_STATUS_LABELS[order.status]}
         </span>
 
-        <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+        <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl">
           {order.items.map((item) => (
             <li key={item.id} className="px-3 py-2 flex items-center justify-between text-sm">
               <span>

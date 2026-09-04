@@ -329,7 +329,7 @@ function StockLevelsSection({
   onAction: (row: StockLevelDto) => void;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
       {levels.length === 0 ? (
         <p className="p-4 text-sm text-slate-500">
           Hali tovar yo'q — avval "Tovarlar" bo'limidan tovar qo'shing.
@@ -490,7 +490,7 @@ function StockItemsSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
         {items.length === 0 && <p className="p-4 text-sm text-slate-500">Hali tovar qo'shilmagan</p>}
         {items.map((it) => (
           <div key={it.id} className="p-4 flex items-center justify-between">
@@ -596,7 +596,7 @@ function SuppliersSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
         {suppliers.length === 0 && <p className="p-4 text-sm text-slate-500">Hali ta'minotchi qo'shilmagan</p>}
         {suppliers.map((s) => (
           <div key={s.id} className="p-4">
@@ -726,7 +726,7 @@ function PurchaseOrdersSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
         {orders.length === 0 && <p className="p-4 text-sm text-slate-500">Hali xarid buyurtmasi yo'q</p>}
         {orders.map((po) => (
           <div key={po.id} className="p-4">

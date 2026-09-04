@@ -93,13 +93,13 @@ export function RoomsPage() {
           {can('booking', 'create') && (
             <button
               onClick={() => setShowRoomTypeModal(true)}
-              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-full hover:bg-brand-navy-dark"
             >
               + Xona turi qo'shish
             </button>
           )}
         </div>
-        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {roomTypes.length === 0 && !loading && (
             <p className="p-4 text-sm text-slate-500">Hali xona turi qo'shilmagan</p>
           )}
@@ -123,13 +123,13 @@ export function RoomsPage() {
             <button
               onClick={() => setShowRatePlanModal(true)}
               disabled={roomTypes.length === 0}
-              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark disabled:opacity-40"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-full hover:bg-brand-navy-dark disabled:opacity-40"
             >
               + Narx rejasi qo'shish
             </button>
           )}
         </div>
-        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {ratePlans.length === 0 && !loading && (
             <p className="p-4 text-sm text-slate-500">Hali narx rejasi qo'shilmagan — bronlar bazaviy narxdan hisoblanadi</p>
           )}
@@ -185,7 +185,7 @@ export function RoomsPage() {
             <button
               onClick={() => setShowRoomModal(true)}
               disabled={roomTypes.length === 0}
-              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-md hover:bg-brand-navy-dark disabled:opacity-40"
+              className="text-sm bg-brand-navy text-white px-3 py-1.5 rounded-full hover:bg-brand-navy-dark disabled:opacity-40"
             >
               + Xona qo'shish
             </button>
@@ -193,7 +193,7 @@ export function RoomsPage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {rooms.map((room) => (
-            <div key={room.id} className="bg-white rounded-lg border border-slate-200 p-4">
+            <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="font-semibold text-slate-900">№ {room.roomNumber}</p>
                 {room.floor != null && <p className="text-xs text-slate-400">{room.floor}-qavat</p>}

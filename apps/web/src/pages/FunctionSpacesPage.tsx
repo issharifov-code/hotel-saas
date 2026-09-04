@@ -66,16 +66,16 @@ export function FunctionSpacesPage() {
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-slate-100 rounded-full p-1">
           <button
             onClick={() => setTab('spaces')}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium ${tab === 'spaces' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
+            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'spaces' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
           >
             Zallar
           </button>
           <button
             onClick={() => setTab('bookings')}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium ${tab === 'bookings' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
+            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'bookings' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
           >
             Tadbir bronlari
           </button>
@@ -98,7 +98,7 @@ export function FunctionSpacesPage() {
         spaces.length === 0 ? (
           <p className="text-sm text-slate-500">Hali tadbir zali qo'shilmagan.</p>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                 <tr>
@@ -136,7 +136,7 @@ export function FunctionSpacesPage() {
       ) : bookings.length === 0 ? (
         <p className="text-sm text-slate-500">Hali tadbir bron qilinmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>

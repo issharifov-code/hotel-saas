@@ -90,7 +90,7 @@ export function NightAuditPage() {
         <div className="space-y-6">
           {error && <p className="text-sm text-rose-600">{error}</p>}
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-xs text-slate-500">Joriy biznes sanasi</p>
@@ -119,7 +119,7 @@ export function NightAuditPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">Tarix</h2>
-            <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-500 border-b border-slate-100">

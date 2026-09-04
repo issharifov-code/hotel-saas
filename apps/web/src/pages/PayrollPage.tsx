@@ -88,7 +88,7 @@ export function PayrollPage() {
       ) : runs.length === 0 ? (
         <p className="text-sm text-slate-500">Hali payroll yaratilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -307,7 +307,7 @@ function RunDetailModal({
           <p className="text-sm font-semibold text-slate-900">Jami: {money(run.totalAmount)}</p>
         </div>
 
-        <div className="border border-slate-200 rounded-md overflow-x-auto">
+        <div className="border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase">
               <tr>

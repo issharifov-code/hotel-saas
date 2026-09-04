@@ -75,7 +75,7 @@ export function ChannelManagerPage() {
       ) : channels.length === 0 ? (
         <p className="text-sm text-slate-500">Hali kanal qo'shilmagan.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -323,7 +323,7 @@ function ChannelDetailModal({
             )}
           </div>
           {syncNotice && <p className="text-xs text-slate-600 mb-2">{syncNotice}</p>}
-          <div className="border border-slate-200 rounded-md overflow-x-auto">
+          <div className="border border-slate-200 rounded-2xl overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase">
                 <tr>
@@ -357,7 +357,7 @@ function ChannelDetailModal({
           {syncLogs.length === 0 ? (
             <p className="text-sm text-slate-500">Hali sinxronlanmagan.</p>
           ) : (
-            <div className="border border-slate-200 rounded-md max-h-48 overflow-auto">
+            <div className="border border-slate-200 rounded-2xl max-h-48 overflow-auto">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 text-slate-500 uppercase sticky top-0">
                   <tr>

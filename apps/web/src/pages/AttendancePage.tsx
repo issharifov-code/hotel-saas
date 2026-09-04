@@ -158,7 +158,7 @@ function AttendanceTab({ canEdit }: { canEdit: boolean }) {
       ) : roster.length === 0 ? (
         <p className="text-sm text-slate-500">Faol xodim topilmadi.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
@@ -406,7 +406,7 @@ function LeaveTab({
       ) : requests.length === 0 ? (
         <p className="text-sm text-slate-500">Hali ta'til so'rovi yo'q.</p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>

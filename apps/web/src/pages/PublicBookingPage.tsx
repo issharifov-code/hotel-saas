@@ -90,7 +90,7 @@ export function PublicBookingPage() {
             Bron so'rovingiz mehmonxonaga yuborildi va hozir "kutilmoqda" holatida — xodim tez orada
             tasdiqlaydi.
           </p>
-          <div className="text-sm text-left bg-slate-50 rounded-lg p-4 space-y-2">
+          <div className="text-sm text-left bg-slate-50 rounded-2xl p-4 space-y-2">
             <Row label="Sana" value={`${confirmation.checkIn} — ${confirmation.checkOut}`} />
             <Row
               label="Summa"
@@ -188,7 +188,7 @@ export function PublicBookingPage() {
                     rt.ratePlans.map((rp) => (
                       <div
                         key={rp.id}
-                        className="flex items-center justify-between border border-slate-100 rounded-md px-3 py-2"
+                        className="flex items-center justify-between border border-slate-100 rounded-2xl px-3 py-2"
                       >
                         <div>
                           <span className="text-sm text-slate-800">{rp.name}</span>

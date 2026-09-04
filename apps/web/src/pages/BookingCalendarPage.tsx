@@ -122,7 +122,7 @@ export function BookingCalendarPage() {
           Hali xona qo'shilmagan — avval "Xonalar" bo'limidan xona qo'shing.
         </p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
           <div className="flex">
             <div className="w-36 shrink-0 border-r border-slate-200">
               <div className="h-12 border-b border-slate-200" />
@@ -237,7 +237,7 @@ function BookingEngineLink({ subdomain }: { subdomain: string }) {
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 mb-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+    <div className="flex items-center justify-between gap-3 mb-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5">
       <div className="min-w-0">
         <p className="text-xs font-medium text-slate-600">Jonli bron havolasi</p>
         <p className="text-xs text-slate-500 truncate">{url}</p>
