@@ -550,15 +550,22 @@ export function AppLayout({
             // tashlandi — logotip to'g'ridan-to'g'ri navy panelga tushadi.
             // Pastdagi zaxira variant (bosh harf) esa oq fonda qoladi: u
             // matn, navy ustida navy matn ko'rinmasdi.
+            //
+            // O'lcham BALANDLIK bo'yicha beriladi (36px — panelning 45.72px
+            // balandligini deyarli to'ldiradi), eni esa erkin. Sabab: ko'p
+            // mehmonxona logotipi kvadrat emas, cho'ziq wordmark — kvadrat
+            // uyaga solinsa u eniga siqilib, o'qib bo'lmaydigan darajada
+            // kichrayib qolardi. `max-w` esa juda uzun logotip nomni
+            // siqib chiqarishining oldini oladi.
             <img
               src={property.logoUrl}
               alt=""
               aria-hidden="true"
-              className="h-6 w-6 shrink-0 object-contain"
+              className="h-9 w-auto max-w-[120px] shrink-0 object-contain"
             />
           ) : (
             <span
-              className="flex items-center justify-center h-6 w-6 rounded-md bg-white text-brand-navy text-[11px] font-bold shrink-0"
+              className="flex items-center justify-center h-9 w-9 rounded-md bg-white text-brand-navy text-sm font-bold shrink-0"
               aria-hidden="true"
             >
               {propertyInitial(property?.name)}
