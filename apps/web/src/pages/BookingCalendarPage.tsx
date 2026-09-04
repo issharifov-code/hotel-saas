@@ -122,7 +122,7 @@ export function BookingCalendarPage() {
           Hali xona qo'shilmagan — avval "Xonalar" bo'limidan xona qo'shing.
         </p>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="flex">
             <div className="w-36 shrink-0 border-r border-slate-200">
               <div className="h-12 border-b border-slate-200" />
