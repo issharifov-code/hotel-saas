@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -9,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GuestsService } from './guests.service';
+import { ProfileType } from './entities/guest.entity';
 import { CreateGuestDto } from './dto/create-guest.dto';
 import { UpdateGuestDto } from './dto/update-guest.dto';
 import { MergeGuestsDto } from './dto/merge-guests.dto';
@@ -38,13 +40,24 @@ export class GuestsController {
     @Query('communication') communication?: string,
     @Query('documentNumber') documentNumber?: string,
     @Query('nationality') nationality?: string,
+    // Berilmasa hamma tur qaytadi. Noto'g'ri qiymat kelsa — 400 (jimgina
+    // e'tiborsiz qoldirsak, foydalanuvchi filtr ishlayapti deb o'ylab
+    // noto'g'ri ro'yxatga qarab qolardi).
+    @Query('profileType') profileType?: string,
   ) {
+    if (
+      profileType &&
+      !Object.values(ProfileType).includes(profileType as ProfileType)
+    ) {
+      throw new BadRequestException("Noma'lum profil turi");
+    }
     return this.guestsService.list(user.tenantId!, {
       search,
       name,
       communication,
       documentNumber,
       nationality,
+      profileType: profileType as ProfileType | undefined,
     });
   }
 

@@ -5,7 +5,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Guest } from './entities/guest.entity';
+import {
+  Guest,
+  ORGANIZATION_PROFILE_TYPES,
+  ProfileType,
+} from './entities/guest.entity';
 import { LoyaltyTransaction } from './entities/loyalty-transaction.entity';
 import { CreateGuestDto } from './dto/create-guest.dto';
 import { UpdateGuestDto } from './dto/update-guest.dto';
@@ -21,7 +25,41 @@ export interface GuestSearchFilters {
   communication?: string;
   documentNumber?: string;
   nationality?: string;
+  // 2026-09-04: profil turi. Berilmasa BARCHA turlar qaytadi (Profillar
+  // sahifasining standarti). Bron oynasidagi mehmon tanlagichi esa ataylab
+  // `guest` deb yuboradi — kompaniyani mehmon sifatida bronga qo'yib
+  // bo'lmasligi kerak.
+  profileType?: ProfileType;
 }
+
+// Har bir maydon qaysi turlarda ma'noga ega. Bu ro'yxat ikkala tomonga ham
+// ishlaydi: tashkilot maydonini mehmonga yozib bo'lmaydi VA mehmon maydonini
+// tashkilotga yozib bo'lmaydi. Sababi oddiy — kompaniyaning tug'ilgan sanasi
+// yoki mehmonning STIRi bo'lmaydi, va bunday yozuv keyin hisobotlarda
+// tushunarsiz chiqadi.
+const FIELD_ALLOWED_TYPES: Record<string, ProfileType[]> = {
+  taxId: ORGANIZATION_PROFILE_TYPES,
+  address: ORGANIZATION_PROFILE_TYPES,
+  city: ORGANIZATION_PROFILE_TYPES,
+  // Aloqa shaxsi tashkilotda ham, guruhda ham ma'noli (guruh rahbari).
+  contactPerson: [...ORGANIZATION_PROFILE_TYPES, ProfileType.GROUP],
+  commissionPct: [ProfileType.TRAVEL_AGENT],
+  parentProfileId: [ProfileType.CONTACT],
+  documentType: [ProfileType.GUEST],
+  documentNumber: [ProfileType.GUEST],
+  dateOfBirth: [ProfileType.GUEST],
+  roomPreference: [ProfileType.GUEST],
+  dietaryPreference: [ProfileType.GUEST],
+};
+
+const PROFILE_TYPE_LABELS: Record<ProfileType, string> = {
+  [ProfileType.GUEST]: 'Mehmon',
+  [ProfileType.COMPANY]: 'Kompaniya',
+  [ProfileType.TRAVEL_AGENT]: 'Turagent',
+  [ProfileType.SOURCE]: 'Manba',
+  [ProfileType.GROUP]: 'Guruh',
+  [ProfileType.CONTACT]: 'Kontakt',
+};
 
 @Injectable()
 export class GuestsService {
@@ -45,9 +83,55 @@ export class GuestsService {
     private readonly loyaltyService: LoyaltyService,
   ) {}
 
+  // Berilgan maydonlar shu profil turiga mos kelishini tekshiradi. Mos
+  // kelmasa aniq xabar bilan 400 qaytaradi — jimgina o'chirib tashlash
+  // (silently drop) xavfli: foydalanuvchi kiritgan ma'lumot yo'qolgani
+  // bilinmay qolardi.
+  private assertFieldsMatchType(
+    profileType: ProfileType,
+    dto: Record<string, unknown>,
+  ): void {
+    for (const [field, allowed] of Object.entries(FIELD_ALLOWED_TYPES)) {
+      const value = dto[field];
+      // `null` — "tozalash" degani, u har doim ruxsat etiladi.
+      if (value === undefined || value === null || value === '') continue;
+      if (!allowed.includes(profileType)) {
+        throw new BadRequestException(
+          `"${PROFILE_TYPE_LABELS[profileType]}" profilida bu maydon ishlatilmaydi: ${field}`,
+        );
+      }
+    }
+  }
+
+  // Kontakt profilining tashkiloti haqiqatan mavjud va TASHKILOT ekanini
+  // tekshiradi — aks holda kontaktni boshqa kontaktga yoki mehmonga bog'lab
+  // qo'yish mumkin bo'lardi.
+  private async assertParentIsOrganization(
+    tenantId: string,
+    parentProfileId: string,
+  ): Promise<void> {
+    const parent = await this.guestRepo.findOneBy({
+      id: parentProfileId,
+      tenantId,
+    });
+    if (!parent) throw new NotFoundException('Bog\'langan tashkilot topilmadi');
+    if (!ORGANIZATION_PROFILE_TYPES.includes(parent.profileType)) {
+      throw new BadRequestException(
+        'Kontakt faqat kompaniya, turagent yoki manba profiliga bog\'lanadi',
+      );
+    }
+  }
+
   async create(tenantId: string, dto: CreateGuestDto): Promise<Guest> {
+    const profileType = dto.profileType ?? ProfileType.GUEST;
+    this.assertFieldsMatchType(profileType, dto as unknown as Record<string, unknown>);
+    if (dto.parentProfileId) {
+      await this.assertParentIsOrganization(tenantId, dto.parentProfileId);
+    }
+
     const guest = this.guestRepo.create({
       tenantId,
+      profileType,
       fullName: dto.fullName.trim(),
       phone: dto.phone ?? null,
       email: dto.email ?? null,
@@ -57,6 +141,14 @@ export class GuestsService {
       roomPreference: dto.roomPreference ?? null,
       dietaryPreference: dto.dietaryPreference ?? null,
       communicationPreference: dto.communicationPreference ?? undefined,
+      taxId: dto.taxId ?? null,
+      address: dto.address ?? null,
+      city: dto.city ?? null,
+      contactPerson: dto.contactPerson ?? null,
+      // `numeric` ustun — bazaga va TypeORM'ga string sifatida boradi.
+      commissionPct:
+        dto.commissionPct === undefined ? null : String(dto.commissionPct),
+      parentProfileId: dto.parentProfileId ?? null,
     });
     return this.guestRepo.save(guest);
   }
@@ -75,7 +167,12 @@ export class GuestsService {
     const normEmail = data.email ? this.normalizeText(data.email) : null;
 
     if (normPhone || normEmail) {
-      const candidates = await this.guestRepo.find({ where: { tenantId } });
+      // FAQAT jismoniy mehmon profillari orasidan izlanadi: bron egasi
+      // sifatida kompaniya yoki turagent profilini qaytarib yuborish
+      // (telefoni bir xil bo'lib qolsa) mutlaqo noto'g'ri bo'lardi.
+      const candidates = await this.guestRepo.find({
+        where: { tenantId, profileType: ProfileType.GUEST },
+      });
       const existing = candidates.find(
         (g) =>
           (normPhone &&
@@ -134,6 +231,11 @@ export class GuestsService {
         nat: like(filters.nationality),
       });
     }
+    if (filters.profileType) {
+      qb.andWhere('guest.profile_type = :profileType', {
+        profileType: filters.profileType,
+      });
+    }
     return qb.getMany();
   }
 
@@ -149,6 +251,13 @@ export class GuestsService {
     dto: UpdateGuestDto,
   ): Promise<Guest> {
     const guest = await this.findById(tenantId, id);
+    this.assertFieldsMatchType(
+      guest.profileType,
+      dto as unknown as Record<string, unknown>,
+    );
+    if (dto.parentProfileId) {
+      await this.assertParentIsOrganization(tenantId, dto.parentProfileId);
+    }
     if (dto.fullName !== undefined) guest.fullName = dto.fullName.trim();
     if (dto.phone !== undefined) guest.phone = dto.phone || null;
     if (dto.email !== undefined) guest.email = dto.email || null;
@@ -167,6 +276,15 @@ export class GuestsService {
       guest.dietaryPreference = dto.dietaryPreference || null;
     if (dto.communicationPreference !== undefined)
       guest.communicationPreference = dto.communicationPreference;
+    if (dto.taxId !== undefined) guest.taxId = dto.taxId || null;
+    if (dto.address !== undefined) guest.address = dto.address || null;
+    if (dto.city !== undefined) guest.city = dto.city || null;
+    if (dto.contactPerson !== undefined)
+      guest.contactPerson = dto.contactPerson || null;
+    if (dto.commissionPct !== undefined)
+      guest.commissionPct = String(dto.commissionPct);
+    if (dto.parentProfileId !== undefined)
+      guest.parentProfileId = dto.parentProfileId || null;
     return this.guestRepo.save(guest);
   }
 
@@ -224,11 +342,15 @@ export class GuestsService {
     const keyToFirstGuestId = new Map<string, string>();
     for (const g of guests) {
       find(g.id); // ro'yxatdan o'tkazish
+      // Kalitlar profil TURI bilan prefikslanadi: kompaniyaning umumiy
+      // telefoni o'sha yerda ishlaydigan mehmonniki bilan bir xil bo'lishi
+      // butunlay normal — ularni "ikkilanma" deb ko'rsatish xato bo'lardi.
+      const t = g.profileType;
       const keys: string[] = [];
-      if (g.phone) keys.push(`phone:${this.normalizePhone(g.phone)}`);
-      if (g.email) keys.push(`email:${this.normalizeText(g.email)}`);
+      if (g.phone) keys.push(`${t}:phone:${this.normalizePhone(g.phone)}`);
+      if (g.email) keys.push(`${t}:email:${this.normalizeText(g.email)}`);
       if (g.documentNumber)
-        keys.push(`doc:${this.normalizeText(g.documentNumber)}`);
+        keys.push(`${t}:doc:${this.normalizeText(g.documentNumber)}`);
 
       for (const key of keys) {
         const existing = keyToFirstGuestId.get(key);
@@ -265,6 +387,14 @@ export class GuestsService {
     }
     const primary = await this.findById(tenantId, primaryId);
     const duplicate = await this.findById(tenantId, duplicateId);
+
+    // Turli turdagi profillarni birlashtirib bo'lmaydi — kompaniyani mehmonga
+    // "quyish" ikkalasining ham ma'lumotini buzardi (maydonlari boshqacha).
+    if (primary.profileType !== duplicate.profileType) {
+      throw new BadRequestException(
+        "Turli turdagi profillarni birlashtirib bo'lmaydi",
+      );
+    }
 
     if (!primary.phone && duplicate.phone) primary.phone = duplicate.phone;
     if (!primary.email && duplicate.email) primary.email = duplicate.email;

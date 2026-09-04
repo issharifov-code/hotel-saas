@@ -8,6 +8,7 @@ import { GuestsService } from './guests.service';
 import { GuestsController } from './guests.controller';
 import { LoyaltyService } from './loyalty.service';
 import { LoyaltyController } from './loyalty.controller';
+import { LoyaltyProgramController } from './loyalty-program.controller';
 import { RolesModule } from '../roles/roles.module';
 import { RlsModule } from '../../common/rls/rls.module';
 
@@ -28,7 +29,7 @@ import { RlsModule } from '../../common/rls/rls.module';
     RolesModule,
   ],
   providers: [GuestsService, LoyaltyService],
-  controllers: [GuestsController, LoyaltyController],
+  controllers: [GuestsController, LoyaltyController, LoyaltyProgramController],
   exports: [GuestsService, LoyaltyService],
 })
 export class GuestsModule {}
