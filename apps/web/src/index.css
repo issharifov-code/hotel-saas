@@ -42,7 +42,11 @@
      `ring-2` + shaffof rang `ring-1` to'q rangdan kengroq, lekin ancha
      yumshoqroq ko'rinadi — Login'da aynan shu nisbat tanlangan edi. */
   .input {
-    @apply w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors hover:border-slate-400 focus:border-brand-navy/70 focus:outline-none focus:ring-2 focus:ring-brand-navy/20;
+    /* 2026-09-04: bloklangan maydon KO'RINIB turishi kerak. Avval `disabled`
+       maydon oddiysidan farq qilmasdi — foydalanuvchi yozmoqchi bo'lib,
+       nega yozilmayotganini tushunmasdi. (Agentlik formasida profil
+       tanlangach nom/aloqa bloklanadi — aynan shu holat.) */
+    @apply w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors hover:border-slate-400 focus:border-brand-navy/70 focus:outline-none focus:ring-2 focus:ring-brand-navy/20 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 disabled:hover:border-slate-200;
   }
 
   .btn-primary {
