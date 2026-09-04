@@ -65,7 +65,7 @@ export function SampleDataBanner() {
             <button
               onClick={() => setShowConfirm(false)}
               disabled={removing}
-              className="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-brand-navy hover:bg-slate-50"
             >
               Bekor qilish
             </button>

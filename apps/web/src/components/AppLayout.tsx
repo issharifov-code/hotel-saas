@@ -107,6 +107,23 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/budget', label: 'Budjet', moduleKey: 'accounting' },
     ],
   },
+  // 2026-09-04 (foydalanuvchi qarori): HR/xodimlar bo'limi hamburgerdan shu
+  // yerga ko'chirildi. Hamburger endi faqat SOZLAMA tusidagi narsalar uchun
+  // (mehmonxona sozlamalari, rollar, obuna) — xodimlar, ish haqi va davomat
+  // esa kundalik operatsion ish, ya'ni ularning joyi modul panelida.
+  {
+    key: 'hr',
+    label: 'Xodimlar',
+    items: [
+      // `moduleKey` yo'q — StaffPage barcha tizimga kirgan xodimlarga ochiq,
+      // faqat tahrirlash amallari `can('users_roles', ...)` bilan cheklangan
+      // (bu qoida hamburgerda ham shunday edi, o'zgarmadi).
+      { to: '/staff', label: 'Xodimlar' },
+      { to: '/payroll', label: 'Ish haqi', moduleKey: 'payroll' },
+      // Davomat Payroll bilan bir xil moduleKey'da — soatlarni Payroll o'qiydi.
+      { to: '/attendance', label: "Davomat va ta'til", moduleKey: 'payroll' },
+    ],
+  },
   {
     key: 'misc',
     label: 'Boshqa',
@@ -122,28 +139,24 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-// Hamburger orqali ochiladigan "Administratsiya" menyusi (OPERA'da ham
-// Xodimlar/Ish haqi/Rollar shu tarzda asosiy modul panelidan alohida,
-// hamburger ichida joylashgan). Davomat (Payroll bilan bir xil moduleKey —
-// soatlarni Payroll o'qiydi) va Obuna/to'lovlar (tenant'ning o'z SaaS
-// obunasi, mehmonxona moliyaviy hisobotlaridan farqli — hisob boshqaruvi
-// tusidagi narsa) ham shu yerga, HR/administrativ guruhga qo'shildi.
+// Chap paneldagi (hamburger) "Administratsiya" ro'yxati.
+//
+// 🔴 QAMROV (2026-09-04, foydalanuvchi qarori): bu yerda FAQAT sozlama/
+// boshqaruv tusidagi narsalar turadi — kundalik ishda kunda ochilmaydigan,
+// "tizimni sozlash" ma'nosidagilar. Kundalik operatsion sahifalar
+// (xodimlar, ish haqi, davomat) modul paneliga ko'chirildi.
+//
+// Obuna va to'lovlar shu yerda qoldi: u mehmonxonaning moliyaviy
+// hisobotlari emas, tenant'ning O'Z SaaS obunasi — ya'ni hisob boshqaruvi.
 const ADMIN_ITEMS: LeafNavItem[] = [
   {
     to: '/property-settings',
     label: 'Mehmonxona sozlamalari',
     moduleKey: 'tenant_settings',
   },
-  { to: '/staff', label: 'Xodimlar' },
-  { to: '/payroll', label: 'Ish haqi', moduleKey: 'payroll' },
-  { to: '/attendance', label: "Davomat va ta'til", moduleKey: 'payroll' },
   { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
 ];
 const ROLES_ITEM: LeafNavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
-
-// Hamburger-menyuning ochiq/yopiqligi ham module-dropdown'lar bilan bir xil
-// `openGroup` holatida saqlanadi — shu sentinel-kalit ostida.
-const ADMIN_MENU_KEY = '__admin__';
 
 // Dropdown-guruh tugmasi uchun pastga qaragan strelka — ochiq holatda 180°
 // aylanib, yuqoriga qaraydi (odatiy "dropdown ochiq" ishorasi).
@@ -186,17 +199,41 @@ function propertyInitial(name?: string | null): string {
   return trimmed ? trimmed[0].toUpperCase() : 'F';
 }
 
+// Chap paneldagi havolalar uchun umumiy uslub. Panel foni yengil "soft
+// white" (`bg-slate-50` — ilovaning kontent foni bilan bir xil; 2026-09-04
+// foydalanuvchi fikri: avval to'q ko'k, keyin och ko'k gradient sinaldi,
+// ikkalasi ham og'ir chiqdi). Matn qorong'i, faol element esa ilovaning
+// odatiy `.chip-active` uslubida — butun ilova bo'ylab izchil.
+// 🔴 RANG QOIDASI (2026-09-04, foydalanuvchi qarori) — butun ilova uchun:
+//   BOSILADIGAN yozuv  -> brend ko'k (`text-brand-navy`)
+//   BOSIB BO'LMAYDIGAN -> qora (`text-slate-900`)
+// Ya'ni ko'k rang endi "buni bosish mumkin" degan YAGONA signal. Shuning
+// uchun oddiy matnga hech qachon navy berilmaydi va havolalar kulrang
+// qoldirilmaydi.
+function drawerLinkClass(isActive: boolean): string {
+  const base = 'block rounded-lg px-3 py-2 text-sm font-medium transition-colors';
+  return isActive
+    ? `${base} chip-active`
+    : `${base} text-brand-navy hover:bg-brand-navy-light`;
+}
+
+// 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): chiziqlar
+// sezilarli darajada uzunroq va qalinroq — OPERA'dagi hamburger ham keng,
+// "bosiladigan blok" taassurotini beradi. viewBox 28x20 (kvadrat emas),
+// shuning uchun `w-7 h-5`: aks holda chiziqlar cho'zilib ketardi.
 function HamburgerIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" d="M3 5h14M3 10h14M3 15h14" />
+    <svg viewBox="0 0 28 20" className="h-5 w-7" fill="none" stroke="currentColor" strokeWidth={2.2}>
+      <path strokeLinecap="round" d="M2 4h24M2 10h24M2 16h24" />
     </svg>
   );
 }
 
+// Hamburger bilan ALMASHADI, shuning uchun o'lchami ham u bilan bir xil —
+// aks holda panel ochilganda tugma ichidagi belgi sakrab ketardi.
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
@@ -324,15 +361,28 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     setOpenSubmenu(null);
   };
 
-  // Mobil/planshetda (`lg:`dan tor) gorizontal panel o'rniga hamburger orqali
-  // ochiladigan to'liq-kenglikdagi ochiladigan menyu ishlatiladi (barcha
-  // modullar + Administratsiya + Rollarni boshqarish bitta ro'yxatda, chunki
-  // mobilda alohida modul-panel yo'q). Har bir sahifa o'z AppLayout nusxasini
-  // alohida mount qiladi, shuning uchun bu holat sahifalar orasida
-  // saqlanmaydi — har doim yopiq holatda boshlanadi, bu ochiladigan menyu
-  // uchun kutilgan xatti-harakat.
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const closeMobileMenu = () => setMobileMenuOpen(false);
+  // Chapdan surilib ochiladigan panel (2026-09-04, OPERA Cloud referensi).
+  // BARCHA ekran o'lchamlarida bitta xil panel: mobilda u yagona navigatsiya
+  // yo'li, desktopda esa modul paneliga qo'shimcha "site map" (OPERA'da ham
+  // shunday — gorizontal menyu bor bo'lsa ham hamburger to'liq ro'yxatni
+  // ochadi). Ichida modullar + Administratsiya + Rollarni boshqarish.
+  //
+  // Har bir sahifa o'z AppLayout nusxasini alohida mount qiladi, shuning
+  // uchun bu holat sahifalar orasida saqlanmaydi — har doim yopiq holatda
+  // boshlanadi, ochiladigan menyu uchun kutilgan xatti-harakat.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = () => setDrawerOpen(false);
+
+  // Escape bilan yopish — panel butun ekranni egallaganda klaviatura orqali
+  // chiqish yo'li bo'lishi kerak.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   // Sahifa (route) o'zgarganda ochiq dropdown/mobil-menyu avtomatik yopiladi
   // (masalan brauzerning orqaga/oldinga tugmasi bilan navigatsiya qilinganda).
@@ -343,34 +393,87 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       return;
     }
     closeGroup();
-    closeMobileMenu();
+    closeDrawer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-slate-50 overflow-hidden">
+      {/* Panel ochilganda butun ilova o'ngga suriladi (2026-09-04,
+          foydalanuvchi fikri: "navigatsiya paneli orqasida to'silib
+          qolmasin, o'ngga surilsin") — panel kontent USTIGA chiqmaydi,
+          uni itaradi.
+
+          Faqat `lg:`+ da: 390px enli telefonda 300px surish deyarli hech
+          narsa qoldirmaydi, shuning uchun u yerda panel odatdagidek
+          ustidan ochiladi (qorong'ilashtiruvchi qatlam bilan).
+
+          🔴 Panelning O'ZI shu konteynerdan TASHQARIDA turishi SHART:
+          `transform` qo'llangan element o'zining `position: fixed`
+          farzandlari uchun yangi containing block yaratadi, ya'ni panel
+          ham u bilan birga surilib ketardi. */}
+      <div
+        className={`flex h-full flex-col transition-transform duration-300 ease-out ${
+          drawerOpen ? 'lg:translate-x-[300px]' : ''
+        }`}
+      >
       {/* Eng tepadagi ingichka oltin chiziq (2026-09, OPERA Cloud
           referensiga ko'ra) — sahifaning eng yuqori chetida, navy panelidan
           ham yuqorida, brend rangimizni darhol ko'rsatadigan aksent. */}
-      <div className="h-1.5 bg-brand-gold shrink-0" aria-hidden="true" />
+      <div className="h-[7.62px] bg-brand-gold shrink-0" aria-hidden="true" />
       {/* Yuqori panel: mehmonxonaning o'z belgisi/nomi, moliyaviy sana, foydalanuvchi, menyular.
           2026-09 (uslub yangilanishi): fon endi neytral kulrang o'rniga
           brend rangi (`bg-brand-navy`) — Login sahifasida ishlatiladigan
           xuddi shu rang, butun ilova bo'ylab izchil brend identifikatsiyasi
           uchun. Icon-tugmalar endi `rounded-full` (Login'dagi pill/yumaloq
           uslubga mos), oldingi to'rtburchak `rounded` o'rniga.
-          2026-09 (qayta joylashtirish, foydalanuvchi fikri): hamburgerlar
-          (mobil to'liq-menyu va desktop Administratsiya) chap chetdan
-          Yordam belgisidan keyinga, o'ng tomonga ko'chirildi. Ularning
-          o'rnida endi mehmonxonaning o'z belgi-piktogrammasi (pastga
-          qarang, propertyInitial) ko'rsatiladi. */}
-      <header className="relative z-30 shrink-0 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 py-[5px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
-        <div className="flex items-center gap-2.5 min-w-0">
+          2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): endi
+          BITTA hamburger bor va u eng CHAP burchakda, mehmonxona
+          belgisidan ham oldin — bosilganda chapdan to'liq balandlikdagi
+          panel surilib ochiladi (pastga qarang, `drawerOpen`). Avval
+          o'ng tomonda ikkita alohida hamburger bor edi (mobil to'liq
+          menyu + desktop "Administratsiya" dropdown'i); ikkalasi ham shu
+          bitta chap panelga birlashtirildi.
+
+          Balandlik (2026-09-04): oltin chiziq + navy panel jufti
+          foydalanuvchi so'roviga ko'ra 27% ga kengaytirildi (42px -> 53.34px),
+          ikkisining nisbati (1:6) o'zgarmagan holda: 6->7.62px va
+          36->45.72px. Balandlik `py-` orqali emas, aniq `h-[...]` bilan
+          berilgan — shunda ichki elementlar o'zgarsa ham panel balandligi
+          siljimaydi. */}
+      <header className="relative z-30 shrink-0 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 h-[45.72px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
+        {/* 🔴 Chap tomonning o'lchamlari pastdagi modul paneli bilan
+            QAT'IY bog'langan (2026-09-04, foydalanuvchi fikri: "hamburger
+            olgan joy pastidagi F1 olgan joy bilan teng bo'lsin, ajratuvchisi
+            bir joyda bo'lsin"):
+              pl-3 (12px) + uya 60.96px + 4px  =  ajratuvchi 76.96px da
+            Pastdagi panelda ham xuddi shu: px-3 (12px) + F1 belgisi
+            60.96px + gap-1 (4px). Shuning uchun `gap-2.5` o'rniga bu
+            yerda oraliqlar QO'LDA beriladi — flex gap ikkalasini birdek
+            ushlab turolmasdi. Uya eni o'zgarsa, `.f1-brand-mark` ham shu
+            qiymatda o'zgarishi shart (index.css). */}
+        <div className="flex items-center min-w-0">
+          {/* Chapdagi yagona hamburger (2026-09-04) — OPERA Cloud'dagi kabi
+              eng chap burchakda, mehmonxona belgisidan oldin. Bosilganda
+              chapdan to'liq balandlikdagi panel surilib ochiladi. */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen((prev) => !prev)}
+            aria-label={drawerOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
+            title={drawerOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
+            aria-expanded={drawerOpen}
+            aria-controls="app-drawer"
+            className="flex w-[60.96px] shrink-0 items-center justify-center rounded-full py-1.5 text-white/90 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            {drawerOpen ? <CloseIcon /> : <HamburgerIcon />}
+          </button>
+          <span className="ml-1 mr-2.5 h-5 w-px bg-white/25 shrink-0" aria-hidden="true" />
           {/* Mehmonxonaning o'z logotipi (2026-09-04, "Mehmonxona
               sozlamalari" sahifasidan yuklanadi). Yuklanmagan bo'lsa —
               avvalgidek nomining bosh harfi bilan piktogramma. Ikkala
               holatda ham o'lcham bir xil, ya'ni panel balandligi
               o'zgarmaydi (u navigatsiya qatori bilan tenglashtirilgan). */}
+          <span className="flex min-w-0 items-center gap-2.5">
           {property?.logoUrl ? (
             <img
               src={property.logoUrl}
@@ -390,6 +493,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               o'rniga mulkning o'z brendi ko'rsatiladi — Folio One logotipi esa
               pastdagi modul panelining chetida, quyiga qarang). */}
           <p className="text-sm font-semibold truncate">{property?.name ?? 'Folio One'}</p>
+          </span>
         </div>
         <div className="flex items-center gap-4 sm:gap-6 shrink-0">
           {property && (
@@ -403,105 +507,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             <UserIcon />
             <span className="truncate max-w-[160px]">{user?.fullName || user?.email}</span>
           </div>
-          <span className="hidden md:block h-5 w-px bg-white/25" aria-hidden="true" />
-          <Link
-            to="/help"
-            aria-label="Yordam"
-            title="Yordam"
-            className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-          >
-            <HelpIcon />
-          </Link>
-          {/* Yordam va hamburger(lar) orasidagi ajratuvchi (2026-09,
-              foydalanuvchi fikri) — yuqoridagi bo'limlar orasidagi xuddi shu
-              uslub. */}
-          <span className="hidden sm:block h-5 w-px bg-white/25" aria-hidden="true" />
-          {/* Mobilda (`lg:`dan tor) hamburger — barcha modullar + Administratsiya
-              bitta to'liq ro'yxatli ochiladigan menyuni boshqaradi. */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
-            title={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
-            className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors lg:hidden"
-          >
-            {mobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
-          </button>
-          {/* Desktopda (`lg:`+) xuddi shu joydagi hamburger endi faqat
-              "Administratsiya" + "Rollarni boshqarish" dropdown'ini ochadi —
-              oddiy modullar allaqachon pastdagi gorizontal panelda ko'rinadi
-              (OPERA'da ham xuddi shunday: hamburger = administrativ menyu). */}
-          {hasAdminMenu && (
-            <div className="relative hidden lg:block">
-              <button
-                type="button"
-                onClick={() => toggleGroup(ADMIN_MENU_KEY)}
-                aria-label="Administratsiya menyusi"
-                title="Administratsiya menyusi"
-                aria-expanded={openGroup === ADMIN_MENU_KEY}
-                className={`p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors ${
-                  openGroup === ADMIN_MENU_KEY ? 'bg-white/10 text-white' : ''
-                } ${adminMenuActive ? 'text-brand-gold' : ''}`}
-              >
-                <HamburgerIcon />
-              </button>
-              {openGroup === ADMIN_MENU_KEY && (
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 text-left shadow-lg overflow-hidden">
-                  {visibleAdminItems.length > 0 && (
-                    <>
-                      <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Administratsiya
-                      </p>
-                      {visibleAdminItems.map((item) => (
-                        <NavLink
-                          key={item.to}
-                          to={item.to}
-                          onClick={closeGroup}
-                          className={({ isActive }) =>
-                            `block px-4 py-2 text-sm whitespace-nowrap ${
-                              isActive
-                                ? 'bg-brand-navy-light text-brand-navy font-semibold'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
-                            }`
-                          }
-                        >
-                          {item.label}
-                        </NavLink>
-                      ))}
-                    </>
-                  )}
-                  {showRolesItem && (
-                    <>
-                      {visibleAdminItems.length > 0 && <div className="my-1 border-t border-slate-100" />}
-                      <NavLink
-                        to={ROLES_ITEM.to}
-                        onClick={closeGroup}
-                        className={({ isActive }) =>
-                          `block px-4 py-2 text-sm whitespace-nowrap ${
-                            isActive
-                              ? 'bg-brand-navy-light text-brand-navy font-semibold'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
-                          }`
-                        }
-                      >
-                        {ROLES_ITEM.label}
-                      </NavLink>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {user?.isPlatformAdmin && (
-            <Link
-              to="/admin"
-              aria-label="Platforma boshqaruvi"
-              title="Platforma boshqaruvi"
-              className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-            >
-              <AdminShieldIcon />
-            </Link>
-          )}
         </div>
       </header>
 
@@ -516,8 +521,12 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           ajratib turadi (`shadow-[...]` + `z-20`, header esa `z-30` —
           soya ko'rinishi uchun stacking tartibi shart). Panel balandligi
           navy header bilan KO'RINISHDA teng bo'lishi uchun undan biroz
-          kattaroq (41px va 37px) — ustki qismini header soyasi qoplaydi. */}
-      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1.5 relative z-20 shadow-[0_2px_6px_rgba(15,23,42,0.08)]">
+          kattaroq — ustki qismini header soyasi qoplaydi.
+          2026-09-04: bu qator ham 27% ga kengaytirildi (41px -> 52.07px).
+          `min-h-` ishlatilgan, `h-` emas: panelda `flex-wrap` bor, ya'ni
+          tor ekranda item'lar ikkinchi qatorga tushishi mumkin — qat'iy
+          balandlik ularni kesib qo'yardi. */}
+      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1.5 min-h-[52.07px] relative z-20 shadow-[0_2px_6px_rgba(15,23,42,0.08)]">
         {/* F1 logotipi — nav panelining brend belgisi (2026-09, qayta ko'rib
             chiqildi: 3D/soyali uslub olib tashlandi, o'rniga faqat o'lcham
             (h-12, avvalgi h-11'dan biroz kattaroq) va negative-margin
@@ -527,7 +536,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             lekin gradient/gloss/bevel'siz, qarang index.css .f1-brand-mark). */}
         <Link to="/dashboard" aria-label="Bosh sahifa" title="Bosh sahifa" className="shrink-0 -my-3">
           <span className="f1-brand-mark">
-            <img src={folioOneLogo} alt="" className="h-9 w-9" />
+            <img src={folioOneLogo} alt="" className="h-[45.72px] w-[45.72px]" />
           </span>
         </Link>
         {/* Nozik ajratuvchi — yuqoridagi header'dagi sana/user/? oralig'idagi
@@ -540,11 +549,16 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               <button
                 type="button"
                 onClick={() => toggleGroup(section.key)}
+                // 2026-09-04 (foydalanuvchi fikri): modul nomlari endi
+                // neytral kulrang emas, brend ko'kida — OPERA'da ham bu
+                // qatordagi yozuvlar brend rangida turadi. Faol guruh
+                // baribir ajralib turadi: `.chip-active` da halqa + yengil
+                // fon bor, rang emas.
                 className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors ${
                   activeGroupKey === section.key
                     ? 'chip-active'
-                    : `text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light ${
-                        openGroup === section.key ? 'bg-brand-navy-light text-brand-navy' : ''
+                    : `text-brand-navy hover:bg-brand-navy-light ${
+                        openGroup === section.key ? 'bg-brand-navy-light' : ''
                       }`
                 }`}
                 aria-expanded={openGroup === section.key}
@@ -566,7 +580,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                           className={`flex items-center justify-between gap-3 px-4 py-2 text-sm whitespace-nowrap transition-colors ${
                             openSubmenu === item.label
                               ? 'bg-slate-50 text-brand-navy'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                              : 'text-brand-navy hover:bg-slate-50'
                           }`}
                         >
                           <span>{item.label}</span>
@@ -586,7 +600,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                                   `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
                                     isActive
                                       ? 'bg-brand-navy-light text-brand-navy font-semibold'
-                                      : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                                      : 'text-brand-navy hover:bg-slate-50'
                                   }`
                                 }
                               >
@@ -605,7 +619,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                           `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
                             isActive
                               ? 'bg-brand-navy-light text-brand-navy font-semibold'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                              : 'text-brand-navy hover:bg-slate-50'
                           }`
                         }
                       >
@@ -622,8 +636,9 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 key={item.to}
                 to={item.to!}
                 className={({ isActive }) =>
+                  // Yuqoridagi guruh tugmalari bilan bir xil rang (brend ko'k).
                   `flex items-center whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors ${
-                    isActive ? 'chip-active' : 'text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light'
+                    isActive ? 'chip-active' : 'text-brand-navy hover:bg-brand-navy-light'
                   }`
                 }
               >
@@ -632,130 +647,21 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             ))
           ),
         )}
+        {/* Yordam ("?") — 2026-09-04 foydalanuvchi fikri bo'yicha navy
+            header'dan shu qatorga, bir pog'ona pastga tushirildi.
+            `ml-auto` bilan qatorning eng o'ng chetiga tiraladi. */}
+        <Link
+          to="/help"
+          aria-label="Yordam"
+          title="Yordam"
+          className="ml-auto shrink-0 rounded-full p-1.5 text-brand-navy transition-colors hover:bg-brand-navy-light"
+        >
+          <HelpIcon />
+        </Link>
       </nav>
       {/* Dropdown ochiq bo'lganda, undan tashqariga bosilsa yopish uchun
           shaffof overlay (dropdown panelining o'zi undan yuqori z-index'da). */}
       {openGroup && <div className="fixed inset-0 z-10" onClick={closeGroup} aria-hidden="true" />}
-
-      {/* Mobil/planshetda (`lg:`dan tor) hamburger orqali ochiladigan to'liq
-          ro'yxat — desktopdagi dropdown'lardan farqli, hammasi bir vaqtda
-          ko'rinadi (accordion emas), chunki bu vaqtinchalik ochiladigan
-          menyu, doimiy sidebar emas. Administratsiya + Rollarni boshqarish
-          ham shu ro'yxat oxirida, chunki mobilda alohida hamburger-dropdown
-          yo'q (bitta hamburger — bitta to'liq menyu). */}
-      {mobileMenuOpen && (
-        <>
-          <div className="fixed left-0 right-0 top-14 bottom-0 z-30 bg-slate-900/40 lg:hidden" onClick={closeMobileMenu} aria-hidden="true" />
-          <div className="lg:hidden fixed left-0 right-0 top-14 z-40 max-h-[calc(100vh-3.5rem)] overflow-y-auto bg-white border-b border-slate-200 shadow-lg">
-            <nav className="px-3 py-2">
-              {visibleSections.map((section) => (
-                <div key={section.key} className="py-1">
-                  {section.label && (
-                    <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      {section.label}
-                    </p>
-                  )}
-                  <div className="space-y-0.5">
-                    {section.items.map((item) =>
-                      item.children ? (
-                        // Mobilda flyout kerak emas (menyu allaqachon to'liq
-                        // ochiq ro'yxat) — "Profillar" shunchaki kichik
-                        // sarlavha, farzand-item'lar bevosita ostida.
-                        <div key={item.label}>
-                          <p className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium text-slate-400">{item.label}</p>
-                          {item.children.map((child) => (
-                            <NavLink
-                              key={child.to}
-                              to={child.to!}
-                              onClick={closeMobileMenu}
-                              className={({ isActive }) =>
-                                `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                  isActive
-                                    ? 'chip-active'
-                                    : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
-                                }`
-                              }
-                            >
-                              {child.label}
-                            </NavLink>
-                          ))}
-                        </div>
-                      ) : (
-                        <NavLink
-                          key={item.to}
-                          to={item.to!}
-                          onClick={closeMobileMenu}
-                          className={({ isActive }) =>
-                            `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                              isActive
-                                ? 'chip-active'
-                                : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
-                            }`
-                          }
-                        >
-                          {item.label}
-                        </NavLink>
-                      ),
-                    )}
-                  </div>
-                </div>
-              ))}
-              {hasAdminMenu && (
-                <div className="py-1 border-t border-slate-100 mt-1">
-                  {visibleAdminItems.length > 0 && (
-                    <>
-                      <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Administratsiya
-                      </p>
-                      <div className="space-y-0.5">
-                        {visibleAdminItems.map((item) => (
-                          <NavLink
-                            key={item.to}
-                            to={item.to}
-                            onClick={closeMobileMenu}
-                            className={({ isActive }) =>
-                              `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                isActive
-                                  ? 'chip-active'
-                                  : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
-                              }`
-                            }
-                          >
-                            {item.label}
-                          </NavLink>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {showRolesItem && (
-                    <div className="space-y-0.5 mt-0.5">
-                      <NavLink
-                        to={ROLES_ITEM.to}
-                        onClick={closeMobileMenu}
-                        className={({ isActive }) =>
-                          `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'chip-active'
-                              : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
-                          }`
-                        }
-                      >
-                        {ROLES_ITEM.label}
-                      </NavLink>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="border-t border-slate-100 mt-2 px-3 py-3">
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                <button onClick={logout} className="mt-1 text-xs text-slate-600 hover:text-brand-navy underline">
-                  Chiqish
-                </button>
-              </div>
-            </nav>
-          </div>
-        </>
-      )}
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* 2026-09 (breadcrumb qo'shildi, foydalanuvchi fikri): sahifa
@@ -766,10 +672,16 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             "Bosh sahifaga qaytish" havolasi (OPERA Cloud uslubida) — "qayerda
             ekanligimiz" haqidagi ma'lumot endi og'ir sarlavha emas, yengil
             trail orqali beriladi. Bosh sahifaning o'zida ko'rsatilmaydi. */}
-        <header className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-8 py-3">
+        {/* 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): bu qator
+            endi oq emas, pastdagi kontent bilan bir xil "chuqurlik" rangida
+            (`bg-slate-50`) — OPERA'da ham breadcrumb va sahifa sarlavhasi
+            kontentning o'z fonida turadi, alohida oq lenta emas. Pastdagi
+            `border-b` esa endi shu ikki qatlamni ajratib turadigan yagona
+            belgi (ikkalasi bir xil rangda bo'lgani uchun u zarur). */}
+        <header className="shrink-0 bg-slate-50 border-b border-slate-200 px-4 sm:px-8 py-3">
           {!isDashboard && (
             <div className="flex items-center justify-between gap-4 mb-1">
-              <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-500">
+              <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-900">
                 {/* 2026-09 (foydalanuvchi fikri): "Bosh sahifa" endi havola
                     emas, oddiy matn — o'ng tarafdagi "Bosh sahifaga qaytish"
                     havolasi buning uchun allaqachon yetarli, ikkalasini ham
@@ -782,18 +694,33 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                   </>
                 )}
                 <span aria-hidden="true">/</span>
-                <span className="truncate font-medium text-slate-600">{title}</span>
+                <span className="truncate font-medium text-slate-900">{title}</span>
               </nav>
               <Link
                 to="/dashboard"
-                className="flex shrink-0 items-center gap-1 text-xs text-slate-500 hover:text-brand-navy hover:underline"
+                className="flex shrink-0 items-center gap-1 text-xs text-brand-navy hover:underline"
               >
                 <BackArrowIcon />
                 Bosh sahifaga qaytish
               </Link>
             </div>
           )}
-          <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
+          {/* 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): Bosh
+              sahifada sarlavha endi katta h1 emas, breadcrumb bilan BIR XIL
+              kichik "navigatsiya" uslubida — OPERA'da ham bu joyda faqat
+              kichkina "Dashboard" turadi, sahifaning haqiqiy sarlavhasi esa
+              kontent ichida ("Salom, ...!").
+
+              Boshqa sahifalarda esa sarlavha katta qoladi: u yerda tepada
+              allaqachon breadcrumb bor, ya'ni sarlavha yagona "bu qaysi
+              sahifa" belgisi. `h1` semantikasi ikkala holatda ham saqlanadi
+              (har sahifada bitta h1 bo'lishi kerak) — faqat uslubi farq
+              qiladi. */}
+          {isDashboard ? (
+            <h1 className="text-xs font-medium text-slate-900">{title}</h1>
+          ) : (
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
+          )}
         </header>
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
           <SampleDataBanner />
@@ -810,6 +737,181 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
         </span>
         <span className="shrink-0 ml-4">usali.uz</span>
       </footer>
+      </div>
+
+      {/* Chapdan surilib ochiladigan panel (2026-09-04, OPERA Cloud
+          referensi). Barcha ekran o'lchamlarida bir xil — mobilda yagona
+          navigatsiya yo'li, desktopda modul paneliga qo'shimcha to'liq
+          "site map".
+
+          MUHIM: panel HAR DOIM DOM'da turadi va faqat `translate-x` bilan
+          surilади. Shartli render (`{open && ...}`) qilinsa CSS o'tishi
+          ishlamasdi — element endigina paydo bo'lgani uchun brauzerda
+          animatsiya qiladigan boshlang'ich holat bo'lmaydi. Yopiq holatda
+          `invisible` — u elementni tab-tartibidan ham, ekran o'quvchidan
+          ham olib tashlaydi (`pointer-events-none`dan farqli). */}
+      {/* Qorong'ilashtiruvchi qatlam FAQAT tor ekranlarda (`lg:`dan kichik):
+          u yerda panel kontentni qoplaydi, chunki 300px surish 390px enli
+          telefonda deyarli hech narsa qoldirmasdi. `lg:`+ da esa kontent
+          o'ngga suriladi (yuqoriga qarang) va hech narsa qoplanmaydi —
+          shuning uchun u yerda qatlam ham, qorong'ilashtirish ham yo'q. */}
+      <div
+        className={`fixed inset-0 z-40 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${
+          drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={closeDrawer}
+        aria-hidden="true"
+      />
+      <div
+        id="app-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Asosiy menyu"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[300px] max-w-[85vw] flex-col border-r border-slate-200 bg-slate-50 text-slate-900 shadow-2xl transition-[transform,visibility] duration-300 ease-out ${
+          drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
+        }`}
+      >
+        {/* Panelning tepasi — yopish tugmasi header'dagi hamburger bilan
+            bir xil joyda turishi uchun balandligi ham o'sha (oltin chiziq +
+            navy panel = 53.34px). */}
+        {/* Tepadagi bo'sh band — 2026-09-04 foydalanuvchi fikri bo'yicha bu
+            yerdagi "Folio One" brendi olib tashlandi (u allaqachon pastdagi
+            modul panelida bor, takrorlash ortiqcha edi). Band esa QOLDI:
+            balandligi oltin chiziq + navy header bilan teng (53.34px), ya'ni
+            paneldagi ro'yxat kontent bilan bir chiziqdan boshlanadi.
+
+            Yopish tugmasi faqat tor ekranlarda: u yerda panel header'ni
+            qoplaydi va undagi hamburgerga yetib bo'lmaydi. `lg:`+ da kontent
+            o'ngga surilgani uchun header'dagi tugma ko'rinib turadi va yagona
+            almashtirgich bo'lib qoladi. */}
+        <div className="flex h-[53.34px] shrink-0 items-center border-b border-slate-200 pl-3 pr-3 pt-[7.62px]">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            aria-label="Menyuni yopish"
+            title="Menyuni yopish"
+            className="flex w-[60.96px] shrink-0 items-center justify-center rounded-full py-1.5 text-brand-navy transition-colors hover:bg-brand-navy-light lg:hidden"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+          {/* 🔴 Modul bo'limlari panelda FAQAT tor ekranda ko'rinadi
+              (2026-09-04, foydalanuvchi qarori): `lg:`+ da ular yuqoridagi
+              gorizontal modul panelida allaqachon bor, ya'ni bu yerda
+              takrorlash edi. Tor ekranda esa o'sha panel yashiringan
+              (`hidden lg:flex`), shuning uchun hamburger yagona navigatsiya
+              yo'li bo'lib qoladi — u yerda modullarni olib tashlash
+              foydalanuvchini butunlay yo'lsiz qoldirardi. */}
+          <div className="lg:hidden">
+          {visibleSections.map((section) => (
+            <div key={section.key} className="pb-2">
+              {section.label && (
+                <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {section.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((item) =>
+                  item.children ? (
+                    // Panelda flyout kerak emas (ro'yxat allaqachon to'liq
+                    // ochiq) — "Profillar" shunchaki kichik sarlavha.
+                    <div key={item.label}>
+                      <p className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium text-slate-400">{item.label}</p>
+                      {item.children.map((child) => (
+                        <NavLink
+                          key={child.to}
+                          to={child.to!}
+                          onClick={closeDrawer}
+                          className={({ isActive }) => drawerLinkClass(isActive)}
+                        >
+                          {child.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  ) : (
+                    <NavLink
+                      key={item.to}
+                      to={item.to!}
+                      onClick={closeDrawer}
+                      className={({ isActive }) => drawerLinkClass(isActive)}
+                    >
+                      {item.label}
+                    </NavLink>
+                  ),
+                )}
+              </div>
+            </div>
+          ))}
+          </div>
+
+          {hasAdminMenu && (
+            <div className="mt-1 border-t border-slate-200 pt-2">
+              {visibleAdminItems.length > 0 && (
+                <>
+                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Administratsiya
+                  </p>
+                  <div className="space-y-0.5">
+                    {visibleAdminItems.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={closeDrawer}
+                        className={({ isActive }) => drawerLinkClass(isActive)}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </>
+              )}
+              {showRolesItem && (
+                <NavLink
+                  to={ROLES_ITEM.to}
+                  onClick={closeDrawer}
+                  className={({ isActive }) => drawerLinkClass(isActive)}
+                >
+                  {ROLES_ITEM.label}
+                </NavLink>
+              )}
+            </div>
+          )}
+
+          <div className="mt-1 border-t border-slate-200 pt-2">
+            {/* Yordam ham faqat tor ekranda: `lg:`+ da "?" belgisi modul
+                qatorining o'ng chetida turibdi, bu yerdagisi takror bo'lardi. */}
+            <Link to="/help" onClick={closeDrawer} className={`${drawerLinkClass(false)} lg:hidden`}>
+              Yordam
+            </Link>
+            {/* Platforma boshqaruvi (/admin) — avval navy header'ning o'ng
+                tomonida qalqon-belgili havola edi. Hamburger chapga
+                ko'chirilganda (2026-09-04) u ham shu panelga ko'chdi:
+                AdminPage ilova ichida boshqa hech qanday havola bilan
+                bog'lanmagan, ya'ni bu yagona kirish yo'li. */}
+            {user?.isPlatformAdmin && (
+              <NavLink
+                to="/admin"
+                onClick={closeDrawer}
+                className={({ isActive }) => drawerLinkClass(isActive)}
+              >
+                <span className="flex items-center gap-2">
+                  <AdminShieldIcon />
+                  Platforma boshqaruvi
+                </span>
+              </NavLink>
+            )}
+          </div>
+        </nav>
+
+        <div className="shrink-0 border-t border-slate-200 px-4 py-3">
+          <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          <button onClick={logout} className="mt-1 text-xs text-brand-navy underline hover:opacity-80">
+            Chiqish
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

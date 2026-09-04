@@ -40,7 +40,7 @@ export function GuestPicker({
             onChange(null);
             setQuery('');
           }}
-          className="text-xs text-slate-500 hover:text-slate-800 underline"
+          className="text-xs text-brand-navy underline"
         >
           O'zgartirish
         </button>
