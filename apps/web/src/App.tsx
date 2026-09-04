@@ -29,6 +29,7 @@ import { GuestRegistrationReportPage } from './pages/GuestRegistrationReportPage
 import { BillingPage } from './pages/BillingPage';
 import { StaffPage } from './pages/StaffPage';
 import { HelpPage } from './pages/HelpPage';
+import { PropertySettingsPage } from './pages/PropertySettingsPage';
 import { AdminPage } from './pages/AdminPage';
 
 function App() {
@@ -220,6 +221,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <StaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/property-settings"
+            element={
+              <ProtectedRoute>
+                <PropertySettingsPage />
               </ProtectedRoute>
             }
           />
