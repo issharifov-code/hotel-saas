@@ -23,16 +23,23 @@
 }
 
 @layer components {
+  /* 2026-09 (foydalanuvchi fikri, "keyingi bosqich"): Login sahifasidagi
+     dumaloq (rounded-full) tugma/input uslubi endi shu umumiy klasslar
+     orqali BUTUN ilovaga tatbiq etiladi — chunki .input/.btn-primary/
+     .btn-secondary deyarli barcha modul sahifalarida ishlatiladi, shuning
+     uchun shu yerdagi yagona o'zgarish bilan hammasi bir xilga keladi.
+     Zichlikni saqlash uchun padding (py-2) Login'dagidan (py-2.5/py-4)
+     kichikroq qoldirildi — bu yerda ko'plab compact forma/panel bor. */
   .input {
-    @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy;
+    @apply w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy;
   }
 
   .btn-primary {
-    @apply rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40;
+    @apply rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:opacity-40;
   }
 
   .btn-secondary {
-    @apply rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-brand-navy hover:bg-slate-50 disabled:opacity-40;
+    @apply rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-brand-navy hover:bg-slate-50 disabled:opacity-40;
   }
 
   /* F1 logotipi — ikkinchi darajali navigatsiya panelining "brend belgisi"
