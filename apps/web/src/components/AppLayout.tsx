@@ -180,7 +180,7 @@ function propertyInitial(name?: string | null): string {
 
 function HamburgerIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" d="M3 5h14M3 10h14M3 15h14" />
     </svg>
   );
@@ -188,7 +188,7 @@ function HamburgerIcon() {
 
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
@@ -341,6 +341,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+      {/* Eng tepadagi ingichka oltin chiziq (2026-09, OPERA Cloud
+          referensiga ko'ra) — sahifaning eng yuqori chetida, navy panelidan
+          ham yuqorida, brend rangimizni darhol ko'rsatadigan aksent. */}
+      <div className="h-1.5 bg-brand-gold shrink-0" aria-hidden="true" />
       {/* Yuqori panel: mehmonxonaning o'z belgisi/nomi, moliyaviy sana, foydalanuvchi, menyular.
           2026-09 (uslub yangilanishi): fon endi neytral kulrang o'rniga
           brend rangi (`bg-brand-navy`) — Login sahifasida ishlatiladigan
@@ -352,12 +356,12 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           Yordam belgisidan keyinga, o'ng tomonga ko'chirildi. Ularning
           o'rnida endi mehmonxonaning o'z belgi-piktogrammasi (pastga
           qarang, propertyInitial) ko'rsatiladi. */}
-      <header className="shrink-0 h-14 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 border-b-[3px] border-brand-gold">
+      <header className="relative z-30 shrink-0 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 py-[5px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Mehmonxonaning o'zi hali logotip-rasm yuklamagan — vaqtinchalik
               nomining bosh harfi bilan piktogramma (qarang propertyInitial). */}
           <span
-            className="flex items-center justify-center h-8 w-8 rounded-lg bg-white text-brand-navy text-sm font-bold shrink-0"
+            className="flex items-center justify-center h-6 w-6 rounded-md bg-white text-brand-navy text-[11px] font-bold shrink-0"
             aria-hidden="true"
           >
             {propertyInitial(property?.name)}
@@ -384,7 +388,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             to="/help"
             aria-label="Yordam"
             title="Yordam"
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
           >
             <HelpIcon />
           </Link>
@@ -399,7 +403,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
             title={mobileMenuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors lg:hidden"
+            className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors lg:hidden"
           >
             {mobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
           </button>
@@ -415,7 +419,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 aria-label="Administratsiya menyusi"
                 title="Administratsiya menyusi"
                 aria-expanded={openGroup === ADMIN_MENU_KEY}
-                className={`p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors ${
+                className={`p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors ${
                   openGroup === ADMIN_MENU_KEY ? 'bg-white/10 text-white' : ''
                 } ${adminMenuActive ? 'text-brand-gold' : ''}`}
               >
@@ -473,7 +477,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               to="/admin"
               aria-label="Platforma boshqaruvi"
               title="Platforma boshqaruvi"
-              className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+              className="p-1 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               <AdminShieldIcon />
             </Link>
@@ -491,7 +495,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           2026-09 (foydalanuvchi fikri, yana bir bosqich): panel biroz
           ensizroq (py-1.5, avvalgi py-2'dan) — F1 belgisining "yirib
           chiqish" effekti shu hisobga yanada aniqroq ko'rinadi. */}
-      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1 relative z-20">
+      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1.5 relative z-20 shadow-[0_2px_6px_rgba(15,23,42,0.08)]">
         {/* F1 logotipi — nav panelining brend belgisi (2026-09, qayta ko'rib
             chiqildi: 3D/soyali uslub olib tashlandi, o'rniga faqat o'lcham
             (h-12, avvalgi h-11'dan biroz kattaroq) va negative-margin
