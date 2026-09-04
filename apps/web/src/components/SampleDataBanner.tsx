@@ -34,7 +34,7 @@ export function SampleDataBanner() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+      <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
         <div className="text-sm text-amber-900">
           <span className="font-medium">Bu tizimda namunaviy (demo) ma'lumotlar mavjud</span>
           <span className="text-amber-700">
@@ -44,7 +44,7 @@ export function SampleDataBanner() {
         </div>
         <button
           onClick={() => setShowConfirm(true)}
-          className="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+          className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
         >
           Namunaviy ma'lumotlarni o'chirish
         </button>
@@ -65,14 +65,14 @@ export function SampleDataBanner() {
             <button
               onClick={() => setShowConfirm(false)}
               disabled={removing}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Bekor qilish
             </button>
             <button
               onClick={remove}
               disabled={removing}
-              className="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+              className="rounded-full bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
             >
               {removing ? "O'chirilmoqda..." : "Ha, hammasini o'chirish"}
             </button>

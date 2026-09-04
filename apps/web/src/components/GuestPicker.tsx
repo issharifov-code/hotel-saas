@@ -29,7 +29,7 @@ export function GuestPicker({
 
   if (value) {
     return (
-      <div className="flex items-center justify-between rounded-md border border-slate-300 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between rounded-full border border-slate-300 px-4 py-2 text-sm">
         <div>
           <p className="font-medium text-slate-900">{value.fullName}</p>
           <p className="text-xs text-slate-500">{[value.phone, value.email].filter(Boolean).join(' · ')}</p>
@@ -61,7 +61,7 @@ export function GuestPicker({
         className="input"
       />
       {open && results.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-10 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg max-h-48 overflow-y-auto">
           {results.map((g) => (
             <button
               type="button"

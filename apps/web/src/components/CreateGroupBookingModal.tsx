@@ -173,7 +173,7 @@ export function CreateGroupBookingModal({
                 (rp) => rp.isActive && rp.roomTypeId === row.roomTypeId,
               );
               return (
-                <div key={idx} className="border border-slate-200 rounded-md p-3 space-y-2">
+                <div key={idx} className="border border-slate-200 rounded-2xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-500">Xona #{idx + 1}</span>
                     {rows.length > 1 && (

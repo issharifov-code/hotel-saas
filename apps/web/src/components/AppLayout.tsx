@@ -6,9 +6,21 @@ import { formatDayLabel } from '../lib/dates';
 import folioOneLogo from '../assets/folio-one-logo.png';
 
 interface NavItem {
-  to: string;
+  to?: string;
   label: string;
   moduleKey?: string;
+  // 2026-09 (foydalanuvchi fikri, OPERA Cloud "Client Relations > Profiles >
+  // Manage Profile" skrinshotiga moslab): ba'zi item'lar to'g'ridan-to'g'ri
+  // link emas, balki ikkinchi darajali flyout-guruh — shunda `to` bo'lmaydi,
+  // `children` esa haqiqiy link'larni saqlaydi. Hozircha faqat "Mijozlar"
+  // bo'limida ishlatiladi (Profillar > Profillarni boshqarish/Xabarlar).
+  children?: NavItem[];
+}
+
+// Bitta bo'lim ichidagi barcha item'larni (children ichidagilar ham) tekis
+// ro'yxatga aylantiradi — faol-yo'l va breadcrumb tekshiruvlari uchun.
+function flattenNavItems(items: NavItem[]): NavItem[] {
+  return items.flatMap((item) => (item.children ? flattenNavItems(item.children) : [item]));
 }
 
 // Yuqori gorizontal modul-panel (2026-09, 3-bosqich): foydalanuvchi bergan
@@ -32,9 +44,20 @@ const NAV_SECTIONS: NavSection[] = [
   {
     key: 'client-relations',
     label: 'Mijozlar',
+    // 2026-09 (foydalanuvchi fikri, OPERA Cloud skrinshoti): "Mehmonlar" va
+    // "Xabarlar" endi to'g'ridan-to'g'ri emas, "Profillar" degan ikkinchi
+    // darajali flyout-guruh ichida — aynan OPERA'dagi "Client Relations >
+    // Profiles > Manage Profile" tuzilishiga moslab (Suspended Stays'ning
+    // o'rnida bizda Xabarlar).
     items: [
-      { to: '/guests', label: 'Mehmonlar', moduleKey: 'guest_crm' },
-      { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
+      {
+        label: 'Profillar',
+        moduleKey: 'guest_crm',
+        children: [
+          { to: '/guests', label: 'Profillarni boshqarish', moduleKey: 'guest_crm' },
+          { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
+        ],
+      },
     ],
   },
   {
@@ -117,6 +140,17 @@ function ChevronDownIcon({ open }: { open: boolean }) {
       strokeWidth={2}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 7l6 6 6-6" />
+    </svg>
+  );
+}
+
+// Ikkinchi darajali flyout-guruh (masalan "Profillar") uchun — OPERA
+// Cloud'dagi kabi o'ngga qaragan strelka, guruh yana o'ngga ochilishini
+// bildiradi (2026-09, foydalanuvchi fikri: "ko'rsatgich ham o'ngda turibdi").
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 4l6 6-6 6" />
     </svg>
   );
 }
@@ -217,15 +251,23 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   }, [title]);
 
   // Mazmuniy guruhlash: har bir bo'lim ruxsatga ega item'largagina
-  // filtrlanadi; hech narsa qolmasa, butun bo'lim yashiriladi.
+  // filtrlanadi; hech narsa qolmasa, butun bo'lim yashiriladi. `children`li
+  // item'larda (masalan "Profillar") ruxsat ichki link'lar darajasida
+  // tekshiriladi — bironta ham ko'rinmasa, guruhning o'zi yashiriladi.
+  const filterNavItems = (items: NavItem[]): NavItem[] =>
+    items
+      .map((item) => (item.children ? { ...item, children: filterNavItems(item.children) } : item))
+      .filter((item) => (item.children ? item.children.length > 0 : !item.moduleKey || can(item.moduleKey, 'view')));
+
   const visibleSections = NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.moduleKey || can(item.moduleKey, 'view')),
+    items: filterNavItems(section.items),
   })).filter((section) => section.items.length > 0);
 
   const activeGroupKey =
-    visibleSections.find((section) => section.items.some((item) => isRouteActive(location.pathname, item.to)))
-      ?.key ?? null;
+    visibleSections.find((section) =>
+      flattenNavItems(section.items).some((item) => item.to && isRouteActive(location.pathname, item.to)),
+    )?.key ?? null;
 
   // "Xodimlar" moduleKey'siz — StaffPage'ning o'zi (avvalgi Sozlamalar/gear
   // tugmasidagi kabi) barcha tizimga kirgan foydalanuvchilarga ochiq, faqat
@@ -245,7 +287,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   // degan narsa mazmunsiz).
   const isDashboard = location.pathname === '/' || location.pathname.startsWith('/dashboard');
   const activeSection = visibleSections.find((section) =>
-    section.items.some((item) => isRouteActive(location.pathname, item.to)),
+    flattenNavItems(section.items).some((item) => item.to && isRouteActive(location.pathname, item.to)),
   );
   const breadcrumbSectionLabel = activeSection?.label ?? (adminMenuActive ? 'Administratsiya' : null);
 
@@ -257,7 +299,13 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   const toggleGroup = (key: string) => {
     setOpenGroup((prev) => (prev === key ? null : key));
   };
-  const closeGroup = () => setOpenGroup(null);
+  // Ikkinchi darajali flyout ("Profillar" kabi) — dropdown ichida hover
+  // orqali ochiladi, OPERA Cloud'dagi kabi (2026-09, foydalanuvchi fikri).
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  const closeGroup = () => {
+    setOpenGroup(null);
+    setOpenSubmenu(null);
+  };
 
   // Mobil/planshetda (`lg:`dan tor) gorizontal panel o'rniga hamburger orqali
   // ochiladigan to'liq-kenglikdagi ochiladigan menyu ishlatiladi (barcha
@@ -295,7 +343,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           Yordam belgisidan keyinga, o'ng tomonga ko'chirildi. Ularning
           o'rnida endi mehmonxonaning o'z belgi-piktogrammasi (pastga
           qarang, propertyInitial) ko'rsatiladi. */}
-      <header className="shrink-0 h-14 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 border-b-2 border-brand-gold">
+      <header className="shrink-0 h-14 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 border-b-[3px] border-brand-gold">
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Mehmonxonaning o'zi hali logotip-rasm yuklamagan — vaqtinchalik
               nomining bosh harfi bilan piktogramma (qarang propertyInitial). */}
@@ -430,8 +478,11 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           2026-09 (uslub yangilanishi, Login sahifasiga moslab): oldingi
           pastki-chiziqli (`border-b-2`) tablar o'rniga Login'dagi pill
           tugmalar/inputlar uslubiga mos yumaloq (`rounded-full`) chip'lar —
-          faol/hover holatida orqa fon bilan ajratiladi, chiziq bilan emas. */}
-      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-2 relative z-20">
+          faol/hover holatida orqa fon bilan ajratiladi, chiziq bilan emas.
+          2026-09 (foydalanuvchi fikri, yana bir bosqich): panel biroz
+          ensizroq (py-1.5, avvalgi py-2'dan) — F1 belgisining "yirib
+          chiqish" effekti shu hisobga yanada aniqroq ko'rinadi. */}
+      <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1 relative z-20">
         {/* F1 logotipi — nav panelining brend belgisi (2026-09, qayta ko'rib
             chiqildi: 3D/soyali uslub olib tashlandi, o'rniga faqat o'lcham
             (h-12, avvalgi h-11'dan biroz kattaroq) va negative-margin
@@ -454,7 +505,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               <button
                 type="button"
                 onClick={() => toggleGroup(section.key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors ${
                   activeGroupKey === section.key
                     ? 'chip-active'
                     : `text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light ${
@@ -467,23 +518,66 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 <ChevronDownIcon open={openGroup === section.key} />
               </button>
               {openGroup === section.key && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg overflow-hidden">
-                  {section.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={closeGroup}
-                      className={({ isActive }) =>
-                        `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
-                          isActive
-                            ? 'bg-brand-navy-light text-brand-navy font-semibold'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
-                        }`
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
+                  {section.items.map((item) =>
+                    item.children ? (
+                      <div
+                        key={item.label}
+                        className="relative"
+                        onMouseEnter={() => setOpenSubmenu(item.label)}
+                        onMouseLeave={() => setOpenSubmenu(null)}
+                      >
+                        <div
+                          className={`flex items-center justify-between gap-3 px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+                            openSubmenu === item.label
+                              ? 'bg-slate-50 text-brand-navy'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          <ChevronRightIcon />
+                        </div>
+                        {/* Ikkinchi darajali flyout — OPERA Cloud'dagi kabi
+                            o'ngga, birinchi darajali panel bilan bir xil
+                            balandlikda (top-0) ochiladi. */}
+                        {openSubmenu === item.label && (
+                          <div className="absolute left-full top-0 z-50 ml-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
+                            {item.children.map((child) => (
+                              <NavLink
+                                key={child.to}
+                                to={child.to!}
+                                onClick={closeGroup}
+                                className={({ isActive }) =>
+                                  `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+                                    isActive
+                                      ? 'bg-brand-navy-light text-brand-navy font-semibold'
+                                      : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                                  }`
+                                }
+                              >
+                                {child.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <NavLink
+                        key={item.to}
+                        to={item.to!}
+                        onClick={closeGroup}
+                        className={({ isActive }) =>
+                          `block px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+                            isActive
+                              ? 'bg-brand-navy-light text-brand-navy font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                          }`
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ),
+                  )}
                 </div>
               )}
             </div>
@@ -491,9 +585,9 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             section.items.map((item) => (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={item.to!}
                 className={({ isActive }) =>
-                  `flex items-center whitespace-nowrap px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                  `flex items-center whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors ${
                     isActive ? 'chip-active' : 'text-slate-700 hover:text-brand-navy hover:bg-brand-navy-light'
                   }`
                 }
@@ -527,22 +621,47 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                     </p>
                   )}
                   <div className="space-y-0.5">
-                    {section.items.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={closeMobileMenu}
-                        className={({ isActive }) =>
-                          `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'chip-active'
-                              : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
-                          }`
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))}
+                    {section.items.map((item) =>
+                      item.children ? (
+                        // Mobilda flyout kerak emas (menyu allaqachon to'liq
+                        // ochiq ro'yxat) — "Profillar" shunchaki kichik
+                        // sarlavha, farzand-item'lar bevosita ostida.
+                        <div key={item.label}>
+                          <p className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium text-slate-400">{item.label}</p>
+                          {item.children.map((child) => (
+                            <NavLink
+                              key={child.to}
+                              to={child.to!}
+                              onClick={closeMobileMenu}
+                              className={({ isActive }) =>
+                                `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                  isActive
+                                    ? 'chip-active'
+                                    : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
+                                }`
+                              }
+                            >
+                              {child.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      ) : (
+                        <NavLink
+                          key={item.to}
+                          to={item.to!}
+                          onClick={closeMobileMenu}
+                          className={({ isActive }) =>
+                            `block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                              isActive
+                                ? 'chip-active'
+                                : 'text-slate-700 hover:bg-brand-navy-light hover:text-brand-navy'
+                            }`
+                          }
+                        >
+                          {item.label}
+                        </NavLink>
+                      ),
+                    )}
                   </div>
                 </div>
               ))}
@@ -616,9 +735,11 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
           {!isDashboard && (
             <div className="flex items-center justify-between gap-4 mb-1">
               <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-500">
-                <Link to="/dashboard" className="shrink-0 hover:text-brand-navy hover:underline">
-                  Bosh sahifa
-                </Link>
+                {/* 2026-09 (foydalanuvchi fikri): "Bosh sahifa" endi havola
+                    emas, oddiy matn — o'ng tarafdagi "Bosh sahifaga qaytish"
+                    havolasi buning uchun allaqachon yetarli, ikkalasini ham
+                    bosiladigan qilish ortiqcha edi. */}
+                <span className="shrink-0">Bosh sahifa</span>
                 {breadcrumbSectionLabel && (
                   <>
                     <span aria-hidden="true">/</span>
