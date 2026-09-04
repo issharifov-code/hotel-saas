@@ -17,6 +17,15 @@ interface NavItem {
   children?: NavItem[];
 }
 
+// ADMIN_ITEMS/ROLES_ITEM hech qachon `children`ga ega bo'lmaydi — doim
+// to'g'ridan-to'g'ri link. Shuning uchun `to` bu yerda majburiy (NavItem'dan
+// farqli), TypeScript'ga aniqroq kafolat berish uchun.
+interface LeafNavItem {
+  to: string;
+  label: string;
+  moduleKey?: string;
+}
+
 // Bitta bo'lim ichidagi barcha item'larni (children ichidagilar ham) tekis
 // ro'yxatga aylantiradi — faol-yo'l va breadcrumb tekshiruvlari uchun.
 function flattenNavItems(items: NavItem[]): NavItem[] {
@@ -116,13 +125,13 @@ const NAV_SECTIONS: NavSection[] = [
 // soatlarni Payroll o'qiydi) va Obuna/to'lovlar (tenant'ning o'z SaaS
 // obunasi, mehmonxona moliyaviy hisobotlaridan farqli — hisob boshqaruvi
 // tusidagi narsa) ham shu yerga, HR/administrativ guruhga qo'shildi.
-const ADMIN_ITEMS: NavItem[] = [
+const ADMIN_ITEMS: LeafNavItem[] = [
   { to: '/staff', label: 'Xodimlar' },
   { to: '/payroll', label: 'Ish haqi', moduleKey: 'payroll' },
   { to: '/attendance', label: "Davomat va ta'til", moduleKey: 'payroll' },
   { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
 ];
-const ROLES_ITEM: NavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
+const ROLES_ITEM: LeafNavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
 
 // Hamburger-menyuning ochiq/yopiqligi ham module-dropdown'lar bilan bir xil
 // `openGroup` holatida saqlanadi — shu sentinel-kalit ostida.
