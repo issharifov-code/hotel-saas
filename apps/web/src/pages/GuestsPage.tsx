@@ -45,21 +45,41 @@ function TierBadge({ tier }: { tier: LoyaltyTier }) {
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TIER_STYLES[tier]}`}>{TIER_LABELS[tier]}</span>;
 }
 
+// Qidiruv bo'limining yig'ish strelkasi (mahalliy — AppLayout'dagisi
+// eksport qilinmagan va uning `open` propi bor, bu yerda esa burilish
+// `group-open:` orqali CSS bilan boshqariladi).
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7l6 6 6-6" />
+    </svg>
+  );
+}
+
 export function GuestsPage() {
   const { can } = useAuth();
   const [guests, setGuests] = useState<GuestDto[]>([]);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
 
-  const load = async (q?: string) => {
+  // Qidiruv maydonlari (2026-09-04, OPERA Cloud "Manage Profile" referensi).
+  // OPERA'da ~25 ta maydon bor; bu yerda bazamizda mavjud va reception kunda
+  // ishlatadigan TO'RTTASI olindi (foydalanuvchi qarori).
+  const [name, setName] = useState('');
+  const [communication, setCommunication] = useState('');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [nationality, setNationality] = useState('');
+
+  const load = async (f: Record<string, string> = {}) => {
     setLoading(true);
     try {
-      const path = q ? `/guests?search=${encodeURIComponent(q)}` : '/guests';
-      setGuests(await apiFetch<GuestDto[]>(path));
+      const qs = new URLSearchParams(
+        Object.entries(f).filter(([, v]) => v.trim() !== ''),
+      ).toString();
+      setGuests(await apiFetch<GuestDto[]>(qs ? `/guests?${qs}` : '/guests'));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ma'lumotlarni yuklashda xatolik");
     } finally {
@@ -72,36 +92,134 @@ export function GuestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Maydonlar o'zgarganda avtomatik qidiradi (300ms kutib) — alohida
+  // "Qidirish" tugmasi shart emas, ro'yxat yozgan sari toraya boradi.
   useEffect(() => {
-    const timeout = setTimeout(() => load(search || undefined), 300);
+    const timeout = setTimeout(
+      () => load({ name, communication, documentNumber, nationality }),
+      300,
+    );
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [name, communication, documentNumber, nationality]);
+
+  const filtrTozalash = () => {
+    setName('');
+    setCommunication('');
+    setDocumentNumber('');
+    setNationality('');
+  };
+  const filtrBor = [name, communication, documentNumber, nationality].some((v) => v.trim() !== '');
+  // Modal'dan keyin ro'yxatni yangilash — JORIY filtrlarni saqlagan holda
+  // (avval `load(search)` chaqirilar va filtrlar yo'qolib ketardi).
+  const qaytaYuklash = () => load({ name, communication, documentNumber, nationality });
 
   return (
-    <AppLayout title="Mehmonlar">
+    <AppLayout
+      title="Profillarni boshqarish"
+      help={
+        <>
+          <p className="font-semibold">Profillarni boshqarish nima?</p>
+          <p>
+            Profil — mehmonxonaga kelgan yoki keladigan har bir mehmonning doimiy
+            yozuvi: ismi, aloqa ma&apos;lumotlari, hujjati, fuqaroligi va afzalliklari.
+          </p>
+          <p>
+            Bron qilinganda mehmon shu yerdan tanlanadi — ya&apos;ni bir odam necha
+            marta kelsa ham, tarixi bitta profilda to&apos;planadi: nechta marta
+            kelgani, sodiqlik ballari va xona afzalliklari.
+          </p>
+          <p>
+            Shu sahifada profillarni qidirasiz, yangisini qo&apos;shasiz va bir odam
+            uchun xato bilan ikkita profil ochilib qolgan bo&apos;lsa
+            (&quot;Ikkilanmalar&quot;) ularni birlashtirasiz.
+          </p>
+        </>
+      }
+      actions={
+        <div className="min-w-[200px]">
+          <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Yaratish
+          </p>
+          <div className="space-y-0.5">
+            {can('guest_crm', 'create') && (
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light"
+              >
+                Mehmon profili
+              </button>
+            )}
+            {can('guest_crm', 'delete') && (
+              <button
+                type="button"
+                onClick={() => setShowDuplicates(true)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light"
+              >
+                Ikkilanmalarni birlashtirish
+              </button>
+            )}
+          </div>
+        </div>
+      }
+    >
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ism, telefon yoki email bo'yicha qidirish..."
-          className="input max-w-sm"
-        />
-        <div className="flex items-center gap-2 shrink-0">
-          {can('guest_crm', 'delete') && (
-            <button onClick={() => setShowDuplicates(true)} className="btn-secondary">
-              Ikkilanmalar
-            </button>
-          )}
-          {can('guest_crm', 'create') && (
-            <button onClick={() => setShowModal(true)} className="btn-primary">
-              + Mehmon qo'shish
-            </button>
+      {/* Qidiruv bo'limi (2026-09-04, OPERA Cloud "Manage Profile" referensi).
+          OPERA'da ~25 ta maydon bor — bu yerda bazamizda mavjud va kunda
+          ishlatiladigan to'rttasi. Yig'iladigan qilib qo'yilgan: qidiruv
+          tugagach ro'yxatga joy bo'shatadi. */}
+      <details open className="group mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-900">
+          Qidiruv
+          <span className="text-brand-navy transition-transform group-open:rotate-180" aria-hidden="true">
+            <ChevronDownIcon />
+          </span>
+        </summary>
+        <div className="border-t border-slate-100 px-4 py-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-900">Ism</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Familiya yoki ism" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-900">Aloqa</span>
+              <input
+                value={communication}
+                onChange={(e) => setCommunication(e.target.value)}
+                className="input"
+                placeholder="Telefon yoki email"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-900">Hujjat raqami</span>
+              <input
+                value={documentNumber}
+                onChange={(e) => setDocumentNumber(e.target.value)}
+                className="input"
+                placeholder="Pasport / ID"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-900">Fuqarolik</span>
+              <input
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+                className="input"
+                placeholder="masalan: UZ"
+              />
+            </label>
+          </div>
+          {filtrBor && (
+            <div className="mt-3 flex justify-end">
+              <button type="button" onClick={filtrTozalash} className="text-xs font-medium text-brand-navy hover:underline">
+                Tozalash
+              </button>
+            </div>
           )}
         </div>
-      </div>
+      </details>
 
       <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
         {!loading && guests.length === 0 && <p className="p-4 text-sm text-slate-500">Mehmon topilmadi</p>}
@@ -130,7 +248,7 @@ export function GuestsPage() {
           onClose={() => setShowModal(false)}
           onCreated={() => {
             setShowModal(false);
-            load(search || undefined);
+            qaytaYuklash();
           }}
         />
       )}
@@ -139,14 +257,14 @@ export function GuestsPage() {
         <GuestDetailModal
           guestId={selectedGuestId}
           onClose={() => setSelectedGuestId(null)}
-          onChanged={() => load(search || undefined)}
+          onChanged={() => qaytaYuklash()}
         />
       )}
 
       {showDuplicates && (
         <DuplicatesModal
           onClose={() => setShowDuplicates(false)}
-          onMerged={() => load(search || undefined)}
+          onMerged={() => qaytaYuklash()}
         />
       )}
     </AppLayout>
