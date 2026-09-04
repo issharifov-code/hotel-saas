@@ -92,27 +92,34 @@ export function GuestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Maydonlar o'zgarganda avtomatik qidiradi (300ms kutib) — alohida
-  // "Qidirish" tugmasi shart emas, ro'yxat yozgan sari toraya boradi.
-  useEffect(() => {
-    const timeout = setTimeout(
-      () => load({ name, communication, documentNumber, nationality }),
-      300,
-    );
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, communication, documentNumber, nationality]);
+  // ANIQ qidiruv (2026-09-04, foydalanuvchi qarori): avval maydon o'zgarishi
+  // bilan 300ms kutib avtomatik qidirardi. Endi OPERA'dagidek "Qidirish" va
+  // "Reset" tugmalari bor — foydalanuvchi to'rttala maydonni to'ldirib bo'lib
+  // bir marta so'rov yuboradi, har harfga bittadan emas.
+  //
+  // `qollanilgan` — maydonlardagi matn EMAS, oxirgi marta HAQIQATAN yuborilgan
+  // filtr. Modal yopilgandan keyin ro'yxatni shu bilan yangilaymiz: aks holda
+  // foydalanuvchi maydonga yozib qo'yib "Qidirish"ni bosmagan bo'lsa, ro'yxat
+  // o'zi kutmagan filtr bilan qayta yuklanib ketardi.
+  const [qollanilgan, setQollanilgan] = useState<Record<string, string>>({});
 
-  const filtrTozalash = () => {
+  const qidirish = (e: FormEvent) => {
+    e.preventDefault();
+    const f = { name, communication, documentNumber, nationality };
+    setQollanilgan(f);
+    load(f);
+  };
+
+  const reset = () => {
     setName('');
     setCommunication('');
     setDocumentNumber('');
     setNationality('');
+    setQollanilgan({});
+    load();
   };
-  const filtrBor = [name, communication, documentNumber, nationality].some((v) => v.trim() !== '');
-  // Modal'dan keyin ro'yxatni yangilash — JORIY filtrlarni saqlagan holda
-  // (avval `load(search)` chaqirilar va filtrlar yo'qolib ketardi).
-  const qaytaYuklash = () => load({ name, communication, documentNumber, nationality });
+
+  const qaytaYuklash = () => load(qollanilgan);
 
   return (
     <AppLayout
@@ -137,10 +144,9 @@ export function GuestsPage() {
         </>
       }
       actions={
+        // Panel tugmasining o'zi allaqachon "Yaratish" deb turibdi —
+        // shuning uchun ichida yana sarlavha takrorlanmaydi.
         <div className="min-w-[200px]">
-          <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Yaratish
-          </p>
           <div className="space-y-0.5">
             {can('guest_crm', 'create') && (
               <button
@@ -172,12 +178,12 @@ export function GuestsPage() {
           tugagach ro'yxatga joy bo'shatadi. */}
       <details open className="group mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-900">
-          Qidiruv
+          Qidirish
           <span className="text-brand-navy transition-transform group-open:rotate-180" aria-hidden="true">
             <ChevronDownIcon />
           </span>
         </summary>
-        <div className="border-t border-slate-100 px-4 py-4">
+        <form onSubmit={qidirish} className="border-t border-slate-100 px-4 py-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block">
               <span className="mb-1 block text-xs text-slate-900">Ism</span>
@@ -211,14 +217,18 @@ export function GuestsPage() {
               />
             </label>
           </div>
-          {filtrBor && (
-            <div className="mt-3 flex justify-end">
-              <button type="button" onClick={filtrTozalash} className="text-xs font-medium text-brand-navy hover:underline">
-                Tozalash
-              </button>
-            </div>
-          )}
-        </div>
+          {/* Tugmalar HAR DOIM ko'rinadi (faqat filtr bor paytda emas):
+              foydalanuvchi qidiruvni qayerda tugatishini bilib turishi kerak.
+              `type="submit"` — Enter bosilganda ham ishlaydi. */}
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={reset} className="btn-secondary">
+              Tozalash
+            </button>
+            <button type="submit" disabled={loading} className="btn-primary">
+              {loading ? 'Qidirilmoqda...' : 'Qidirish'}
+            </button>
+          </div>
+        </form>
       </details>
 
       <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
