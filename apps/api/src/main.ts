@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,8 +11,15 @@ async function bootstrap() {
     );
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // Express'ning standart JSON body chegarasi 100KB. Mehmonxona logotipi
+  // bazada `data:` URL (base64) sifatida saqlanadi va 100KB'dan oshishi
+  // mumkin, shuning uchun chegara 1MB'ga ko'tarildi. DTO darajasida logotip
+  // uchun aniqroq chegara bor (LOGO_MAX_LENGTH ~400KB), ya'ni bu global
+  // qiymat faqat so'rovning DTO'gacha yetib borishini ta'minlaydi.
+  app.useBodyParser('json', { limit: '1mb' });
 
   // Production'da (folioone.uz kabi) CORS_ORIGIN orqali aniq ro'yxatga
   // cheklanadi — aks holda (dev/Codespace) istalgan origin qabul qilinadi.
