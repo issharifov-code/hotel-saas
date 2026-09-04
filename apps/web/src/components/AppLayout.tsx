@@ -102,6 +102,9 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/invoicing', label: 'Hisob-fakturalar', moduleKey: 'invoicing' },
       { to: '/city-ledger', label: 'City Ledger', moduleKey: 'invoicing' },
       { to: '/accounting', label: 'Moliyaviy hisob', moduleKey: 'accounting' },
+      // Budjet (oylik reja) ham ACCOUNTING ruxsatiga bog'liq — u
+      // mehmonxonaning moliyaviy maqsadlari, front-desk uchun mo'ljallanmagan.
+      { to: '/budget', label: 'Budjet', moduleKey: 'accounting' },
     ],
   },
   {
