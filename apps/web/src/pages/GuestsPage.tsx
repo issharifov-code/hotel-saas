@@ -279,7 +279,7 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
                 className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   tab === t.key
                     ? 'chip-active'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
                 }`}
               >
                 {t.label}

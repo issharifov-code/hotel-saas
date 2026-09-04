@@ -125,7 +125,7 @@ export function HousekeepingPage() {
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               tab === t.key
                 ? 'chip-active'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-white border border-slate-200 text-brand-navy hover:bg-slate-100'
             }`}
           >
             {t.label}
@@ -151,7 +151,7 @@ export function HousekeepingPage() {
                 <button
                   disabled={busyId === room.id}
                   onClick={() => createTaskForRoom(room.id)}
-                  className="text-xs text-slate-600 hover:text-slate-900 underline"
+                  className="text-xs text-brand-navy underline"
                 >
                   Vazifa yaratish
                 </button>
@@ -210,7 +210,7 @@ export function HousekeepingPage() {
                   <button
                     disabled={busyId === task.id}
                     onClick={() => runTaskAction(task.id, 'cancel')}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-700 underline"
+                    className="text-xs font-medium text-brand-navy underline"
                   >
                     Bekor qilish
                   </button>

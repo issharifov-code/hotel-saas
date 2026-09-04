@@ -69,13 +69,13 @@ export function FunctionSpacesPage() {
         <div className="flex gap-1 bg-slate-100 rounded-full p-1">
           <button
             onClick={() => setTab('spaces')}
-            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'spaces' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
+            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'spaces' ? 'bg-white shadow text-brand-navy' : 'text-brand-navy'}`}
           >
             Zallar
           </button>
           <button
             onClick={() => setTab('bookings')}
-            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'bookings' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}
+            className={`px-3 py-1.5 text-sm rounded-full font-medium ${tab === 'bookings' ? 'bg-white shadow text-brand-navy' : 'text-brand-navy'}`}
           >
             Tadbir bronlari
           </button>

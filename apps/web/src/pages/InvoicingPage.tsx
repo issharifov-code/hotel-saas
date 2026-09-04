@@ -418,7 +418,7 @@ function InvoiceDetailModal({
             type="button"
             disabled={busy}
             onClick={cancelInvoice}
-            className="text-xs text-slate-500 hover:text-rose-600 underline"
+            className="text-xs text-brand-navy hover:text-rose-600 underline"
           >
             Hisob-fakturani bekor qilish
           </button>
