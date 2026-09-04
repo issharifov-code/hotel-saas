@@ -301,6 +301,7 @@ export function AppLayout({
   title,
   help,
   actions,
+  actionsLabel = 'Yaratish',
 }: {
   children: ReactNode;
   title: string;
@@ -310,9 +311,14 @@ export function AppLayout({
   // tashlandi: umumiy yordam "bu sahifa nima qiladi" degan savolga javob
   // bera olmasdi.
   help?: ReactNode;
-  // Sahifaning o'z amallari ("Parametrlar" ichidagi ro'yxat) — OPERA'dagi
+  // Sahifaning o'z amallari (ochiladigan paneldagi ro'yxat) — OPERA'dagi
   // "I Want To..." panelining o'rnida.
   actions?: ReactNode;
+  // Panel tugmasining nomi. Standarti "Yaratish" (2026-09-04, foydalanuvchi
+  // qarori — avval "Parametrlar" edi, lekin panel ichida asosan yangi yozuv
+  // ochadigan amallar turadi). Amallari boshqacha bo'lgan sahifa o'z nomini
+  // bera oladi.
+  actionsLabel?: string;
 }) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
@@ -745,7 +751,7 @@ export function AppLayout({
             belgi (ikkalasi bir xil rangda bo'lgani uchun u zarur). */}
         <header className="shrink-0 bg-slate-50 border-b border-slate-200 px-4 sm:px-8 py-3">
           {!isDashboard && (
-            <div className="flex items-center justify-between gap-4 mb-1">
+            <div className="flex items-center justify-between gap-4">
               <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-900">
                 {/* 2026-09 (foydalanuvchi fikri): "Bosh sahifa" endi havola
                     emas, oddiy matn — o'ng tarafdagi "Bosh sahifaga qaytish"
@@ -773,6 +779,14 @@ export function AppLayout({
               </Link>
             </div>
           )}
+          {/* 2026-09-04 (foydalanuvchi fikri): breadcrumb qatori bilan
+              sahifa sarlavhasi orasidagi ajratuvchi chiziq. `-mx-4 sm:-mx-8`
+              — header'ning gorizontal padding'ini bekor qiladi, shunda chiziq
+              ekranning bir chetidan ikkinchisiga to'liq boradi (yuqoridagi
+              navigatsiya chizig'i bilan bir xil). */}
+          {!isDashboard && (
+            <div className="-mx-4 sm:-mx-8 my-2 h-px bg-slate-200" aria-hidden="true" />
+          )}
           {/* 2026-09-04 (foydalanuvchi fikri, OPERA Cloud referensi): Bosh
               sahifada sarlavha endi katta h1 emas, breadcrumb bilan BIR XIL
               kichik "navigatsiya" uslubida — OPERA'da ham bu joyda faqat
@@ -788,7 +802,10 @@ export function AppLayout({
             {isDashboard ? (
               <h1 className="text-xs font-medium text-slate-900">{title}</h1>
             ) : (
-              <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
+              // 2026-09-04 (foydalanuvchi fikri): sarlavha ham qalin emas —
+              // ilovadagi umumiy qoida: matn qalinligi bilan emas, o'lchami
+              // bilan ajralib tursin.
+              <h1 className="text-lg tracking-tight text-slate-900">{title}</h1>
             )}
 
             {/* O'ng tomon — OPERA'dagi "Help | Create ... | I Want To..."
@@ -825,7 +842,7 @@ export function AppLayout({
                       openPanel === 'actions' ? 'bg-brand-navy-light' : ''
                     }`}
                   >
-                    Parametrlar
+                    {actionsLabel}
                     <ChevronDownIcon open={openPanel === 'actions'} />
                   </button>
                 )}
