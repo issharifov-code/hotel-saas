@@ -114,7 +114,34 @@ describe('GuestsController (HTTP)', () => {
         .set('Authorization', `Bearer ${tokenFor()}`)
         .expect(200);
 
-      expect(guestsService.list).toHaveBeenCalledWith('t1', 'Aliyev');
+      expect(guestsService.list).toHaveBeenCalledWith('t1', {
+        search: 'Aliyev',
+        name: undefined,
+        communication: undefined,
+        documentNumber: undefined,
+        nationality: undefined,
+      });
+    });
+
+    // 2026-09-04: alohida qidiruv maydonlari (OPERA "Manage Profile" uslubi).
+    it('alohida maydonlar servisga to\'liq uzatiladi', async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['guest_crm:view']),
+      );
+      guestsService.list.mockResolvedValue([]);
+
+      await request(app.getHttpServer())
+        .get('/guests?name=Ali&communication=998&documentNumber=AA12&nationality=UZ')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(200);
+
+      expect(guestsService.list).toHaveBeenCalledWith('t1', {
+        search: undefined,
+        name: 'Ali',
+        communication: '998',
+        documentNumber: 'AA12',
+        nationality: 'UZ',
+      });
     });
   });
 
