@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import type {
   AccountDepartment,
+  BudgetPerformanceDto,
   HousekeepingStatus,
   HousekeepingTaskDto,
   HousekeepingTaskStatus,
@@ -455,6 +456,179 @@ function FrontDeskTab({
   );
 }
 
+const MONTH_SHORT = [
+  'Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn',
+  'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek',
+];
+
+type BudgetMetric = 'revenue' | 'occupancy' | 'adr';
+
+const BUDGET_METRIC_LABELS: Record<BudgetMetric, string> = {
+  revenue: 'Daromad',
+  occupancy: 'Bandlik',
+  adr: 'ADR',
+};
+
+// "Reja vs haqiqat" — oylik budjet va haqiqiy natija yonma-yon.
+// Kutubxonasiz SVG (loyihada chart kutubxonasi yo'q, TrendChart bilan bir xil
+// yondashuv), lekin bu yerda har oyda IKKITA ustun: reja va haqiqat.
+function BudgetVsActualCard({
+  data,
+  currency,
+}: {
+  data: BudgetPerformanceDto;
+  currency: string;
+}) {
+  const [metric, setMetric] = useState<BudgetMetric>('revenue');
+
+  const pick = (m: BudgetPerformanceDto['months'][number]) => {
+    if (metric === 'revenue')
+      return { budget: m.budget.roomsRevenue, actual: m.actual.roomsRevenue };
+    if (metric === 'occupancy')
+      return {
+        budget: m.budget.occupancyRatePct,
+        actual: m.actual.occupancyRatePct,
+      };
+    return { budget: m.budget.adr, actual: m.actual.adr };
+  };
+
+  const format = (v: number) =>
+    metric === 'occupancy'
+      ? `${v.toLocaleString('uz-UZ')}%`
+      : `${Math.round(v).toLocaleString('uz-UZ')} ${currency}`;
+
+  const rows = data.months.map((m) => ({ month: m.month, isPartial: m.isPartial, isFuture: m.isFuture, ...pick(m) }));
+  const max = Math.max(1, ...rows.flatMap((r) => [r.budget ?? 0, r.actual]));
+
+  // Yillik jamlanma — faqat daromad uchun mazmunli (yig'indi ko'rsatkich).
+  // Bandlik/ADR o'rtacha bo'lgani uchun ularni qo'shib bo'lmaydi.
+  const totalBudget = rows.reduce((s, r) => s + (r.budget ?? 0), 0);
+  const totalActual = rows.reduce((s, r) => s + r.actual, 0);
+  const hasAnyBudget = rows.some((r) => r.budget !== null);
+
+  // viewBox nisbati kartaning shakliga yaqin bo'lishi kerak — aks holda SVG
+  // `w-full` bo'lsa ham o'rtada qolib, chap/o'ngda bo'sh joy qoladi.
+  const width = 1200;
+  const height = 170;
+  const groupGap = 8;
+  const groupWidth = (width - groupGap * 11) / 12;
+  const barWidth = groupWidth / 2 - 1;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">
+            Reja vs haqiqat — {data.year}
+          </h3>
+          {metric === 'revenue' && hasAnyBudget && (
+            <p className="mt-0.5 text-xs text-slate-500">
+              Yillik reja {Math.round(totalBudget).toLocaleString('uz-UZ')} · haqiqat{' '}
+              {Math.round(totalActual).toLocaleString('uz-UZ')} {currency}
+            </p>
+          )}
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1">
+          {(Object.keys(BUDGET_METRIC_LABELS) as BudgetMetric[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMetric(m)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                metric === m
+                  ? 'chip-active'
+                  : 'text-slate-600 hover:bg-brand-navy-light hover:text-brand-navy'
+              }`}
+            >
+              {BUDGET_METRIC_LABELS[m]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!hasAnyBudget ? (
+        <p className="py-6 text-center text-sm text-slate-500">
+          {data.year}-yil uchun reja kiritilmagan —{' '}
+          <Link to="/budget" className="text-brand-navy underline">
+            Budjet
+          </Link>{' '}
+          sahifasidan kiritishingiz mumkin.
+        </p>
+      ) : (
+        <>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full h-44"
+            role="img"
+            aria-label="Reja va haqiqat taqqoslash grafigi"
+          >
+            {rows.map((r, i) => {
+              const x = i * (groupWidth + groupGap);
+              const budgetH = r.budget !== null ? Math.max(1, (r.budget / max) * (height - 26)) : 0;
+              const actualH = Math.max(r.actual > 0 ? 1 : 0, (r.actual / max) * (height - 26));
+              return (
+                <g key={r.month}>
+                  {r.budget !== null && (
+                    <>
+                      <title>{`${MONTH_SHORT[r.month - 1]} reja: ${format(r.budget)}`}</title>
+                      <rect
+                        x={x}
+                        y={height - budgetH - 18}
+                        width={barWidth}
+                        height={budgetH}
+                        rx={2}
+                        className="fill-slate-300"
+                      />
+                    </>
+                  )}
+                  {!r.isFuture && (
+                    <g>
+                      <title>
+                        {`${MONTH_SHORT[r.month - 1]} haqiqat: ${format(r.actual)}${r.isPartial ? ' (oy tugamagan)' : ''}`}
+                      </title>
+                      <rect
+                        x={x + barWidth + 2}
+                        y={height - actualH - 18}
+                        width={barWidth}
+                        height={actualH}
+                        rx={2}
+                        // Tugamagan oy — ochroq rang, chunki uni to'liq oy
+                        // rejasi bilan solishtirish adolatsiz.
+                        className={r.isPartial ? 'fill-brand-navy/40' : 'fill-brand-navy'}
+                      />
+                    </g>
+                  )}
+                  <text
+                    x={x + groupWidth / 2}
+                    y={height - 4}
+                    textAnchor="middle"
+                    className="fill-slate-400"
+                    fontSize={9}
+                  >
+                    {MONTH_SHORT[r.month - 1]}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300" /> Reja
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-brand-navy" /> Haqiqat
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-brand-navy/40" /> Joriy oy (tugamagan)
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // "Moliyaviy / Rev Mgt" tabi — Umumiy tabda allaqachon yuklangan `overview`ni qayta
 // ishlatadi (ADR/RevPAR/bandlik/to'lanmagan hisob-fakturalar), qo'shimcha ravishda
 // joriy oy uchun USALI daromadlar hisobotini (accounting:view) yuklaydi.
@@ -473,6 +647,9 @@ function MoliyaviyTab({
 }) {
   const [income, setIncome] = useState<IncomeStatementDto | null>(null);
   const [incomeError, setIncomeError] = useState<string | null>(null);
+  // "Reja vs haqiqat" — budjet ma'lumotini oshkor qilgani uchun endpoint ham
+  // accounting:view talab qiladi, ya'ni income-statement bilan bir xil shart.
+  const [budgetPerf, setBudgetPerf] = useState<BudgetPerformanceDto | null>(null);
   const from = firstDayOfMonthIso();
   const to = todayIso();
 
@@ -482,6 +659,11 @@ function MoliyaviyTab({
     apiFetch<IncomeStatementDto>(`/properties/${propertyId}/accounting/income-statement?from=${from}&to=${to}`)
       .then(setIncome)
       .catch(() => setIncomeError("Daromadlar hisobotini yuklashda xatolik yuz berdi"));
+    // Grafik ikkinchi darajali — yuklanmasa butun tabni xato bilan
+    // to'ldirmaymiz, shunchaki ko'rsatmaymiz.
+    apiFetch<BudgetPerformanceDto>(`/properties/${propertyId}/reports/budget-performance`)
+      .then(setBudgetPerf)
+      .catch(() => setBudgetPerf(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId, canAccounting]);
 
@@ -528,6 +710,12 @@ function MoliyaviyTab({
       )}
       {overviewError && <p className="text-sm text-rose-600 mt-3">{overviewError}</p>}
       {!overview && !overviewError && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
+
+      {canAccounting && budgetPerf && (
+        <div className="mt-3">
+          <BudgetVsActualCard data={budgetPerf} currency={currency} />
+        </div>
+      )}
 
       {canAccounting && (
         <div className="mt-3">
