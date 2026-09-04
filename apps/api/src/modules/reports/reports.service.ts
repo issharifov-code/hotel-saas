@@ -191,6 +191,17 @@ export interface SegmentPerformanceDto {
     bookingCount: number;
     revenue: number;
   }[];
+  // Nomlangan MANBA bo'yicha (2026-09-04) — `Booking.sourceProfileId`.
+  // Yuqoridagi `bySource` bilan aralashtirmaslik kerak: u KANAL
+  // (sayt/OTA/to'g'ridan-to'g'ri), bu esa aniq manba ("Instagram
+  // reklamasi"). Bron sayt orqali tushib, manbasi reklama bo'lishi mumkin —
+  // ya'ni ikkala kesim bir-birini to'ldiradi, almashtirmaydi.
+  bySourceProfile: {
+    sourceProfileId: string;
+    name: string;
+    bookingCount: number;
+    revenue: number;
+  }[];
 }
 
 // Mehmonlarni ro'yxatga olish (statutory guest registration) hisoboti —
@@ -918,6 +929,7 @@ export class ReportsService {
           source: true,
           agencyId: true,
           corporateAccountId: true,
+          sourceProfileId: true,
         },
       }),
       this.agencyRepo.find({ where: { tenantId, propertyId } }),
@@ -939,6 +951,10 @@ export class ReportsService {
     >();
     const agencyAgg = new Map<string, { count: number; revenue: number }>();
     const corpAgg = new Map<string, { count: number; revenue: number }>();
+    const sourceProfileAgg = new Map<
+      string,
+      { count: number; revenue: number }
+    >();
 
     for (const b of bookings) {
       const nights = daysBetween(b.checkIn, b.checkOut);
@@ -974,6 +990,16 @@ export class ReportsService {
         c.count += 1;
         c.revenue += amount;
         corpAgg.set(b.corporateAccountId, c);
+      }
+
+      if (b.sourceProfileId) {
+        const sp = sourceProfileAgg.get(b.sourceProfileId) ?? {
+          count: 0,
+          revenue: 0,
+        };
+        sp.count += 1;
+        sp.revenue += amount;
+        sourceProfileAgg.set(b.sourceProfileId, sp);
       }
     }
 
@@ -1027,7 +1053,35 @@ export class ReportsService {
       })
       .sort((a, b) => b.revenue - a.revenue);
 
-    return { periodDays, bySegment, bySource, byAgency, byCorporateAccount };
+    // Manba profillarining nomlari — FAQAT haqiqatan uchragan ID'lar
+    // so'raladi (butun profil jadvalini emas): mehmonxonada minglab mehmon
+    // profili bo'lishi mumkin, manbalar esa bir nechta.
+    const sourceProfileIds = [...sourceProfileAgg.keys()];
+    const sourceProfiles = sourceProfileIds.length
+      ? await this.guestRepo.find({
+          where: { tenantId, id: In(sourceProfileIds) },
+          select: { id: true, fullName: true },
+        })
+      : [];
+    const sourceProfileById = new Map(sourceProfiles.map((g) => [g.id, g]));
+
+    const bySourceProfile = [...sourceProfileAgg.entries()]
+      .map(([sourceProfileId, agg]) => ({
+        sourceProfileId,
+        name: sourceProfileById.get(sourceProfileId)?.fullName ?? "Noma'lum manba",
+        bookingCount: agg.count,
+        revenue: round2(agg.revenue),
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return {
+      periodDays,
+      bySegment,
+      bySource,
+      byAgency,
+      byCorporateAccount,
+      bySourceProfile,
+    };
   }
 
   async getGuestRegistrationReport(

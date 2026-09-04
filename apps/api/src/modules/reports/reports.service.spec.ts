@@ -58,8 +58,10 @@ describe('ReportsService', () => {
       source: BookingSource;
       agencyId: string | null;
       corporateAccountId: string | null;
+      sourceProfileId?: string | null;
     }[];
     agencies?: { id: string; name: string; commissionPct: string }[];
+    sourceProfiles?: { id: string; fullName: string }[];
     corporateAccounts?: { id: string; name: string }[];
     registrationBookings?: {
       id: string;
@@ -158,6 +160,10 @@ describe('ReportsService', () => {
     const guestQb = createQbMock(opts.loyaltyRows ?? []);
     const guestRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(guestQb),
+      // 2026-09-04: manba profillarining nomlarini olish uchun. Faqat
+      // haqiqatan uchragan ID'lar so'raladi, shuning uchun manbasiz
+      // testlarda umuman chaqirilmaydi.
+      find: jest.fn().mockResolvedValue(opts.sourceProfiles ?? []),
     };
     const agencyRepo = {
       find: jest.fn().mockResolvedValue(opts.agencies ?? []),
@@ -436,6 +442,101 @@ describe('ReportsService', () => {
           commissionOwed: 20,
         },
       ]);
+    });
+
+    describe('nomlangan manba (sourceProfile)', () => {
+      const bron = (
+        totalAmount: string,
+        sourceProfileId: string | null,
+        source = BookingSource.WEBSITE,
+      ) => ({
+        checkIn: '2026-08-01',
+        checkOut: '2026-08-02',
+        totalAmount,
+        marketSegment: MarketSegment.OTHER,
+        source,
+        agencyId: null,
+        corporateAccountId: null,
+        sourceProfileId,
+      });
+
+      it("manba bo'yicha daromadni jamlaydi va kamayish tartibida saralaydi", async () => {
+        const service = createService({
+          segmentBookings: [
+            bron('100.00', 'sp1'),
+            bron('900.00', 'sp2'),
+            bron('50.00', 'sp1'),
+          ],
+          sourceProfiles: [
+            { id: 'sp1', fullName: 'Instagram reklamasi' },
+            { id: 'sp2', fullName: 'Hamkor restoran' },
+          ],
+        });
+        const result = await service.getSegmentPerformance('t1', 'p1', 30);
+        expect(result.bySourceProfile).toEqual([
+          {
+            sourceProfileId: 'sp2',
+            name: 'Hamkor restoran',
+            bookingCount: 1,
+            revenue: 900,
+          },
+          {
+            sourceProfileId: 'sp1',
+            name: 'Instagram reklamasi',
+            bookingCount: 2,
+            revenue: 150,
+          },
+        ]);
+      });
+
+      it('🔴 manba KANALDAN mustaqil hisoblanadi', async () => {
+        // Bir xil manba turli kanallar orqali kelishi mumkin (sayt va OTA).
+        // `bySource` ularni ajratadi, `bySourceProfile` esa birlashtiradi —
+        // ikkala kesim bir-birini to'ldiradi.
+        const service = createService({
+          segmentBookings: [
+            bron('100.00', 'sp1', BookingSource.WEBSITE),
+            bron('200.00', 'sp1', BookingSource.OTA),
+          ],
+          sourceProfiles: [{ id: 'sp1', fullName: 'Instagram reklamasi' }],
+        });
+        const result = await service.getSegmentPerformance('t1', 'p1', 30);
+        expect(result.bySourceProfile).toEqual([
+          {
+            sourceProfileId: 'sp1',
+            name: 'Instagram reklamasi',
+            bookingCount: 2,
+            revenue: 300,
+          },
+        ]);
+        const web = result.bySource.find(
+          (r) => r.source === BookingSource.WEBSITE,
+        );
+        const ota = result.bySource.find((r) => r.source === BookingSource.OTA);
+        expect(web?.revenue).toBe(100);
+        expect(ota?.revenue).toBe(200);
+      });
+
+      it("manbasiz bronlar ro'yxatga tushmaydi va profil so'ralmaydi", async () => {
+        // Ortiqcha so'rov qilmaslik muhim: mehmonxonada minglab mehmon
+        // profili bo'lishi mumkin.
+        const service = createService({
+          segmentBookings: [bron('100.00', null)],
+        });
+        const result = await service.getSegmentPerformance('t1', 'p1', 30);
+        expect(result.bySourceProfile).toEqual([]);
+      });
+
+      it("o'chirilgan profil uchun \"Noma'lum manba\" ko'rsatiladi", async () => {
+        // FK SET NULL bo'lgani uchun amalda kamdan-kam, lekin hisobot
+        // baribir yiqilmasligi kerak.
+        const service = createService({
+          segmentBookings: [bron('100.00', 'yoq')],
+          sourceProfiles: [],
+        });
+        const result = await service.getSegmentPerformance('t1', 'p1', 30);
+        expect(result.bySourceProfile[0].name).toBe("Noma'lum manba");
+      });
     });
 
     it("korporativ hisob bo'yicha daromadni to'g'ri hisoblaydi va daromad bo'yicha kamayish tartibida saralaydi", async () => {
