@@ -309,7 +309,7 @@ export function AppLayout({
   title,
   help,
   actions,
-  actionsLabel = 'Yaratish',
+  actionsLabel = 'Parametrlar',
   onActionsClick,
 }: {
   children: ReactNode;
@@ -323,10 +323,10 @@ export function AppLayout({
   // Sahifaning o'z amallari (ochiladigan paneldagi ro'yxat) — OPERA'dagi
   // "I Want To..." panelining o'rnida.
   actions?: ReactNode;
-  // Panel tugmasining nomi. Standarti "Yaratish" (2026-09-04, foydalanuvchi
-  // qarori — avval "Parametrlar" edi, lekin panel ichida asosan yangi yozuv
-  // ochadigan amallar turadi). Amallari boshqacha bo'lgan sahifa o'z nomini
-  // bera oladi.
+  // Panel tugmasining nomi. Standarti "Parametrlar" (2026-09-04,
+  // foydalanuvchi qarori): panel ichida faqat yaratish emas, boshqa amallar
+  // ham bo'ladi, shuning uchun umumiy nom. Amallari boshqacha bo'lgan sahifa
+  // o'z nomini bera oladi.
   actionsLabel?: string;
   // Berilsa, tugma ostiga ro'yxat ochish O'RNIGA shu funksiya chaqiriladi —
   // sahifa o'zi modal oyna ochishi uchun (Profillar sahifasidagi "Yaratish").
@@ -757,7 +757,13 @@ export function AppLayout({
             kontentning o'z fonida turadi, alohida oq lenta emas. Pastdagi
             `border-b` esa endi shu ikki qatlamni ajratib turadigan yagona
             belgi (ikkalasi bir xil rangda bo'lgani uchun u zarur). */}
-        <header className="shrink-0 bg-slate-50 border-b border-slate-200 px-4 sm:px-8 py-3">
+        {/* 2026-09-04 (foydalanuvchi fikri): sarlavha ostidagi `border-b`
+            OLIB TASHLANDI. Sabab — kontent allaqachon o'z panellari bilan
+            keladi va ularning yuqori qatori endi to'qroq fonda; chiziq
+            uchinchi bo'lib qo'shilib, sahifa tepasini qatlam-qatlam qilib
+            yuborardi. Chiziq egallagan joyni pastdagi kontent egallaydi
+            (`<main>` tepa padding'i kichraytirildi). */}
+        <header className="shrink-0 bg-slate-50 px-4 sm:px-8 pt-3 pb-1">
           {!isDashboard && (
             <div className="flex items-center justify-between gap-4">
               <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xs text-slate-900">
@@ -890,7 +896,10 @@ export function AppLayout({
             )}
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+        {/* Tepa padding pastnikidan kichik: sarlavha bilan birinchi panel
+            orasida endi chiziq yo'q, shuning uchun katta bo'shliq ham
+            kerak emas — kontent yuqoriga "ko'tarildi". */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 pt-1 pb-6">
           <SampleDataBanner />
           {children}
         </main>

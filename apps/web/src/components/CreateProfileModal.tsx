@@ -70,14 +70,14 @@ export function CreateProfileModal({
   }
 
   return (
-    <Modal title="Yaratish" onClose={onClose} width="max-w-2xl">
+    <Modal title="Parametrlar" onClose={onClose} width="max-w-2xl">
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <p className="mb-2 flex items-center gap-2 text-sm text-slate-900">
             <span className="text-slate-400">
               <PlusIcon />
             </span>
-            Yangi profil
+            Profil yaratish
           </p>
           <div className="space-y-0.5">
             {PROFILE_TYPES.map((t) => (
@@ -112,7 +112,7 @@ export function CreateProfileModal({
               className="block w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-brand-navy-light disabled:opacity-40 disabled:hover:bg-transparent"
             >
               <span className="block text-sm text-brand-navy">
-                Ikkilanmalarni birlashtirish
+                Dublikat profillarni birlashtirish
               </span>
               <span className="block text-[11px] text-slate-500">
                 Bir odam uchun xato bilan ochilgan ikkita profil
