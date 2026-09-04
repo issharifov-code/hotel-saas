@@ -296,7 +296,24 @@ function formatBusinessDate(isoDate: string): string {
   return `${WEEKDAY_FULL[date.getDay()]}, ${dayMonth}, ${y}`;
 }
 
-export function AppLayout({ children, title }: { children: ReactNode; title: string }) {
+export function AppLayout({
+  children,
+  title,
+  help,
+  actions,
+}: {
+  children: ReactNode;
+  title: string;
+  // Sahifaga XOS yordam matni (2026-09-04, foydalanuvchi qarori). Berilsa,
+  // sarlavha yonida "?" chiqadi va javob shu yerda, sahifadan chiqmasdan
+  // ochiladi. Avval navigatsiya qatorida umumiy "?" bor edi — u olib
+  // tashlandi: umumiy yordam "bu sahifa nima qiladi" degan savolga javob
+  // bera olmasdi.
+  help?: ReactNode;
+  // Sahifaning o'z amallari ("Parametrlar" ichidagi ro'yxat) — OPERA'dagi
+  // "I Want To..." panelining o'rnida.
+  actions?: ReactNode;
+}) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
 
@@ -376,6 +393,12 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = () => setDrawerOpen(false);
 
+  // Sahifaga xos yordam paneli (sarlavha yonidagi "?"). Bir vaqtda faqat
+  // bittasi ochiq bo'ladi — yordam yoki amallar ro'yxati.
+  const [openPanel, setOpenPanel] = useState<'help' | 'actions' | null>(null);
+  const togglePanel = (p: 'help' | 'actions') =>
+    setOpenPanel((prev) => (prev === p ? null : p));
+
   // Kontentni surish faqat keng ekranda (Tailwind `lg` = 64rem). Inline
   // style'da media query ishlatib bo'lmagani uchun buni JS kuzatadi.
   const [isWideScreen, setIsWideScreen] = useState(
@@ -410,6 +433,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
     }
     closeGroup();
     closeDrawer();
+    setOpenPanel(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
@@ -610,7 +634,12 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                 <ChevronDownIcon open={openGroup === section.key} />
               </button>
               {openGroup === section.key && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
+                /* 2026-09-04 (foydalanuvchi fikri): eni endi qat'iy
+                   `min-w-[220px]` emas, `w-max` — ya'ni ro'yxatdagi ENG
+                   UZUN element bo'yicha o'lchanadi. Avval panel har doim
+                   220px bo'lgani uchun strelka so'zdan uzoqda, o'ng
+                   chekkada osilib qolardi. */
+                <div className="absolute left-0 top-full z-50 mt-1 w-max rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
                   {section.items.map((item) =>
                     item.children ? (
                       <div
@@ -620,7 +649,11 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                         onMouseLeave={() => setOpenSubmenu(null)}
                       >
                         <div
-                          className={`flex items-center justify-between gap-3 px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+                          // `justify-between` + ustki `w-max`: belgi eng uzun
+                          // element enidan keyin turadi, ya'ni butun ro'yxatda
+                          // bitta vertikalda tekislanadi. `gap-2` — taxminan
+                          // bitta probel kengligi.
+                          className={`flex items-center justify-between gap-2 px-4 py-2 text-sm whitespace-nowrap transition-colors ${
                             openSubmenu === item.label
                               ? 'bg-slate-50 text-brand-navy'
                               : 'text-brand-navy hover:bg-slate-50'
@@ -633,7 +666,7 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                             o'ngga, birinchi darajali panel bilan bir xil
                             balandlikda (top-0) ochiladi. */}
                         {openSubmenu === item.label && (
-                          <div className="absolute left-full top-0 z-50 ml-1 min-w-[220px] rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
+                          <div className="absolute left-full top-0 z-50 ml-1 w-max rounded-2xl border border-slate-200 bg-white py-1.5 shadow-lg">
                             {item.children.map((child) => (
                               <NavLink
                                 key={child.to}
@@ -690,17 +723,6 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
             ))
           ),
         )}
-        {/* Yordam ("?") — 2026-09-04 foydalanuvchi fikri bo'yicha navy
-            header'dan shu qatorga, bir pog'ona pastga tushirildi.
-            `ml-auto` bilan qatorning eng o'ng chetiga tiraladi. */}
-        <Link
-          to="/help"
-          aria-label="Yordam"
-          title="Yordam"
-          className="ml-auto shrink-0 rounded-full p-1.5 text-brand-navy transition-colors hover:bg-brand-navy-light"
-        >
-          <HelpIcon />
-        </Link>
       </nav>
       {/* Dropdown ochiq bo'lganda, undan tashqariga bosilsa yopish uchun
           shaffof overlay (dropdown panelining o'zi undan yuqori z-index'da). */}
@@ -737,7 +759,10 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
                   </>
                 )}
                 <span aria-hidden="true">/</span>
-                <span className="truncate font-medium text-slate-900">{title}</span>
+                {/* 2026-09-04 (foydalanuvchi fikri): oxirgi bo'lak ham
+                    qolganlari bilan bir xil — avval `font-medium` bilan
+                    ajratilgan edi. */}
+                <span className="truncate text-slate-900">{title}</span>
               </nav>
               <Link
                 to="/dashboard"
@@ -759,11 +784,74 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
               sahifa" belgisi. `h1` semantikasi ikkala holatda ham saqlanadi
               (har sahifada bitta h1 bo'lishi kerak) — faqat uslubi farq
               qiladi. */}
-          {isDashboard ? (
-            <h1 className="text-xs font-medium text-slate-900">{title}</h1>
-          ) : (
-            <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
-          )}
+          <div className="relative flex items-start justify-between gap-4">
+            {isDashboard ? (
+              <h1 className="text-xs font-medium text-slate-900">{title}</h1>
+            ) : (
+              <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
+            )}
+
+            {/* O'ng tomon — OPERA'dagi "Help | Create ... | I Want To..."
+                qatorining o'rni (2026-09-04, foydalanuvchi fikri). Ikkalasi
+                ham FAQAT sahifa bergan bo'lsa chiqadi. */}
+            {(help || actions) && (
+              // `relative z-30` — tugmalar yopuvchi qatlamdan (z-20) YUQORIDA
+              // turishi shart: aks holda panel ochiq bo'lganda qatlam
+              // tugmani to'sib qo'yardi va bir xil tugmani bosib yopib
+              // bo'lmasdi (faqat chetga bosish ishlardi).
+              <div className="relative z-30 flex shrink-0 items-center gap-2 text-sm">
+                {help && (
+                  <button
+                    type="button"
+                    onClick={() => togglePanel('help')}
+                    aria-expanded={openPanel === 'help'}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-brand-navy transition-colors hover:bg-brand-navy-light ${
+                      openPanel === 'help' ? 'bg-brand-navy-light' : ''
+                    }`}
+                  >
+                    <HelpIcon />
+                    Yordam
+                  </button>
+                )}
+                {help && actions && (
+                  <span className="h-5 w-px bg-slate-300" aria-hidden="true" />
+                )}
+                {actions && (
+                  <button
+                    type="button"
+                    onClick={() => togglePanel('actions')}
+                    aria-expanded={openPanel === 'actions'}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-brand-navy transition-colors hover:bg-brand-navy-light ${
+                      openPanel === 'actions' ? 'bg-brand-navy-light' : ''
+                    }`}
+                  >
+                    Parametrlar
+                    <ChevronDownIcon open={openPanel === 'actions'} />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {openPanel && (
+              <>
+                {/* Tashqariga bosilganda yopilishi uchun shaffof qatlam */}
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setOpenPanel(null)}
+                  aria-hidden="true"
+                />
+                <div className="absolute right-0 top-full z-30 mt-2 w-max max-w-[min(28rem,90vw)] rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
+                  {openPanel === 'help' ? (
+                    <div className="text-sm text-slate-900 [&_p]:mb-2 [&_p:last-child]:mb-0">
+                      {help}
+                    </div>
+                  ) : (
+                    actions
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
           <SampleDataBanner />
