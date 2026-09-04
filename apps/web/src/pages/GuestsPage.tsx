@@ -1,14 +1,24 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { Modal } from '../components/Modal';
+import { AlertModal } from '../components/AlertModal';
+import { CountryPicker } from '../components/CountryPicker';
+import { CreateProfileModal } from '../components/CreateProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, ApiError } from '../lib/api';
+import { countryName } from '../lib/countries';
+import {
+  PROFILE_TYPES,
+  isOrganizationType,
+  profileTypeMeta,
+} from '../lib/profile-types';
 import type {
   BookingDto,
   CommunicationPreference,
   GuestDto,
   LoyaltyTier,
   LoyaltyTransactionDto,
+  ProfileType,
 } from '../lib/types';
 
 const TIER_LABELS: Record<LoyaltyTier, string> = {
@@ -61,7 +71,7 @@ export function GuestsPage() {
   const [guests, setGuests] = useState<GuestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
 
@@ -72,6 +82,9 @@ export function GuestsPage() {
   const [communication, setCommunication] = useState('');
   const [documentNumber, setDocumentNumber] = useState('');
   const [nationality, setNationality] = useState('');
+  // Bo'sh satr = "Barchasi". Standarti ataylab shu: sahifa nomi
+  // "Profillarni boshqarish" — kirganda hamma tur ko'rinishi kerak.
+  const [profileType, setProfileType] = useState<ProfileType | ''>('');
 
   const load = async (f: Record<string, string> = {}) => {
     setLoading(true);
@@ -103,9 +116,21 @@ export function GuestsPage() {
   // o'zi kutmagan filtr bilan qayta yuklanib ketardi.
   const [qollanilgan, setQollanilgan] = useState<Record<string, string>>({});
 
+  // Bo'sh qidiruv ogohlantirishi (2026-09-04, foydalanuvchi qarori). Hech
+  // narsa kiritmasdan "Qidirish" bosish texnik jihatdan butun ro'yxatni
+  // qaytarardi — lekin foydalanuvchi buni "qidiruv ishlamadi" deb tushunardi.
+  // Endi aniq aytiladi. (Butun ro'yxat kerak bo'lsa "Tozalash" bor.)
+  const [ogohlantirish, setOgohlantirish] = useState<string | null>(null);
+
   const qidirish = (e: FormEvent) => {
     e.preventDefault();
-    const f = { name, communication, documentNumber, nationality };
+    const f = { name, communication, documentNumber, nationality, profileType };
+    // Profil turi ham MEZON hisoblanadi: faqat "Kompaniya" tanlab qidirish
+    // to'liq ma'noli so'rov.
+    if (Object.values(f).every((v) => v.trim() === '')) {
+      setOgohlantirish('Qidirish uchun kamida bitta mezon kiriting');
+      return;
+    }
     setQollanilgan(f);
     load(f);
   };
@@ -115,6 +140,7 @@ export function GuestsPage() {
     setCommunication('');
     setDocumentNumber('');
     setNationality('');
+    setProfileType('');
     setQollanilgan({});
     load();
   };
@@ -128,47 +154,36 @@ export function GuestsPage() {
         <>
           <p className="font-semibold">Profillarni boshqarish nima?</p>
           <p>
-            Profil — mehmonxonaga kelgan yoki keladigan har bir mehmonning doimiy
-            yozuvi: ismi, aloqa ma&apos;lumotlari, hujjati, fuqaroligi va afzalliklari.
+            Profil — mehmonxona ish yuritadigan har bir shaxs yoki tashkilotning
+            doimiy yozuvi. Olti xil turi bor:
+          </p>
+          <p>
+            <b className="font-medium">Mehmon</b> — xonada turadigan jismoniy shaxs
+            (hujjati, fuqaroligi, sodiqlik ballari bilan).{' '}
+            <b className="font-medium">Kompaniya</b> — xodimlarini joylashtiradigan
+            tashkilot. <b className="font-medium">Turagent</b> — bron olib keladigan
+            agentlik (komissiya bilan). <b className="font-medium">Manba</b> — bronlar
+            qayerdan kelayotgani. <b className="font-medium">Guruh</b> — bir nechta bron
+            uchun umumiy nom. <b className="font-medium">Kontakt</b> — tashkilotdagi
+            aniq odam.
           </p>
           <p>
             Bron qilinganda mehmon shu yerdan tanlanadi — ya&apos;ni bir odam necha
-            marta kelsa ham, tarixi bitta profilda to&apos;planadi: nechta marta
-            kelgani, sodiqlik ballari va xona afzalliklari.
+            marta kelsa ham, tarixi bitta profilda to&apos;planadi. Bronda faqat
+            <b className="font-medium"> Mehmon</b> turidagi profillar taklif qilinadi.
           </p>
           <p>
-            Shu sahifada profillarni qidirasiz, yangisini qo&apos;shasiz va bir odam
-            uchun xato bilan ikkita profil ochilib qolgan bo&apos;lsa
-            (&quot;Ikkilanmalar&quot;) ularni birlashtirasiz.
+            Yangi profil <b className="font-medium">&quot;Yaratish&quot;</b> tugmasi
+            orqali ochiladi — avval turi tanlanadi, keyin shu turga mos forma
+            chiqadi. Bir odam uchun xato bilan ikkita profil ochilgan bo&apos;lsa,
+            o&apos;sha oynadagi &quot;Ikkilanmalarni birlashtirish&quot; yordam beradi.
           </p>
         </>
       }
-      actions={
-        // Panel tugmasining o'zi allaqachon "Yaratish" deb turibdi —
-        // shuning uchun ichida yana sarlavha takrorlanmaydi.
-        <div className="min-w-[200px]">
-          <div className="space-y-0.5">
-            {can('guest_crm', 'create') && (
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light"
-              >
-                Mehmon profili
-              </button>
-            )}
-            {can('guest_crm', 'delete') && (
-              <button
-                type="button"
-                onClick={() => setShowDuplicates(true)}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy-light"
-              >
-                Ikkilanmalarni birlashtirish
-              </button>
-            )}
-          </div>
-        </div>
-      }
+      // "Yaratish" endi ostiga ochiladigan ro'yxat emas, oyna ochadi
+      // (2026-09-04, OPERA Cloud "I Want To..." referensi): profil turlari
+      // olti xil bo'lgani uchun kichkina ro'yxat ularni tushuntira olmasdi.
+      onActionsClick={() => setShowCreate(true)}
     >
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
@@ -177,7 +192,7 @@ export function GuestsPage() {
           ishlatiladigan to'rttasi. Yig'iladigan qilib qo'yilgan: qidiruv
           tugagach ro'yxatga joy bo'shatadi. */}
       <details open className="group mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-900">
+        <summary className="panel-header flex cursor-pointer list-none items-center justify-between">
           Qidirish
           <span className="text-brand-navy transition-transform group-open:rotate-180" aria-hidden="true">
             <ChevronDownIcon />
@@ -207,14 +222,24 @@ export function GuestsPage() {
                 placeholder="Pasport / ID"
               />
             </label>
-            <label className="block">
+            <div className="block">
               <span className="mb-1 block text-xs text-slate-900">Fuqarolik</span>
-              <input
-                value={nationality}
-                onChange={(e) => setNationality(e.target.value)}
+              <CountryPicker value={nationality} onChange={setNationality} />
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-900">Profil turi</span>
+              <select
+                value={profileType}
+                onChange={(e) => setProfileType(e.target.value as ProfileType | '')}
                 className="input"
-                placeholder="masalan: UZ"
-              />
+              >
+                <option value="">Barchasi</option>
+                {PROFILE_TYPES.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.shortLabel}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
           {/* Tugmalar HAR DOIM ko'rinadi (faqat filtr bor paytda emas):
@@ -232,7 +257,7 @@ export function GuestsPage() {
       </details>
 
       <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
-        {!loading && guests.length === 0 && <p className="p-4 text-sm text-slate-500">Mehmon topilmadi</p>}
+        {!loading && guests.length === 0 && <p className="p-4 text-sm text-slate-500">Profil topilmadi</p>}
         {guests.map((g) => (
           <button
             key={g.id}
@@ -242,23 +267,45 @@ export function GuestsPage() {
             <div>
               <p className="font-medium text-slate-900 flex items-center gap-2">
                 {g.fullName}
-                <TierBadge tier={g.loyaltyTier} />
+                {/* Sodiqlik darajasi faqat jismoniy mehmonda ma'noli —
+                    kompaniyaning "Bronza" bo'lishi mantiqsiz. */}
+                {g.profileType === 'guest' ? (
+                  <TierBadge tier={g.loyaltyTier} />
+                ) : (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    {profileTypeMeta(g.profileType).shortLabel}
+                  </span>
+                )}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {[g.phone, g.email, g.nationality].filter(Boolean).join(' · ') || '—'}
+                {[g.phone, g.email, countryName(g.nationality), g.taxId && `STIR ${g.taxId}`]
+                  .filter(Boolean)
+                  .join(' · ') || '—'}
               </p>
             </div>
-            <p className="text-xs text-slate-500 shrink-0">{g.loyaltyPoints} ball</p>
+            {g.profileType === 'guest' && (
+              <p className="text-xs text-slate-500 shrink-0">{g.loyaltyPoints} ball</p>
+            )}
           </button>
         ))}
       </div>
 
-      {showModal && (
-        <CreateGuestModal
-          onClose={() => setShowModal(false)}
+      {ogohlantirish && (
+        <AlertModal message={ogohlantirish} onClose={() => setOgohlantirish(null)} />
+      )}
+
+      {showCreate && (
+        <CreateProfileModal
+          canCreate={can('guest_crm', 'create')}
+          canMerge={can('guest_crm', 'delete')}
+          onClose={() => setShowCreate(false)}
           onCreated={() => {
-            setShowModal(false);
+            setShowCreate(false);
             qaytaYuklash();
+          }}
+          onMergeDuplicates={() => {
+            setShowCreate(false);
+            setShowDuplicates(true);
           }}
         />
       )}
@@ -278,64 +325,6 @@ export function GuestsPage() {
         />
       )}
     </AppLayout>
-  );
-}
-
-function CreateGuestModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [nationality, setNationality] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      await apiFetch('/guests', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName,
-          phone: phone || undefined,
-          email: email || undefined,
-          nationality: nationality || undefined,
-        }),
-      });
-      onCreated();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Xatolik yuz berdi');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Modal title="Yangi mehmon" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-3">
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">To'liq ism</span>
-          <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className="input" />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Telefon</span>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" placeholder="+998..." />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Fuqarolik</span>
-          <input value={nationality} onChange={(e) => setNationality(e.target.value)} className="input" />
-        </label>
-        {error && <p className="text-sm text-rose-600">{error}</p>}
-        <button type="submit" disabled={submitting} className="btn-primary w-full">
-          {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
-        </button>
-      </form>
-    </Modal>
   );
 }
 
@@ -380,22 +369,38 @@ function GuestDetailModal({ guestId, onClose, onChanged }: { guestId: string; on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestId]);
 
+  // Sodiqlik faqat jismoniy mehmonda bo'ladi — kompaniya/turagent profilida
+  // "Loyalty" tabi ham, ball satri ham ko'rsatilmaydi (2026-09-04).
+  const isGuestProfile = guest?.profileType === 'guest';
+
   const TABS: { key: DetailTab; label: string }[] = [
     { key: 'profile', label: 'Profil' },
-    { key: 'loyalty', label: 'Loyalty' },
+    ...(isGuestProfile
+      ? [{ key: 'loyalty' as DetailTab, label: 'Loyalty' }]
+      : []),
     { key: 'stays', label: 'Turgan kunlari' },
   ];
 
   return (
-    <Modal title={guest ? guest.fullName : 'Mehmon'} onClose={onClose} width="max-w-2xl">
+    <Modal title={guest ? guest.fullName : 'Profil'} onClose={onClose} width="max-w-2xl">
       {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
       {loading || !guest ? (
         <p className="text-sm text-slate-500">Yuklanmoqda...</p>
       ) : (
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <TierBadge tier={guest.loyaltyTier} />
-            <span className="text-sm text-slate-600">{guest.loyaltyPoints} ball (jami to'plangan: {guest.lifetimePoints})</span>
+            {isGuestProfile ? (
+              <>
+                <TierBadge tier={guest.loyaltyTier} />
+                <span className="text-sm text-slate-600">
+                  {guest.loyaltyPoints} ball (jami to'plangan: {guest.lifetimePoints})
+                </span>
+              </>
+            ) : (
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
+                {profileTypeMeta(guest.profileType).shortLabel}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
@@ -501,26 +506,49 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
   const [communicationPreference, setCommunicationPreference] = useState<CommunicationPreference>(
     guest.communicationPreference,
   );
+  const [taxId, setTaxId] = useState(guest.taxId ?? '');
+  const [address, setAddress] = useState(guest.address ?? '');
+  const [city, setCity] = useState(guest.city ?? '');
+  const [contactPerson, setContactPerson] = useState(guest.contactPerson ?? '');
+  const [commissionPct, setCommissionPct] = useState(guest.commissionPct ?? '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Qaysi maydonlar ko'rsatilishi profil turiga bog'liq — server ham aynan
+  // shunday cheklaydi, ya'ni yashirilgan maydonni yuborish 400 qaytaradi.
+  const isGuest = guest.profileType === 'guest';
+  const isOrg = isOrganizationType(guest.profileType);
+  const hasContactPerson = isOrg || guest.profileType === 'group';
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
+      const body: Record<string, unknown> = {
+        phone: phone || undefined,
+        email: email || undefined,
+        notes: notes || undefined,
+        communicationPreference,
+      };
+      if (isGuest) {
+        body.nationality = nationality || undefined;
+        body.dateOfBirth = dateOfBirth || undefined;
+        body.roomPreference = roomPreference || undefined;
+        body.dietaryPreference = dietaryPreference || undefined;
+      }
+      if (isOrg) {
+        body.taxId = taxId || undefined;
+        body.address = address || undefined;
+        body.city = city || undefined;
+      }
+      if (hasContactPerson) body.contactPerson = contactPerson || undefined;
+      if (guest.profileType === 'travel_agent' && commissionPct.trim() !== '') {
+        body.commissionPct = Number(commissionPct);
+      }
       await apiFetch(`/guests/${guest.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          phone: phone || undefined,
-          email: email || undefined,
-          nationality: nationality || undefined,
-          dateOfBirth: dateOfBirth || undefined,
-          notes: notes || undefined,
-          roomPreference: roomPreference || undefined,
-          dietaryPreference: dietaryPreference || undefined,
-          communicationPreference,
-        }),
+        body: JSON.stringify(body),
       });
       onSaved();
     } catch (e) {
@@ -541,40 +569,105 @@ function GuestProfileForm({ guest, canEdit, onSaved }: { guest: GuestDto; canEdi
           <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
           <input disabled={!canEdit} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" />
         </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Fuqarolik</span>
-          <input disabled={!canEdit} value={nationality} onChange={(e) => setNationality(e.target.value)} className="input" />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Tug'ilgan sana</span>
-          <input
-            disabled={!canEdit}
-            type="date"
-            value={dateOfBirth}
-            onChange={(e) => setDateOfBirth(e.target.value)}
-            className="input"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Xona afzalligi</span>
-          <input
-            disabled={!canEdit}
-            value={roomPreference}
-            onChange={(e) => setRoomPreference(e.target.value)}
-            className="input"
-            placeholder="masalan: Yuqori qavat, tinch xona"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-medium text-slate-600 mb-1">Parhez/allergiya</span>
-          <input
-            disabled={!canEdit}
-            value={dietaryPreference}
-            onChange={(e) => setDietaryPreference(e.target.value)}
-            className="input"
-            placeholder="masalan: Vegetarian, yong'oqqa allergiya"
-          />
-        </label>
+        {isGuest && (
+          <>
+            <div className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Fuqarolik</span>
+              <CountryPicker
+                value={nationality}
+                onChange={setNationality}
+                disabled={!canEdit}
+              />
+            </div>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Tug'ilgan sana</span>
+              <input
+                disabled={!canEdit}
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="input"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Xona afzalligi</span>
+              <input
+                disabled={!canEdit}
+                value={roomPreference}
+                onChange={(e) => setRoomPreference(e.target.value)}
+                className="input"
+                placeholder="masalan: Yuqori qavat, tinch xona"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Parhez/allergiya</span>
+              <input
+                disabled={!canEdit}
+                value={dietaryPreference}
+                onChange={(e) => setDietaryPreference(e.target.value)}
+                className="input"
+                placeholder="masalan: Vegetarian, yong'oqqa allergiya"
+              />
+            </label>
+          </>
+        )}
+        {isOrg && (
+          <>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">STIR</span>
+              <input
+                disabled={!canEdit}
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                className="input"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Shahar</span>
+              <input
+                disabled={!canEdit}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="input"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-600 mb-1">Manzil</span>
+              <input
+                disabled={!canEdit}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="input"
+              />
+            </label>
+          </>
+        )}
+        {hasContactPerson && (
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa shaxsi</span>
+            <input
+              disabled={!canEdit}
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              className="input"
+            />
+          </label>
+        )}
+        {guest.profileType === 'travel_agent' && (
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-600 mb-1">Komissiya (%)</span>
+            <input
+              disabled={!canEdit}
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              value={commissionPct}
+              onChange={(e) => setCommissionPct(e.target.value)}
+              className="input"
+            />
+          </label>
+        )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa afzalligi</span>
           <select

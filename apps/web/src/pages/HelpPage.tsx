@@ -35,12 +35,17 @@ const GUIDE_GROUPS: GuideGroup[] = [
       {
         key: 'guests',
         title: 'Profillarni boshqarish',
-        body: "Barcha mehmonlaringiz bazasi. \"Qidirish\" bo'limida ism, aloqa (telefon yoki email), hujjat raqami va fuqarolik bo'yicha qidirasiz — to'ldirilgan har bir maydon ro'yxatni toraytiradi. Maydonlarni to'ldirib \"Qidirish\" tugmasini bosing (yoki Enter), maydonlarni bo'shatib butun ro'yxatga qaytish uchun \"Tozalash\". Yangi profil \"Yaratish\" tugmasi ostidagi \"Mehmon profili\" orqali ochiladi. Har bir profilda sodiqlik darajasi (Bronza/Kumush/Oltin/Platina) va ballari ko'rinadi; profil ustiga bosib bronlar tarixi va sodiqlik tranzaksiyalarini ko'rishingiz mumkin. Bir xil mehmon ikki marta kiritilgan bo'lsa, \"Yaratish\" > \"Ikkilanmalarni birlashtirish\" orqali ularni birlashtiring.",
+        body: "Mehmonxona ish yuritadigan barcha shaxs va tashkilotlar bazasi. Olti xil profil turi bor: Mehmon (xonada turadigan jismoniy shaxs), Kompaniya, Turagent (komissiya bilan), Manba (bronlar qayerdan kelayotgani), Guruh va Kontakt (tashkilotdagi aniq odam). \"Qidirish\" bo'limida ism, aloqa (telefon yoki email), hujjat raqami, fuqarolik va profil turi bo'yicha qidirasiz — to'ldirilgan har bir maydon ro'yxatni toraytiradi. Fuqarolik yonidagi lupani bossangiz davlatlar ro'yxati ochiladi. Maydonlarni to'ldirib \"Qidirish\" tugmasini bosing (yoki Enter), butun ro'yxatga qaytish uchun \"Tozalash\". Yangi profil \"Yaratish\" tugmasi orqali ochiladi: avval turi tanlanadi, keyin shu turga mos forma chiqadi (mehmonda hujjat va fuqarolik, tashkilotda STIR va manzil). Sodiqlik darajasi (Bronza/Kumush/Oltin/Platina) faqat Mehmon turida bo'ladi. Bir odam uchun ikkita profil ochilgan bo'lsa, \"Yaratish\" > \"Ikkilanmalarni birlashtirish\" orqali ularni birlashtiring — turlari bir xil bo'lishi shart.",
+      },
+      {
+        key: 'loyalty',
+        title: 'Sodiqlik dasturi',
+        body: "Dasturning qoidalari va hozirgi holati. Mehmon to'lov qilganda avtomatik ball to'planadi. Ball ikki xil: joriy ball — sarflash mumkin bo'lgan qoldiq (ishlatilganda kamayadi), umrbod ball — hech qachon kamaymaydigan jami. Daraja (Bronza/Kumush/Oltin/Platina) aynan umrbod ball bo'yicha aniqlanadi, shuning uchun ballni sarflagan mehmon darajasini yo'qotmaydi. Sahifada har bir darajaning bo'sag'asi, qancha mehmon qaysi darajada ekani va eng ko'p ball to'plaganlar ro'yxati ko'rinadi. Ballni qo'lda tuzatish (kompensatsiya, xatoni to'g'rilash) esa mehmon profilini ochib \"Loyalty\" bo'limidan qilinadi — har bir tuzatish sababi bilan yoziladi. Sodiqlik faqat Mehmon turidagi profillarga tegishli.",
       },
       {
         key: 'messaging',
         title: 'Xabarlar',
-        body: "Mehmonlarga email yoki SMS orqali yuboriladigan xabarlarni shu yerdan boshqarasiz. \"Xabarlar tarixi\" tabida yuborilgan barcha xabarlar (kanal, mavzu, holat, vaqt) ko'rinadi. \"Shablonlar\" tabida esa bron tasdiqlandi / check-in / check-out kabi hodisalarda avtomatik yuboriladigan xabar shablonlarini sozlaysiz. \"+ Yangi xabar\" tugmasi orqali mehmonga qo'lda xabar yuborishingiz ham mumkin.",
+        body: "Mehmonlarga email yoki SMS orqali yuboriladigan xabarlarni shu yerdan boshqarasiz. Sahifa yuqori chapdagi hamburger menyusida (sozlamalar bilan birga) — chunki u asosan bir marta sozlab qo'yiladigan narsa. \"Xabarlar tarixi\" tabida yuborilgan barcha xabarlar (kanal, mavzu, holat, vaqt) ko'rinadi. \"Shablonlar\" tabida esa bron tasdiqlandi / check-in / check-out kabi hodisalarda avtomatik yuboriladigan xabar shablonlarini sozlaysiz. \"+ Yangi xabar\" tugmasi orqali mehmonga qo'lda xabar yuborishingiz ham mumkin.",
       },
     ],
   },
