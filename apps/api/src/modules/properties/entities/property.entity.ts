@@ -33,6 +33,14 @@ export class Property {
   @Column({ length: 3 })
   currency: string;
 
+  // Mehmonxonaning o'z logotipi — `data:image/...;base64,...` matni sifatida
+  // saqlanadi (qarang AddPropertyLogo migratsiyasi: Render API'sida doimiy
+  // disk yo'q, shuning uchun rasm bazada). Rasm brauzerda 256px'gacha
+  // kichraytirilib yuboriladi, backend hajmi va turini qayta tekshiradi.
+  // `null` bo'lsa — frontend nomining bosh harfi bilan piktogramma chizadi.
+  @Column({ name: 'logo_url', type: 'text', nullable: true })
+  logoUrl: string | null;
+
   // Mulkning joriy "biznes sanasi" — Night Audit ("kunni yopish") orqali
   // har safar bir kunga suriladi (NightAuditService.run). Yangi property
   // uchun DB DEFAULT CURRENT_DATE orqali bugungi sana bilan boshlanadi.
