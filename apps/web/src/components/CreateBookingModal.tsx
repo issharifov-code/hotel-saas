@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from './Modal';
+import { ProfilePicker } from './ProfilePicker';
 import { GuestPicker } from './GuestPicker';
 import { apiFetch, ApiError } from '../lib/api';
 import { addDays } from '../lib/dates';
@@ -42,6 +43,10 @@ export function CreateBookingModal({
   const [corporateAccountId, setCorporateAccountId] = useState<string>('');
   const [marketSegment, setMarketSegment] = useState<MarketSegment>('other');
   const [marketSegmentTouched, setMarketSegmentTouched] = useState(false);
+  // Bron MANBASI — nomlangan profil (2026-09-04). Pastdagi "Kanal"
+  // (source enum) bilan aralashtirmaslik kerak: kanal — texnik yo'l,
+  // manba — kim/nima olib keldi.
+  const [sourceProfileId, setSourceProfileId] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,6 +108,7 @@ export function CreateBookingModal({
           ratePlanId: ratePlanId || undefined,
           agencyId: agencyId || undefined,
           corporateAccountId: corporateAccountId || undefined,
+          sourceProfileId: sourceProfileId || undefined,
           marketSegment,
           notes: notes || undefined,
         }),
@@ -202,6 +208,14 @@ export function CreateBookingModal({
             </select>
           </label>
         )}
+
+        <ProfilePicker
+          type="source"
+          value={sourceProfileId}
+          onChange={setSourceProfileId}
+          label="Manba (ixtiyoriy)"
+          hint="Bronni kim/nima olib keldi — masalan reklama yoki hamkor"
+        />
 
         {corporateAccounts.length > 0 && (
           <label className="block">
