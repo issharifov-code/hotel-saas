@@ -53,18 +53,21 @@ const NAV_SECTIONS: NavSection[] = [
   {
     key: 'client-relations',
     label: 'Mijozlar',
-    // 2026-09 (foydalanuvchi fikri, OPERA Cloud skrinshoti): "Mehmonlar" va
-    // "Xabarlar" endi to'g'ridan-to'g'ri emas, "Profillar" degan ikkinchi
-    // darajali flyout-guruh ichida — aynan OPERA'dagi "Client Relations >
-    // Profiles > Manage Profile" tuzilishiga moslab (Suspended Stays'ning
-    // o'rnida bizda Xabarlar).
+    // 2026-09 (foydalanuvchi fikri, OPERA Cloud skrinshoti): "Profillar" —
+    // ikkinchi darajali flyout-guruh, OPERA'dagi "Client Relations >
+    // Profiles > Manage Profile" tuzilishiga moslab.
+    //
+    // 2026-09-04: "Xabarlar" bu yerdan hamburger (sozlamalar) menyusiga
+    // ko'chdi — u sozlanadigan narsa. O'rniga "Sodiqlik dasturi" keldi:
+    // u aynan profillar bilan ishlaydi (kim qaysi darajada, ball qanday
+    // to'planadi), shuning uchun shu guruhga tegishli.
     items: [
       {
         label: 'Profillar',
         moduleKey: 'guest_crm',
         children: [
           { to: '/guests', label: 'Profillarni boshqarish', moduleKey: 'guest_crm' },
-          { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
+          { to: '/loyalty', label: 'Sodiqlik dasturi', moduleKey: 'guest_crm' },
         ],
       },
     ],
@@ -155,6 +158,11 @@ const ADMIN_ITEMS: LeafNavItem[] = [
     moduleKey: 'tenant_settings',
   },
   { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
+  // 2026-09-04 (foydalanuvchi fikri): "Xabarlar" — mehmonlarga yuboriladigan
+  // xabar shablonlari va jo'natish tarixi, ya'ni KUNDALIK ish emas, bir marta
+  // sozlab qo'yiladigan narsa. Shuning uchun "Profillar" ro'yxatidan chiqib,
+  // shu sozlamalar menyusiga o'tdi.
+  { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
 ];
 const ROLES_ITEM: LeafNavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
 
@@ -302,6 +310,7 @@ export function AppLayout({
   help,
   actions,
   actionsLabel = 'Yaratish',
+  onActionsClick,
 }: {
   children: ReactNode;
   title: string;
@@ -319,6 +328,11 @@ export function AppLayout({
   // ochadigan amallar turadi). Amallari boshqacha bo'lgan sahifa o'z nomini
   // bera oladi.
   actionsLabel?: string;
+  // Berilsa, tugma ostiga ro'yxat ochish O'RNIGA shu funksiya chaqiriladi —
+  // sahifa o'zi modal oyna ochishi uchun (Profillar sahifasidagi "Yaratish").
+  // `actions` bilan birga berilmaydi: ikkalasi bir tugmaning ikki xil
+  // xatti-harakati.
+  onActionsClick?: () => void;
 }) {
   const { user, property, logout, can } = useAuth();
   const location = useLocation();
@@ -344,10 +358,6 @@ export function AppLayout({
     items: filterNavItems(section.items),
   })).filter((section) => section.items.length > 0);
 
-  const activeGroupKey =
-    visibleSections.find((section) =>
-      flattenNavItems(section.items).some((item) => item.to && isRouteActive(location.pathname, item.to)),
-    )?.key ?? null;
 
   // "Xodimlar" moduleKey'siz — StaffPage'ning o'zi (avvalgi Sozlamalar/gear
   // tugmasidagi kabi) barcha tizimga kirgan foydalanuvchilarga ochiq, faqat
@@ -622,17 +632,15 @@ export function AppLayout({
               <button
                 type="button"
                 onClick={() => toggleGroup(section.key)}
-                // 2026-09-04 (foydalanuvchi fikri): modul nomlari endi
-                // neytral kulrang emas, brend ko'kida — OPERA'da ham bu
-                // qatordagi yozuvlar brend rangida turadi. Faol guruh
-                // baribir ajralib turadi: `.chip-active` da halqa + yengil
-                // fon bor, rang emas.
-                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors ${
-                  activeGroupKey === section.key
-                    ? 'chip-active'
-                    : `text-brand-navy hover:bg-brand-navy-light ${
-                        openGroup === section.key ? 'bg-brand-navy-light' : ''
-                      }`
+                // 2026-09-04 (foydalanuvchi fikri): modul nomlari brend
+                // ko'kida. Faol guruh endi HALQAGA OLINMAYDI: sahifaga kirib
+                // bo'lgandan keyin "qayerdaman?" degan savolga breadcrumb va
+                // sahifa sarlavhasi allaqachon javob beryapti — halqa uchinchi
+                // marta takrorlab, qatorni shovqinli qilardi. Ochiq turgan
+                // menyu esa yengil fon bilan belgilanadi (u vaqtinchalik
+                // holat, "qayerdaman" emas).
+                className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-1 text-sm font-medium rounded-full transition-colors text-brand-navy hover:bg-brand-navy-light ${
+                  openGroup === section.key ? 'bg-brand-navy-light' : ''
                 }`}
                 aria-expanded={openGroup === section.key}
               >
@@ -811,7 +819,7 @@ export function AppLayout({
             {/* O'ng tomon — OPERA'dagi "Help | Create ... | I Want To..."
                 qatorining o'rni (2026-09-04, foydalanuvchi fikri). Ikkalasi
                 ham FAQAT sahifa bergan bo'lsa chiqadi. */}
-            {(help || actions) && (
+            {(help || actions || onActionsClick) && (
               // `relative z-30` — tugmalar yopuvchi qatlamdan (z-20) YUQORIDA
               // turishi shart: aks holda panel ochiq bo'lganda qatlam
               // tugmani to'sib qo'yardi va bir xil tugmani bosib yopib
@@ -822,7 +830,10 @@ export function AppLayout({
                     type="button"
                     onClick={() => togglePanel('help')}
                     aria-expanded={openPanel === 'help'}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-brand-navy transition-colors hover:bg-brand-navy-light ${
+                    // 2026-09-04 (foydalanuvchi fikri): `font-medium` olib
+                    // tashlandi — sarlavha bilan bir qatorda turgan bu
+                    // tugmalar ham qalin bo'lmasligi kerak.
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-brand-navy transition-colors hover:bg-brand-navy-light ${
                       openPanel === 'help' ? 'bg-brand-navy-light' : ''
                     }`}
                   >
@@ -830,20 +841,29 @@ export function AppLayout({
                     Yordam
                   </button>
                 )}
-                {help && actions && (
+                {help && (actions || onActionsClick) && (
                   <span className="h-5 w-px bg-slate-300" aria-hidden="true" />
                 )}
-                {actions && (
+                {/* Ikki xil xatti-harakat: `onActionsClick` berilgan bo'lsa
+                    tugma to'g'ridan-to'g'ri oyna ochadi (Profillar sahifasi),
+                    aks holda ostiga ochiladigan ro'yxat chiqadi. Shuning
+                    uchun strelka faqat ikkinchi holatda ko'rsatiladi — u
+                    "pastga ochiladi" degan va'da beradi. */}
+                {(actions || onActionsClick) && (
                   <button
                     type="button"
-                    onClick={() => togglePanel('actions')}
-                    aria-expanded={openPanel === 'actions'}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-brand-navy transition-colors hover:bg-brand-navy-light ${
+                    onClick={
+                      onActionsClick ? onActionsClick : () => togglePanel('actions')
+                    }
+                    aria-expanded={onActionsClick ? undefined : openPanel === 'actions'}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-brand-navy transition-colors hover:bg-brand-navy-light ${
                       openPanel === 'actions' ? 'bg-brand-navy-light' : ''
                     }`}
                   >
                     {actionsLabel}
-                    <ChevronDownIcon open={openPanel === 'actions'} />
+                    {!onActionsClick && (
+                      <ChevronDownIcon open={openPanel === 'actions'} />
+                    )}
                   </button>
                 )}
               </div>

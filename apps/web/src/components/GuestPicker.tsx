@@ -20,7 +20,13 @@ export function GuestPicker({
       return;
     }
     const timeout = setTimeout(() => {
-      apiFetch<GuestDto[]>(`/guests?search=${encodeURIComponent(query.trim())}`)
+      // `profileType=guest` — 2026-09-04 dan boshlab profillar jadvalida
+      // kompaniya/turagent/manba ham bor. Bronda esa XONADA TURADIGAN ODAM
+      // ko'rsatiladi, shuning uchun tanlagich faqat jismoniy mehmonlarni
+      // taklif qiladi.
+      apiFetch<GuestDto[]>(
+        `/guests?profileType=guest&search=${encodeURIComponent(query.trim())}`,
+      )
         .then(setResults)
         .catch(() => setResults([]));
     }, 250);
