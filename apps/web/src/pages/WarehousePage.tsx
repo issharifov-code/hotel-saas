@@ -116,13 +116,15 @@ export function WarehousePage() {
     <AppLayout title="Ombor">
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
-      <div className="flex gap-1 mb-5 border-b border-slate-200">
+      <div className="flex flex-wrap gap-2 mb-5">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === t.key ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              tab === t.key
+                ? 'chip-active'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t.label}
@@ -329,7 +331,7 @@ function StockLevelsSection({
   onAction: (row: StockLevelDto) => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-sm">
       {levels.length === 0 ? (
         <p className="p-4 text-sm text-slate-500">
           Hali tovar yo'q — avval "Tovarlar" bo'limidan tovar qo'shing.
@@ -420,14 +422,16 @@ function StockActionModal({
 
   return (
     <Modal title={`${item.name} — harakat`} onClose={onClose}>
-      <div className="flex gap-1 mb-4 border-b border-slate-200">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(['issue', 'adjust'] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => setMode(m)}
-            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${
-              mode === m ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500'
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              mode === m
+                ? 'chip-active'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {m === 'issue' ? 'Chiqim' : 'Inventarizatsiya tuzatishi'}
@@ -490,7 +494,7 @@ function StockItemsSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
         {items.length === 0 && <p className="p-4 text-sm text-slate-500">Hali tovar qo'shilmagan</p>}
         {items.map((it) => (
           <div key={it.id} className="p-4 flex items-center justify-between">
@@ -596,7 +600,7 @@ function SuppliersSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
         {suppliers.length === 0 && <p className="p-4 text-sm text-slate-500">Hali ta'minotchi qo'shilmagan</p>}
         {suppliers.map((s) => (
           <div key={s.id} className="p-4">
@@ -726,7 +730,7 @@ function PurchaseOrdersSection({
           </button>
         )}
       </div>
-      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
         {orders.length === 0 && <p className="p-4 text-sm text-slate-500">Hali xarid buyurtmasi yo'q</p>}
         {orders.map((po) => (
           <div key={po.id} className="p-4">

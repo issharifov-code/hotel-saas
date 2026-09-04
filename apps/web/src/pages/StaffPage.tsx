@@ -191,7 +191,7 @@ export function StaffPage() {
           ) : users.length === 0 ? (
             <p className="text-sm text-slate-500">Hali xodim qo'shilmagan.</p>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                   <tr>
@@ -291,7 +291,7 @@ export function StaffPage() {
           {loading ? (
             <p className="text-sm text-slate-500">Yuklanmoqda...</p>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 shadow-sm">
               {roles.map((r) => (
                 <button
                   key={r.id}
