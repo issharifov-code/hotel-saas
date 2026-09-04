@@ -53,6 +53,8 @@ export enum MarketSegment {
 // AddReportsIndexes (u yerda o'lchov natijalari ham bor).
 @Index(['tenantId', 'propertyId', 'status', 'checkIn'])
 @Index(['tenantId', 'propertyId', 'status', 'checkOut'])
+// Manba bo'yicha hisobot ("qaysi manba qancha daromad keltirdi").
+@Index(['tenantId', 'propertyId', 'sourceProfileId'])
 export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -178,6 +180,18 @@ export class Booking {
   })
   @JoinColumn({ name: 'corporate_account_id' })
   corporateAccount: CorporateAccount | null;
+
+  // Bron MANBASI — nomlangan profil (2026-09-04). Yuqoridagi `source`
+  // enumidan farqi: u KANAL (sayt/OTA/to'g'ridan-to'g'ri), bu esa aniq
+  // manba ("Instagram reklamasi", "Hamkor restoran"). Bron sayt orqali
+  // tushib, manbasi "Instagram reklamasi" bo'lishi mumkin — shuning uchun
+  // ikkalasi yonma-yon yashaydi.
+  @Column({ name: 'source_profile_id', type: 'uuid', nullable: true })
+  sourceProfileId: string | null;
+
+  @ManyToOne(() => Guest, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'source_profile_id' })
+  sourceProfile: Guest | null;
 
   // Bekor qilish yoki kelmaslik (no-show) sababli olingan jarima summasi
   // (agar rate plan'da bekor qilish siyosati sozlangan bo'lsa va jarima
