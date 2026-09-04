@@ -30,6 +30,7 @@ export enum HousekeepingStatus {
 
 @Entity('rooms')
 @Index(['tenantId', 'propertyId'])
+@Index(['tenantId', 'propertyId', 'status']) // band xonalar sonini hisoblash
 @Unique(['propertyId', 'roomNumber'])
 export class Room {
   @PrimaryGeneratedColumn('uuid')
