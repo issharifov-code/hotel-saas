@@ -81,4 +81,25 @@
   .chip-active {
     @apply bg-brand-navy-light text-brand-navy font-semibold ring-2 ring-inset ring-brand-navy;
   }
+
+  /* Panel sarlavha qatori (2026-09-04, foydalanuvchi fikri): panellarning
+     yuqori qatori endi oq emas, biroz TO'QROQ fonda va aniqroq chiziq bilan
+     ajralib turadi — avval sarlavha ham, tanasi ham bir xil oq bo'lib,
+     panel qayerda boshlanishi ko'rinmasdi.
+
+     `rounded-t-2xl` — panelning o'z burchagiga mos. Yopiq `<details>`da esa
+     pastki burchaklar ham yumaloq bo'lishi kerak (u paytda sarlavha —
+     panelning o'zi), buni quyidagi qoida hal qiladi. */
+  .panel-header {
+    @apply rounded-t-2xl border-b border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-900;
+  }
+
+  details:not([open]) > .panel-header {
+    @apply rounded-b-2xl border-b-transparent;
+  }
+
+  /* Jadval sarlavha qatori — xuddi shu mantiq, faqat jadval ichida. */
+  .table-head {
+    @apply border-b border-slate-300 bg-slate-100 text-left text-xs text-slate-600;
+  }
 }

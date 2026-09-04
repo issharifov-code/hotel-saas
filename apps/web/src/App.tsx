@@ -10,6 +10,7 @@ import { RoomsPage } from './pages/RoomsPage';
 import { ChannelManagerPage } from './pages/ChannelManagerPage';
 import { GuestsPage } from './pages/GuestsPage';
 import { MessagingPage } from './pages/MessagingPage';
+import { LoyaltyPage } from './pages/LoyaltyPage';
 import { BookingCalendarPage } from './pages/BookingCalendarPage';
 import { GroupBookingsPage } from './pages/GroupBookingsPage';
 import { AgenciesPage } from './pages/AgenciesPage';
@@ -102,6 +103,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <GuestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/loyalty"
+            element={
+              <ProtectedRoute>
+                <LoyaltyPage />
               </ProtectedRoute>
             }
           />
