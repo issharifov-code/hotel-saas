@@ -79,7 +79,7 @@ export function GuestPicker({
         </div>
       )}
       {open && query.trim().length >= 2 && results.length === 0 && (
-        <p className="mt-1 text-xs text-slate-400">Mehmon topilmadi — "Mehmonlar" bo'limidan qo'shing</p>
+        <p className="mt-1 text-xs text-slate-400">Mehmon topilmadi — "Profillarni boshqarish" bo'limidan qo'shing</p>
       )}
     </div>
   );
