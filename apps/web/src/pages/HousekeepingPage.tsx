@@ -117,13 +117,15 @@ export function HousekeepingPage() {
     <AppLayout title="Housekeeping">
       {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
-      <div className="flex gap-1 mb-5 border-b border-slate-200">
+      <div className="flex flex-wrap gap-2 mb-5">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === t.key ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              tab === t.key
+                ? 'chip-active'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t.label}
@@ -137,7 +139,7 @@ export function HousekeepingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {rooms.length === 0 && <p className="text-sm text-slate-500">Hali xona yo'q</p>}
           {rooms.map((room) => (
-            <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-3">
+            <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <p className="font-semibold text-slate-900">№ {room.roomNumber}</p>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${HK_STYLES[room.housekeepingStatus]}`}>
@@ -159,7 +161,7 @@ export function HousekeepingPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
           {tasks.length === 0 && <p className="p-4 text-sm text-slate-500">Hali vazifa yo'q</p>}
           {tasks.map((task) => (
             <div key={task.id} className="p-4 flex items-center justify-between gap-3">

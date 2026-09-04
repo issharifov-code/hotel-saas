@@ -187,7 +187,7 @@ export function HelpPage() {
           yo'riqnoma berilgan. Kerakli bo'limga o'tish uchun quyidagi mundarijadan foydalaning.
         </p>
 
-        <nav className="rounded-2xl border border-slate-200 bg-white p-4 mb-8">
+        <nav className="rounded-2xl border border-slate-200 bg-white p-4 mb-8 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Mundarija</p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
             {GUIDE_GROUPS.map((group) => (
@@ -206,7 +206,7 @@ export function HelpPage() {
               <h2 className="text-base font-semibold text-slate-900 mb-3">{group.label}</h2>
               <div className="space-y-4">
                 {group.items.map((item) => (
-                  <div key={item.key} className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <div key={item.key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h3 className="text-sm font-semibold text-brand-navy mb-1.5">{item.title}</h3>
                     <p className="text-sm text-slate-600 leading-relaxed">{item.body}</p>
                   </div>

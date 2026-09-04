@@ -88,7 +88,7 @@ export function InvoicingPage() {
       {loading ? (
         <p className="text-sm text-slate-500">Yuklanmoqda...</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
           {invoices.length === 0 && <p className="p-4 text-sm text-slate-500">Hali hisob-faktura yo'q</p>}
           {invoices.map((inv) => {
             const balance = (Number(inv.totalAmount) - Number(inv.paidAmount)).toFixed(2);
