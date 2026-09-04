@@ -48,6 +48,11 @@ export enum MarketSegment {
 @Entity('bookings')
 @Index(['tenantId', 'propertyId'])
 @Index(['roomId', 'checkIn', 'checkOut']) // band vaqt oralig'ini tekshirish tez ishlashi uchun
+// Hisobot so'rovlari uchun (2026-09) — deyarli hamma hisobot tenant+mulk+
+// holat bo'yicha filtrlab, keyin sana oralig'ini oladi. Migratsiya:
+// AddReportsIndexes (u yerda o'lchov natijalari ham bor).
+@Index(['tenantId', 'propertyId', 'status', 'checkIn'])
+@Index(['tenantId', 'propertyId', 'status', 'checkOut'])
 export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
