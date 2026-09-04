@@ -488,13 +488,15 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
       {/* Yuqori gorizontal modul-panel (faqat desktop, `lg:`+): chapda F1
           logotipi (Bosh sahifa), keyin har bir mazmuniy guruh bosilganda
           dropdown sifatida ochiladi.
-          2026-09 (uslub yangilanishi, Login sahifasiga moslab): oldingi
-          pastki-chiziqli (`border-b-2`) tablar o'rniga Login'dagi pill
-          tugmalar/inputlar uslubiga mos yumaloq (`rounded-full`) chip'lar —
-          faol/hover holatida orqa fon bilan ajratiladi, chiziq bilan emas.
-          2026-09 (foydalanuvchi fikri, yana bir bosqich): panel biroz
-          ensizroq (py-1.5, avvalgi py-2'dan) — F1 belgisining "yirib
-          chiqish" effekti shu hisobga yanada aniqroq ko'rinadi. */}
+          Uslub: Login sahifasidagi pill tugmalar/inputlarga mos yumaloq
+          (`rounded-full`) chip'lar — faol/hover holatida orqa fon bilan
+          ajratiladi, chiziq bilan emas (qarang index.css `.chip-active`).
+          Endi butun ilovadagi barcha tab-qatorlar shu uslubda.
+          2026-09-04: navy header bilan orasida gold chiziq emas, SOYA
+          ajratib turadi (`shadow-[...]` + `z-20`, header esa `z-30` —
+          soya ko'rinishi uchun stacking tartibi shart). Panel balandligi
+          navy header bilan KO'RINISHDA teng bo'lishi uchun undan biroz
+          kattaroq (41px va 37px) — ustki qismini header soyasi qoplaydi. */}
       <nav className="hidden lg:flex flex-wrap items-center gap-1 shrink-0 bg-white border-b border-slate-200 px-3 py-1.5 relative z-20 shadow-[0_2px_6px_rgba(15,23,42,0.08)]">
         {/* F1 logotipi — nav panelining brend belgisi (2026-09, qayta ko'rib
             chiqildi: 3D/soyali uslub olib tashlandi, o'rniga faqat o'lcham
