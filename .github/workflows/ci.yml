@@ -23,9 +23,17 @@
 # tashlansa ular HAQIQATAN yiqiladi. Lekin ularni hech kim ishga
 # tushirmasa — hech narsani qo'riqlamaydi. Shu bo'shliqni yopamiz.
 #
-# BAZA KERAK EMAS. Butun to'plam mock'lar bilan ishlaydi — bu ataylab
-# tekshirildi: ulanib bo'lmaydigan `DB_HOST` bilan ham butun to'plam
-# o'tdi. Shuning uchun bu yerda `services:` yo'q va ish tez.
+# IKKI XIL TEST, IKKI XIL VAZIFA.
+#
+# `pnpm test` — mock bilan, bazasiz va tez (bu ataylab tekshirilgan:
+# ulanib bo'lmaydigan `DB_HOST` bilan ham butun to'plam o'tadi).
+#
+# `pnpm test:int` — HAQIQIY PostgreSQL bilan. 2026-09-05 da qo'shildi,
+# chunki mock'lar bir narsani printsipial ravishda tekshira olmaydi:
+# kodning BAZA bilan kelishuvini (RLS siyosatlari, GRANT'lar, tranzaksiya
+# chegaralari). Bu sessiyada shu bo'shliq uch marta o'zini ko'rsatdi va
+# integratsion to'plamning birinchi ishga tushishida to'rtinchi nuqson
+# topildi.
 
 name: Testlar va tekshiruvlar
 
@@ -46,6 +54,23 @@ jobs:
     name: Tekshiruv
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    # Integratsion testlar uchun haqiqiy baza. Versiyasi production
+    # bilan bir xil (18) — RLS semantikasi barqaror bo'lsa ham, "sinov
+    # muhiti production'dan farq qilgani uchun" turkumidagi xatolar
+    # aynan shunday farqlardan tug'iladi.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
@@ -102,6 +127,42 @@ jobs:
       # tekshiruvi ham shu yerda bajariladi.
       - name: Build va TypeScript tekshiruvi (web)
         run: pnpm --filter web build
+
+      # 🔬 INTEGRATSION TESTLAR (2026-09-05) — HAQIQIY BAZA BILAN.
+      #
+      # Yuqoridagi 959 ta test mock bilan ishlaydi va bu yetarli emas:
+      # ular kodning BAZA bilan kelishuvini (RLS siyosatlari, GRANT'lar,
+      # migratsiya holati) printsipial ravishda tekshira olmaydi. Shu
+      # to'plamning BIRINCHI ishga tushishida haqiqiy nuqson topildi —
+      # `permissions` jadvaliga INSERT huquqi yo'qligi sababli bo'sh
+      # bazada birinchi tenant umuman ro'yxatdan o'ta olmasdi.
+      #
+      # BAZA HAR ISHDA TOZA yaratiladi — ya'ni bu qadam ayni paytda
+      # "yangi muhitni noldan qurish" ssenariysini ham sinaydi. Aynan
+      # o'sha ssenariy yuqoridagi nuqsonni ochgan.
+      #
+      # Ega roli migratsiyalarni bajaradi, ilova esa `hotel_saas_app`
+      # roli bilan ulanadi — production'dagi kabi. Bu SHART: PostgreSQL
+      # jadval egasiga RLS qo'llamaydi, ya'ni ega roli bilan ulangan
+      # test izolyatsiya buzilganini KO'RMASDI.
+      - name: Integratsion testlar (haqiqiy PostgreSQL)
+        env:
+          NODE_ENV: test
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: '5432'
+          TEST_DB_NAME: hotel_saas_test
+          TEST_DB_USERNAME: hotel_saas
+          TEST_DB_PASSWORD: hotel_saas_dev
+          TEST_DB_APP_USERNAME: hotel_saas_app
+          TEST_DB_APP_PASSWORD: hotel_saas_app_dev
+          # Migratsiya `hotel_saas_app` rolini shu parol bilan yaratadi.
+          DB_APP_PASSWORD: hotel_saas_app_dev
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -q -c "CREATE ROLE hotel_saas LOGIN PASSWORD 'hotel_saas_dev'"
+          psql -h localhost -U postgres -q -c 'CREATE DATABASE hotel_saas_test OWNER hotel_saas'
+          psql -h localhost -U postgres -d hotel_saas_test -q -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
+          pnpm --filter api test:int
 
       # 🔔 OGOHLANTIRISH (2026-09-05). FAQAT `main` uchun.
       #
