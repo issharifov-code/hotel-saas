@@ -1,0 +1,115 @@
+# Folio One — har bir o'zgarishda avtomatik tekshiruv (2026-09-05).
+#
+# NIMA UCHUN BU KERAK EDI.
+# Repozitoriyda 935 ta test bor edi, lekin ularni HECH NARSA ishga
+# tushirmasdi — faqat kimdir qo'lda `pnpm test` yozganda. Render esa
+# har kommitda deploy qiladi va faqat BUILD ni tekshiradi: TypeScript
+# xatosi deploy'ni to'xtatadi, mantiqiy xato esa bemalol production'ga
+# chiqib ketardi.
+#
+# Bu ayniqsa nozik, chunki 2026-09-05 xavfsizlik ishlarining ko'p
+# qismi aynan TESTLARDA yashaydi — ular kod emas, QO'RIQCHI:
+#
+#   * `migrations-rls.spec.ts`  — yangi jadval GRANT'siz qolmasin
+#                                 (fail-open naqsh auditda topilgan)
+#   * `all-exceptions.filter.spec.ts` — 5xx javobi ichki xabarni
+#                                 (jadval nomi, SQL) oshkor qilmasin
+#   * `password.validator.spec.ts` / `subdomain.validator.spec.ts`
+#   * `auth.service.spec.ts`    — login vaqti bo'yicha foydalanuvchi
+#                                 ro'yxatlashdan himoya
+#   * `request-id.middleware.spec.ts` — log injection
+#
+# Bu qo'riqchilar mutatsiya sinovidan o'tgan, ya'ni himoya olib
+# tashlansa ular HAQIQATAN yiqiladi. Lekin ularni hech kim ishga
+# tushirmasa — hech narsani qo'riqlamaydi. Shu bo'shliqni yopamiz.
+#
+# BAZA KERAK EMAS. Butun to'plam mock'lar bilan ishlaydi — bu ataylab
+# tekshirildi: ulanib bo'lmaydigan `DB_HOST` bilan ham 935 ta test
+# o'tdi. Shuning uchun bu yerda `services:` yo'q va ish tez.
+
+name: Testlar va tekshiruvlar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Bir branch uchun eski ish bekor qilinadi — oxirgi holat muhim,
+# oraliq kommitlarga daqiqa sarflashning ma'nosi yo'q.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tekshiruv:
+    name: Tekshiruv
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versiya `package.json` dagi `packageManager` maydonidan olinadi
+      # (pnpm@9.15.0) — Render'dagi bilan bir xil bo'lishi uchun.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # `--prod=false` aniq berilgan: devDependencies (jest, tsc, vite)
+      # bo'lmasa hech narsa ishlamaydi.
+      - name: Bog'liqliklarni o'rnatish
+        run: pnpm install --frozen-lockfile --prod=false
+
+      # Har bir qadam ALOHIDA — yiqilganda qaysi bosqich ekani
+      # ro'yxatdan darhol ko'rinsin, log titkilash shart bo'lmasin.
+
+      - name: TypeScript tekshiruvi (API)
+        run: pnpm --filter api exec tsc -p tsconfig.build.json --noEmit
+
+      # `NODE_ENV=test` — `ErrorEventsService` shu qiymatda tozalash
+      # taymerini ishga tushirmaydi, aks holda Jest jarayoni "ochiq
+      # handle" bilan osilib qolishi mumkin edi.
+      - name: Testlar (935 ta)
+        env:
+          NODE_ENV: test
+        run: pnpm --filter api test
+
+      # Build alohida tekshiriladi: `tsc --noEmit` o'tgani `nest build`
+      # ham o'tishini kafolatlamaydi (tsconfig.build.json boshqacha
+      # fayllarni chiqaradi, `dist/` tarkibi muhim).
+      - name: Build (API)
+        run: pnpm --filter api build
+
+      # 🔴 2026-09-05 da haqiqiy nuqson topilgan joy: jest'ga bog'liq
+      # yordamchi fayl `dist/` ga tushib ketgan edi. Shundan beri
+      # `tsconfig.build.json` uni chiqarib tashlaydi — bu tekshiruv
+      # o'sha holat qaytmasligini kafolatlaydi.
+      - name: Test fayllari `dist/` ga tushmaganini tekshirish
+        run: |
+          if find apps/api/dist -name '*.spec.js' -o -name '*.testing.js' | grep -q .; then
+            echo "XATO: dist/ ichida test fayllari bor — ular ishlab" >&2
+            echo "chiqarish build'iga tushmasligi kerak:" >&2
+            find apps/api/dist -name '*.spec.js' -o -name '*.testing.js' >&2
+            exit 1
+          fi
+          echo "dist/ toza."
+
+      # Web'ning `build` skripti `tsc -b && vite build` — ya'ni tip
+      # tekshiruvi ham shu yerda bajariladi.
+      - name: Build va TypeScript tekshiruvi (web)
+        run: pnpm --filter web build
+
+# ESLATMA — NEGA LINT YO'Q.
+# Repozitoriyda hozir ~1500 ta ESLint ogohlantirishi bor va ularning
+# deyarli hammasi eski formatlash farqi (prettier), mantiqiy xato emas.
+# Lint qadamini shunchaki qo'shish CI'ni BIRINCHI KUNIDAN qizil qilardi,
+# va doim qizil turadigan CI — CI emas: odamlar unga qarashni bas
+# qiladi va haqiqiy nosozlik ham ko'zdan qochadi.
+#
+# To'g'ri yo'l: avval butun repozitoriyni bir marta formatlash
+# (alohida, faqat formatlashdan iborat kommit), keyin lint qadamini
+# qo'shish. U alohida ish sifatida rejalashtirilgan.
