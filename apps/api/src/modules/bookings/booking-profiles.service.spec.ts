@@ -63,11 +63,14 @@ describe('BookingsService — profil turlari', () => {
       { findById: jest.fn() } as never,
       { assertBookingAllowed: jest.fn().mockResolvedValue(undefined) } as never,
       guestsService as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      { findById: jest.fn() } as never,
-      { findById: jest.fn() } as never,
+      {} as never, // housekeepingService
+      {} as never, // invoicingService
+      {} as never, // bookingGroupRepo
+      // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+      { findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }) } as never,
+      { findById: jest.fn() } as never, // agenciesService
+      { accrueForBooking: jest.fn() } as never, // agencyCommissionsService
+      { findById: jest.fn() } as never, // cityLedgerService
     );
     return { service, guestsService, saved };
   }

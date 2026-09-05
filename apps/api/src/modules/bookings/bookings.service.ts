@@ -31,6 +31,7 @@ import { ProfileType } from '../guests/entities/guest.entity';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
 import { InvoicingService } from '../invoicing/invoicing.service';
+import { Property } from '../properties/entities/property.entity';
 import { AgenciesService } from '../agencies/agencies.service';
 import { AgencyCommissionsService } from '../agencies/agency-commissions.service';
 import { CityLedgerService } from '../city-ledger/city-ledger.service';
@@ -59,6 +60,8 @@ export class BookingsService {
     private readonly invoicingService: InvoicingService,
     @InjectRepository(BookingGroup)
     private readonly bookingGroupRepo: Repository<BookingGroup>,
+    @InjectRepository(Property)
+    private readonly propertyRepo: Repository<Property>,
     private readonly agenciesService: AgenciesService,
     private readonly agencyCommissionsService: AgencyCommissionsService,
     private readonly cityLedgerService: CityLedgerService,
@@ -198,7 +201,7 @@ export class BookingsService {
       sourceProfileId,
       contactProfileId,
       totalAmount,
-      currency: dto.currency ?? 'UZS',
+      currency: dto.currency ?? (await this.propertyCurrency(tenantId, propertyId)),
       notes: dto.notes ?? null,
     });
     return this.bookingRepo.save(booking);
@@ -529,6 +532,18 @@ export class BookingsService {
     }
     if (booking.status === BookingStatus.CANCELLED) {
       throw new ConflictException('Bron allaqachon bekor qilingan');
+    }
+    // 🔴 2026-09-05 (audit): NO_SHOW holati tekshirilmasdi. Night audit
+    // allaqachon kelmaganlik jarimasini hisoblab, hisob-faktura va bosh
+    // kitob yozuvini yaratgan bo'ladi. Keyin bekor qilinsa,
+    // `cancellationFeeAmount` bekor qilish siyosatidagi BOSHQA summa
+    // bilan qayta yozilar, hisob-faktura va provodka esa eskisini
+    // saqlab qolardi — bron yozuvi bilan bosh kitob bir-biriga zid
+    // bo'lib qolardi (`createFeeInvoice` bron bo'yicha idempotent).
+    if (booking.status === BookingStatus.NO_SHOW) {
+      throw new ConflictException(
+        "Kelmagan (no-show) bronni bekor qilib bo'lmaydi — jarima allaqachon hisoblangan",
+      );
     }
     booking.status = BookingStatus.CANCELLED;
 
@@ -997,10 +1012,26 @@ export class BookingsService {
       marketSegment: MarketSegment.GROUP,
       ratePlanId: ratePlan?.id ?? null,
       totalAmount,
-      currency: 'UZS',
+      currency: await this.propertyCurrency(tenantId, propertyId),
       groupId,
     });
     return this.bookingRepo.save(booking);
+  }
+
+  // 🔴 2026-09-05 (audit №12): bron valyutasi `'UZS'` deb qattiq
+  // yozilgan edi, `Property.currency` esa e'tiborsiz qolardi. Ko'p
+  // valyutali (yoki UZS'dan boshqa) mehmonxonada bu hisobotlardagi
+  // yig'indilarni jimgina buzardi — summalar valyuta bo'yicha
+  // guruhlanmasdan qo'shiladi.
+  private async propertyCurrency(
+    tenantId: string,
+    propertyId: string,
+  ): Promise<string> {
+    const property = await this.propertyRepo.findOne({
+      where: { id: propertyId, tenantId },
+      select: { id: true, currency: true },
+    });
+    return property?.currency ?? 'UZS';
   }
 
   // Bronning kontakt shaxsini tekshiradi va id'sini qaytaradi.

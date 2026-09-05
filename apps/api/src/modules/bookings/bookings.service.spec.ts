@@ -65,6 +65,10 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     const cityLedgerService = { findById: jest.fn() };
 
     const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+    const propertyRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }),
+    };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -76,6 +80,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      propertyRepo as never,
       agenciesService as never,
       agencyCommissionsService as never,
       cityLedgerService as never,
@@ -89,6 +94,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       agenciesService,
       cityLedgerService,
       guestsService,
+      propertyRepo,
     };
   }
 
@@ -399,6 +405,25 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBe('kontakt-1');
   });
 
+  // 🔴 2026-09-05 (audit №12): valyuta `'UZS'` deb qattiq yozilgan edi.
+  it("bron valyutasi mulkning valyutasidan olinadi", async () => {
+    const { service, bookingRepo, propertyRepo } = createService(null);
+    propertyRepo.findOne.mockResolvedValue({ id: 'p1', currency: 'USD' });
+
+    await service.create('t1', 'p1', dto);
+
+    expect(bookingRepo.create.mock.calls[0][0].currency).toBe('USD');
+  });
+
+  it("DTO'da valyuta berilsa u ustunlik qiladi", async () => {
+    const { service, bookingRepo, propertyRepo } = createService(null);
+    propertyRepo.findOne.mockResolvedValue({ id: 'p1', currency: 'USD' });
+
+    await service.create('t1', 'p1', { ...dto, currency: 'EUR' });
+
+    expect(bookingRepo.create.mock.calls[0][0].currency).toBe('EUR');
+  });
+
   it("kontakt berilmasa null yoziladi", async () => {
     const { service, bookingRepo } = createService(null);
     await service.create('t1', 'p1', dto);
@@ -520,6 +545,10 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     const cityLedgerService = { findById: jest.fn() };
 
     const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+    const propertyRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }),
+    };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -531,6 +560,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      propertyRepo as never,
       agenciesService as never,
       agencyCommissionsService as never,
       cityLedgerService as never,
@@ -819,6 +849,10 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     const cityLedgerService = { findById: jest.fn() };
 
     const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+    const propertyRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }),
+    };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -830,6 +864,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       housekeepingService as never,
       invoicingService as never,
       bookingGroupRepo as never,
+      propertyRepo as never,
       agenciesService as never,
       agencyCommissionsService as never,
       cityLedgerService as never,
@@ -996,6 +1031,10 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       createFeeInvoice: jest.fn().mockResolvedValue({ id: 'inv-1' }),
     };
     const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+    const propertyRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }),
+    };
     const service = new BookingsService(
       bookingRepo as never,
       {} as never,
@@ -1007,6 +1046,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       {} as never,
       invoicingService as never,
       {} as never,
+      propertyRepo as never,
       {} as never,
       agencyCommissionsService as never,
       {} as never,
@@ -1130,6 +1170,10 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       })),
     };
     const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    // 2026-09-05 (audit №12): bron valyutasi mulkdan olinadi.
+    const propertyRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }),
+    };
     const service = new BookingsService(
       bookingRepo as never,
       {} as never,
@@ -1141,6 +1185,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       {} as never,
       {} as never,
       {} as never,
+      propertyRepo as never,
       {} as never,
       agencyCommissionsService as never,
       {} as never,
@@ -1148,5 +1193,56 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
     await expect(service.cancel('t1', 'p1', 'missing')).rejects.toThrow(
       NotFoundException,
     );
+  });
+});
+
+// 🔴 2026-09-05 (kod auditi): `cancel` NO_SHOW holatini tekshirmasdi.
+// Night audit allaqachon kelmaganlik jarimasini hisoblab, hisob-faktura va
+// bosh kitob yozuvini yaratgan bo'ladi; keyin bekor qilinsa bronning
+// `cancellationFeeAmount` i boshqa summa bilan qayta yozilar, hisob-faktura
+// esa eskisini saqlab qolardi.
+describe('BookingsService.cancel — no-show bronni bekor qilib bolmaydi', () => {
+  it('NO_SHOW holatidagi bron ConflictException beradi', async () => {
+    const booking = {
+      id: 'b1',
+      tenantId: 't1',
+      propertyId: 'p1',
+      status: BookingStatus.NO_SHOW,
+      cancellationFeeAmount: '1000000.00',
+      ratePlanId: 'rp1',
+    };
+    const bookingRepo = {
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(booking),
+      })),
+      save: jest.fn(),
+    };
+    const invoicingService = { createFeeInvoice: jest.fn() };
+    const service = new BookingsService(
+      bookingRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { findById: jest.fn() } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      invoicingService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.cancel('t1', 'p1', 'b1')).rejects.toThrow(
+      ConflictException,
+    );
+    // Jarima hisob-fakturasi qayta yaratilmaydi va bron qayta yozilmaydi.
+    expect(invoicingService.createFeeInvoice).not.toHaveBeenCalled();
+    expect(bookingRepo.save).not.toHaveBeenCalled();
   });
 });

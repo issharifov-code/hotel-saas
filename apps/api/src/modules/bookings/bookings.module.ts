@@ -3,6 +3,7 @@ import { Booking } from './entities/booking.entity';
 import { BookingGroup } from './entities/booking-group.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { RoomType } from '../rooms/entities/room-type.entity';
+import { Property } from '../properties/entities/property.entity';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
 import { BookingGroupsController } from './booking-groups.controller';
@@ -17,7 +18,10 @@ import { RlsModule } from '../../common/rls/rls.module';
 
 @Module({
   imports: [
-    RlsModule.forFeature([Booking, BookingGroup, Room, RoomType]),
+    // `Property` faqat entity sifatida — bron valyutasi mulkning
+    // `currency` maydonidan olinadi (2026-09-05, audit №12: ilgari hamma
+    // joyda `'UZS'` qattiq yozilgan edi).
+    RlsModule.forFeature([Booking, BookingGroup, Room, RoomType, Property]),
     RoomsModule,
     GuestsModule,
     RolesModule,
