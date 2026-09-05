@@ -72,6 +72,11 @@ export function AdminPage() {
   // 📊 KUZATUV (2026-09-05) — production'dagi 5xx xatolar guruhlangan holda.
   const [errors, setErrors] = useState<ErrorSummaryDto[]>([]);
   const [errorsLoaded, setErrorsLoaded] = useState(false);
+  // 🔔 Ogohlantirish (2026-09-05). `null` — hali tekshirilmagan.
+  const [alertsEnabled, setAlertsEnabled] = useState<boolean | null>(null);
+  const [alertTestState, setAlertTestState] = useState<
+    'idle' | 'sending' | 'sent' | 'failed'
+  >('idle');
   const [error, setError] = useState<string | null>(null);
 
   const [filterTenantId, setFilterTenantId] = useState('');
@@ -133,9 +138,33 @@ export function AdminPage() {
       .catch(() => setError('Xato jurnalini yuklashda xatolik'));
 
   useEffect(() => {
-    if (tab === 'errors') loadErrors();
+    if (tab === 'errors') {
+      loadErrors();
+      // Holat alohida so'rov: u yiqilsa xato jurnali baribir
+      // ko'rsatiladi (ogohlantirish — qo'shimcha qatlam).
+      apiFetch<{ enabled: boolean }>('/admin/error-events/alerts/status')
+        .then((r) => setAlertsEnabled(r.enabled))
+        .catch(() => setAlertsEnabled(null));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  // 🔔 Sozlash to'g'ri bajarilganini bilishning YAGONA ishonchli yo'li —
+  // haqiqiy xabar yuborib ko'rish. Aks holda odam sozlaganiga ishonib
+  // yuradi va birinchi haqiqiy nosozlikda xabar kelmaganini biladi.
+  const sendTestAlert = async () => {
+    setAlertTestState('sending');
+    try {
+      const res = await apiFetch<{ enabled: boolean; sent: boolean }>(
+        '/admin/error-events/alerts/test',
+        { method: 'POST' },
+      );
+      setAlertsEnabled(res.enabled);
+      setAlertTestState(res.sent ? 'sent' : 'failed');
+    } catch {
+      setAlertTestState('failed');
+    }
+  };
 
   const toggleContacted = async (req: DemoRequestDto) => {
     setError(null);
@@ -455,6 +484,63 @@ export function AdminPage() {
                 Yangilash
               </button>
             </div>
+
+            {/* 🔔 OGOHLANTIRISH HOLATI (2026-09-05). Bu qator "xato
+                yozildi" bilan "odam bildi" o'rtasidagi farqni ko'rsatadi.
+                O'chiq bo'lsa — bu sahifani KIMDIR ochishi kerak degani,
+                ya'ni nosozlik soatlab sezilmasligi mumkin. Shuning uchun
+                holat ochiq yozilgan, kichik kulrang izoh emas. */}
+            {alertsEnabled !== null && (
+              <div className="p-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm">
+                  {alertsEnabled ? (
+                    <>
+                      <span className="font-medium text-emerald-700">
+                        Telegram ogohlantirishi yoqilgan
+                      </span>
+                      <span className="text-slate-500">
+                        {' '}
+                        — yangi xato yuz berganda darhol xabar keladi.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-amber-700">
+                        Ogohlantirish o'chiq
+                      </span>
+                      <span className="text-slate-500">
+                        {' '}
+                        — xatolar yozilyapti, lekin ularni ko'rish uchun shu
+                        sahifani ochish kerak.
+                      </span>
+                    </>
+                  )}
+                </p>
+                {alertsEnabled && (
+                  <div className="flex items-center gap-2">
+                    {alertTestState === 'sent' && (
+                      <span className="text-xs text-emerald-700">
+                        Yuborildi — Telegram'ni tekshiring
+                      </span>
+                    )}
+                    {alertTestState === 'failed' && (
+                      <span className="text-xs text-rose-700">
+                        Yuborilmadi — Render loglarini ko'ring
+                      </span>
+                    )}
+                    <button
+                      onClick={() => void sendTestAlert()}
+                      disabled={alertTestState === 'sending'}
+                      className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      {alertTestState === 'sending'
+                        ? 'Yuborilmoqda…'
+                        : 'Sinov xabari'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {errors.map((e) => (
               <div key={e.fingerprint} className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">

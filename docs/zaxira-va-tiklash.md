@@ -199,8 +199,9 @@ huquqlar esa migratsiyalar orqali qayta beriladi.
 
 ## 5. Hali qilinmagan (ochiq savollar)
 
-* **Ogohlantirish.** Zaxira ishi yiqilsa GitHub email yuboradi (agar
-  bildirishnomalar yoqilgan bo'lsa). Bundan boshqa xabar yo'q.
+* ~~**Ogohlantirish.**~~ ✅ 2026-09-05 da yopildi: zaxira ishi yiqilsa
+  Telegram'ga darhol xabar ketadi. Sozlash — `docs/ogohlantirish.md`.
+  (Sirlar berilmagan bo'lsa qadam jimgina o'tadi va zaxirani to'smaydi.)
 * **Uzoq muddatli arxiv.** 30 kundan eski zaxira qolmaydi. Oylik
   arxiv kerak bo'lsa, alohida saqlagich (masalan S3-mos xizmat) kerak.
 * **Fayl yuklamalari.** Mehmonxona logotipi bazada `data:` URL sifatida

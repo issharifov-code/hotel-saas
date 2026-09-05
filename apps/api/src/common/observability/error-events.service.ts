@@ -9,6 +9,7 @@ import { createHash } from 'crypto';
 import { EntityManager, LessThan, Repository } from 'typeorm';
 import { ErrorEvent } from './entities/error-event.entity';
 import { PaginatedResult, parsePagination } from '../utils/pagination.util';
+import { NotificationsService, escapeHtml } from './notifications.service';
 
 // Saqlash muddati — migratsiyadagi RLS siyosati bilan bir xil bo'lishi
 // SHART. Bu yerdagi qiymat kichikroq bo'lsa tozalash hech narsa
@@ -67,6 +68,21 @@ export function normalizeMessageForFingerprint(message: string): string {
     .slice(0, 200);
 }
 
+/**
+ * Ogohlantirishga qo'yiladigan admin sahifasi havolasi. Yangi
+ * o'zgaruvchi kiritilmadi — manzil `CORS_ORIGIN` ning birinchi
+ * qiymatidan olinadi (u production'da baribir majburiy va aynan
+ * saytning manzili). Berilmagan bo'lsa havola qo'shilmaydi.
+ */
+export function adminErrorsUrl(): string | null {
+  const origin = (process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)[0];
+  if (!origin) return null;
+  return `${origin.replace(/\/+$/, '')}/admin`;
+}
+
 export function buildFingerprint(input: {
   method: string;
   path: string;
@@ -92,6 +108,14 @@ export function buildFingerprint(input: {
 // DELETE idempotent.
 const PRUNE_INTERVAL_MS = 24 * 3_600_000;
 
+// 🔔 OGOHLANTIRISH ORALIG'I. Bir xil xato (bir xil `fingerprint`) uchun
+// xabar SOATIGA BIR MARTA yuboriladi. Yozish chegarasi (daqiqasiga 10)
+// bu yerda yaramaydi: u bazani himoya qiladi, telefonni emas. Bir soat
+// — "hali ham buzuq" degan xabar foydali bo'ladigan eng qisqa oraliq.
+const ALERT_INTERVAL_MS = 3_600_000;
+// Naqshlar xotirasi cheksiz o'smasin (flood xaritasi bilan bir xil mantiq).
+const ALERT_MAP_MAX = 500;
+
 @Injectable()
 export class ErrorEventsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ErrorEventsService.name);
@@ -100,10 +124,13 @@ export class ErrorEventsService implements OnModuleInit, OnModuleDestroy {
     { windowStart: number; count: number }
   >();
   private pruneTimer: NodeJS.Timeout | null = null;
+  // fingerprint -> oxirgi ogohlantirish vaqti (ms).
+  private readonly lastAlertAt = new Map<string, number>();
 
   constructor(
     @InjectRepository(ErrorEvent)
     private readonly errorRepo: Repository<ErrorEvent>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   onModuleInit(): void {
@@ -174,6 +201,11 @@ export class ErrorEventsService implements OnModuleInit, OnModuleDestroy {
           }),
         );
       });
+      // 🔔 Ogohlantirish YOZUVDAN KEYIN va `await`SIZ. Ikkalasi ham
+      // ataylab: yozuv birinchi navbatda (u ishonchli saqlanishi kerak),
+      // va Telegram sekin javob bersa ham xato yo'li ushlanib qolmasin.
+      // `maybeAlert` hech qachon `throw` qilmaydi.
+      void this.maybeAlert(fingerprint, input);
       return saved.id;
     } catch (err) {
       // Xato jurnalining o'zi so'rovni yiqitmasligi kerak — bu eng
@@ -182,6 +214,62 @@ export class ErrorEventsService implements OnModuleInit, OnModuleDestroy {
         `Xato yozuvini saqlab bo'lmadi: ${err instanceof Error ? err.message : String(err)}`,
       );
       return null;
+    }
+  }
+
+  /**
+   * 🔔 Yangi (yoki bir soatdan beri qaytmagan) xato uchun Telegram
+   * xabarini yuboradi.
+   *
+   * NIMA UCHUN XABAR MATNI "NORMALLASHTIRILGAN". Xato matnida mehmon
+   * ma'lumoti bo'lishi MUMKIN — masalan PostgreSQL noyoblik xatosi
+   * qiymatni o'z ichiga oladi ("Key (phone)=(+998...) already exists").
+   * Telegram — uchinchi tomon serveri, ya'ni bu ma'lumot tashqariga
+   * chiqadi. Shuning uchun bu yerda `fingerprint` uchun ishlatiladigan
+   * o'sha normallashtirish qo'llanadi: barcha raqamlar va id'lar
+   * `<n>`/`<id>` ga almashadi, matn 200 belgigacha kesiladi. Telefon,
+   * pasport raqami, narx va sana shu bilan yo'qoladi. To'liq matn
+   * kerak bo'lsa — admin sahifasidagi xato jurnali (u bazada, o'z
+   * RLS himoyasi ostida turadi).
+   */
+  private async maybeAlert(
+    fingerprint: string,
+    input: RecordErrorInput,
+  ): Promise<void> {
+    try {
+      if (!this.notifications.enabled) return;
+
+      const now = Date.now();
+      const last = this.lastAlertAt.get(fingerprint);
+      if (last !== undefined && now - last < ALERT_INTERVAL_MS) return;
+      if (this.lastAlertAt.size >= ALERT_MAP_MAX) this.lastAlertAt.clear();
+      this.lastAlertAt.set(fingerprint, now);
+
+      const isNew = last === undefined;
+      const safeMessage = normalizeMessageForFingerprint(input.message);
+      const lines = [
+        `🔴 <b>${isNew ? 'Yangi xato' : 'Xato davom etmoqda'}</b> — Folio One`,
+        '',
+        `<b>${escapeHtml(input.name)}</b>`,
+        `<code>${escapeHtml(safeMessage)}</code>`,
+        '',
+        `${escapeHtml(input.method)} ${escapeHtml(normalizePathForFingerprint(input.path))} → ${input.statusCode}`,
+        `So'rov: <code>${escapeHtml(input.requestId)}</code>`,
+      ];
+      if (input.tenantId) {
+        lines.push(`Tenant: <code>${escapeHtml(input.tenantId)}</code>`);
+      }
+      const adminUrl = adminErrorsUrl();
+      if (adminUrl) lines.push('', `To'liq jurnal: ${adminUrl}`);
+
+      await this.notifications.send(lines.join('\n'));
+    } catch (err) {
+      // Ogohlantirish hech qachon xato jurnalini yoki so'rovni
+      // yiqitmasligi kerak — bu "qo'riqchi o'zi yong'in chiqargani"
+      // bo'lardi.
+      this.logger.warn(
+        `Ogohlantirishni yuborib bo'lmadi: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 

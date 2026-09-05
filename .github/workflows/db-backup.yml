@@ -141,3 +141,40 @@ jobs:
           # Render'ning 3 kunlik oynasidan 10 barobar uzun.
           retention-days: 30
           if-no-files-found: error
+
+      # 🔔 OGOHLANTIRISH (2026-09-05).
+      #
+      # Zaxira yiqilishi — eng JIM nosozlik turi. Sayt ishlab turadi,
+      # foydalanuvchilar hech narsa sezmaydi, hisobot yo'q. Va buni
+      # aynan falokat kuni bilib olasiz: "zaxira bor edi-ku?" —
+      # oxirgisi 40 kun oldingi. GitHub email yuboradi, lekin u
+      # boshqa yuzlab xabar orasida yo'qoladi.
+      #
+      # Shuning uchun ish yiqilsa Telegram'ga darhol xabar. Sirlar
+      # berilmagan bo'lsa qadam jimgina o'tib ketadi — ya'ni bu
+      # zaxiraning o'zini hech qachon to'sib qo'ymaydi.
+      - name: Yiqilganda Telegram xabari
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "Telegram sirlari berilmagan — ogohlantirish yuborilmadi."
+            exit 0
+          fi
+          # Matn `printf` bilan yig'iladi: YAML blokidagi bo'shliqlar
+          # xabarga tushib qolmasin. `-o /dev/null` — javobni logga
+          # chiqarmaymiz.
+          text="$(printf '%s\n\n%s\n\n%s\n%s' \
+            "🔴 Folio One — BAZA ZAXIRASI YIQILDI." \
+            "Bugungi zaxira olinmadi yoki tiklab bo'lmadi. Ya'ni hozir ishonchli nusxa YO'Q." \
+            "Ishni ochib sababini ko'ring:" \
+            "${RUN_URL}")"
+          curl -sS -o /dev/null -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=${text}" \
+            || echo "Telegram xabarini yuborib bo'lmadi (ish baribir qizil)."

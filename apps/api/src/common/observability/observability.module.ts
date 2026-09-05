@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ErrorEvent } from './entities/error-event.entity';
 import { ErrorEventsService } from './error-events.service';
+import { NotificationsService } from './notifications.service';
 import { AdminErrorEventsController } from './admin-error-events.controller';
 
 // 📊 KUZATUV (2026-09-05).
@@ -20,7 +21,7 @@ import { AdminErrorEventsController } from './admin-error-events.controller';
 @Module({
   imports: [TypeOrmModule.forFeature([ErrorEvent])],
   controllers: [AdminErrorEventsController],
-  providers: [ErrorEventsService],
-  exports: [ErrorEventsService],
+  providers: [ErrorEventsService, NotificationsService],
+  exports: [ErrorEventsService, NotificationsService],
 })
 export class ObservabilityModule {}

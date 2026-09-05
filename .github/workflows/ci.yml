@@ -1,7 +1,7 @@
 # Folio One — har bir o'zgarishda avtomatik tekshiruv (2026-09-05).
 #
 # NIMA UCHUN BU KERAK EDI.
-# Repozitoriyda 935 ta test bor edi, lekin ularni HECH NARSA ishga
+# Repozitoriyda 900 dan ortiq test bor edi, lekin ularni HECH NARSA ishga
 # tushirmasdi — faqat kimdir qo'lda `pnpm test` yozganda. Render esa
 # har kommitda deploy qiladi va faqat BUILD ni tekshiradi: TypeScript
 # xatosi deploy'ni to'xtatadi, mantiqiy xato esa bemalol production'ga
@@ -24,7 +24,7 @@
 # tushirmasa — hech narsani qo'riqlamaydi. Shu bo'shliqni yopamiz.
 #
 # BAZA KERAK EMAS. Butun to'plam mock'lar bilan ishlaydi — bu ataylab
-# tekshirildi: ulanib bo'lmaydigan `DB_HOST` bilan ham 935 ta test
+# tekshirildi: ulanib bo'lmaydigan `DB_HOST` bilan ham butun to'plam
 # o'tdi. Shuning uchun bu yerda `services:` yo'q va ish tez.
 
 name: Testlar va tekshiruvlar
@@ -73,7 +73,7 @@ jobs:
       # `NODE_ENV=test` — `ErrorEventsService` shu qiymatda tozalash
       # taymerini ishga tushirmaydi, aks holda Jest jarayoni "ochiq
       # handle" bilan osilib qolishi mumkin edi.
-      - name: Testlar (935 ta)
+      - name: Testlar
         env:
           NODE_ENV: test
         run: pnpm --filter api test
@@ -102,6 +102,40 @@ jobs:
       # tekshiruvi ham shu yerda bajariladi.
       - name: Build va TypeScript tekshiruvi (web)
         run: pnpm --filter web build
+
+      # 🔔 OGOHLANTIRISH (2026-09-05). FAQAT `main` uchun.
+      #
+      # Pull request'dagi qizil ish — normal ish jarayoni, u haqda
+      # xabar kerak emas (va u shovqin bo'lib, keyin haqiqiy xabar ham
+      # e'tibordan qolardi). `main` dagi qizil ish esa boshqa gap:
+      # Render o'sha kommitni ALLAQACHON deploy qilyapti, ya'ni nuqson
+      # production yo'lida.
+      - name: Yiqilganda Telegram xabari (faqat main)
+        if: failure() && github.event_name == 'push'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "Telegram sirlari berilmagan — ogohlantirish yuborilmadi."
+            exit 0
+          fi
+          summary="$(printf '%s' "$MSG" | head -1)"
+          # Matn `printf` bilan yig'iladi: YAML blokidagi bo'shliqlar
+          # xabarga tushib qolmasin.
+          text="$(printf '%s\n\n%s\n\n%s\n%s' \
+            "🔴 Folio One — MAIN'DA TESTLAR YIQILDI." \
+            "Kommit: ${summary}" \
+            "Render bu kommitni deploy qilmoqda. Ishni ochib ko'ring:" \
+            "${RUN_URL}")"
+          curl -sS -o /dev/null -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=${text}" \
+            || echo "Telegram xabarini yuborib bo'lmadi (ish baribir qizil)."
 
 # ESLATMA — NEGA LINT YO'Q.
 # Repozitoriyda hozir ~1500 ta ESLint ogohlantirishi bor va ularning

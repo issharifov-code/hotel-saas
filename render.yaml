@@ -94,6 +94,19 @@ services:
         sync: false
       - key: PLATFORM_ADMIN_PASSWORD
         sync: false
+      # 🔔 OGOHLANTIRISH (2026-09-05). Ikkalasi ham berilsa, 5xx xato
+      # yuz berganda Telegram'ga xabar ketadi. Berilmasa — xizmat
+      # jimgina o'chib turadi va ilova o'zgarishsiz ishlaydi (ya'ni
+      # bu sozlama MAJBURIY EMAS). Qanday olinishi:
+      # docs/ogohlantirish.md.
+      #
+      # `sync: false` — qiymat repozitoriyga yozilmaydi, uni Render
+      # dashboard'da qo'lda kiritasiz. Bot tokeni — sir: uni bilgan
+      # har kim sizning nomingizdan xabar yubora oladi.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
 
   # Frontend — Vite/React statik sayti
   - name: hotel-saas-web
