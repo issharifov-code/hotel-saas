@@ -1,14 +1,15 @@
 import { NotFoundException } from '@nestjs/common';
 import { AgenciesService } from './agencies.service';
-import { BookingStatus } from '../bookings/entities/booking.entity';
 
-// AgenciesService'ning eng muhim qoidalarini sinaydi: yaratishda default
-// qiymatlar, topilmagan agentlik uchun NotFoundException, va getSummary'ning
-// komissiya hisob-kitobi (bekor qilingan bronlar hisobga olinmasligi, foiz
-// to'g'ri qo'llanilishi).
+// AgenciesService — agentlik KARTOCHKASI (CRUD): yaratishda default
+// qiymatlar, topilmagan agentlik uchun NotFoundException, update'da faqat
+// berilgan maydonlarning o'zgarishi.
+//
+// Komissiya hisob-kitobi 2026-09-04'dan boshlab bu servisda EMAS —
+// `AgencyCommissionsService` ga ko'chirildi (o'sha yerda sinaladi), chunki
+// u endi bosh kitobga provodka yozadi.
 describe('AgenciesService', () => {
   function createService(
-    bookings: unknown[] = [],
     agency: unknown = { id: 'a1', commissionPct: '10.00' },
   ) {
     const savedAgency = { id: 'a1' };
@@ -18,9 +19,6 @@ describe('AgenciesService', () => {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(agency),
       findOneBy: jest.fn().mockResolvedValue(agency),
-    };
-    const bookingRepo = {
-      find: jest.fn().mockResolvedValue(bookings),
     };
     // 2026-09-04: agentlikning KIM ekani profilda — servis yaratishda
     // turagent profilini ochadi yoki mavjudini ulaydi.
@@ -34,12 +32,8 @@ describe('AgenciesService', () => {
         profileType: 'travel_agent',
       }),
     };
-    const service = new AgenciesService(
-      agencyRepo as never,
-      bookingRepo as never,
-      guestRepo as never,
-    );
-    return { service, agencyRepo, bookingRepo, guestRepo };
+    const service = new AgenciesService(agencyRepo as never, guestRepo as never);
+    return { service, agencyRepo, guestRepo };
   }
 
   it("yaratishda commissionPct berilmasa 10 (default) qo'yiladi, isActive=true", async () => {
@@ -84,48 +78,4 @@ describe('AgenciesService', () => {
     expect(result).toMatchObject({ isActive: false, name: 'ACME Travel' });
   });
 
-  it("getSummary — bekor qilingan bronlarni hisobga olmaydi, komissiyani to'g'ri hisoblaydi", async () => {
-    const bookings = [
-      {
-        id: 'b1',
-        totalAmount: '1000000.00',
-        status: BookingStatus.CHECKED_OUT,
-      },
-      { id: 'b2', totalAmount: '500000.00', status: BookingStatus.CONFIRMED },
-    ];
-    const { service, bookingRepo } = createService(bookings, {
-      id: 'a1',
-      commissionPct: '10.00',
-    });
-    // findById (real query) ham chaqiriladi — findOneBy orqali agency qaytarilishi kerak
-    const summary = await service.getSummary('t1', 'p1', 'a1');
-
-    const whereMatcher: unknown = expect.objectContaining({
-      tenantId: 't1',
-      propertyId: 'p1',
-      agencyId: 'a1',
-    });
-    expect(bookingRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: whereMatcher }),
-    );
-    expect(summary.bookingCount).toBe(2);
-    expect(summary.totalRevenue).toBe('1500000.00');
-    expect(summary.commissionOwed).toBe('150000.00'); // 1,500,000 * 10%
-  });
-
-  it("getSummary — bronlar bo'lmasa 0 qaytaradi", async () => {
-    const { service } = createService([], { id: 'a1', commissionPct: '10.00' });
-    const summary = await service.getSummary('t1', 'p1', 'a1');
-    expect(summary.bookingCount).toBe(0);
-    expect(summary.totalRevenue).toBe('0.00');
-    expect(summary.commissionOwed).toBe('0.00');
-  });
-
-  it("getSummary — mavjud bo'lmagan agentlik uchun NotFoundException tashlaydi", async () => {
-    const { service, agencyRepo } = createService();
-    agencyRepo.findOne.mockResolvedValue(null);
-    await expect(service.getSummary('t1', 'p1', 'no-such-id')).rejects.toThrow(
-      NotFoundException,
-    );
-  });
 });

@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import request from 'supertest';
 import { AgenciesController } from './agencies.controller';
 import { AgenciesService } from './agencies.service';
+import { AgencyCommissionsService } from './agency-commissions.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -22,9 +23,14 @@ describe('AgenciesController (HTTP)', () => {
   let agenciesService: {
     listByProperty: jest.Mock;
     findById: jest.Mock;
-    getSummary: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+  };
+  let commissionsService: {
+    getSummary: jest.Mock;
+    listByAgency: jest.Mock;
+    listPayments: jest.Mock;
+    pay: jest.Mock;
   };
   let rolesService: { getEffectivePermissions: jest.Mock };
 
@@ -32,9 +38,14 @@ describe('AgenciesController (HTTP)', () => {
     agenciesService = {
       listByProperty: jest.fn(),
       findById: jest.fn(),
-      getSummary: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+    };
+    commissionsService = {
+      getSummary: jest.fn(),
+      listByAgency: jest.fn(),
+      listPayments: jest.fn(),
+      pay: jest.fn(),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
@@ -45,6 +56,7 @@ describe('AgenciesController (HTTP)', () => {
       controllers: [AgenciesController],
       providers: [
         { provide: AgenciesService, useValue: agenciesService },
+        { provide: AgencyCommissionsService, useValue: commissionsService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
         JwtStrategy,
@@ -133,14 +145,14 @@ describe('AgenciesController (HTTP)', () => {
       rolesService.getEffectivePermissions.mockResolvedValue(
         new Set(['booking:view']),
       );
-      agenciesService.getSummary.mockResolvedValue({ totalBookings: 5 });
+      commissionsService.getSummary.mockResolvedValue({ totalBookings: 5 });
 
       await request(app.getHttpServer())
         .get('/properties/p1/agencies/ag1/summary')
         .set('Authorization', `Bearer ${tokenFor()}`)
         .expect(200);
 
-      expect(agenciesService.getSummary).toHaveBeenCalledWith(
+      expect(commissionsService.getSummary).toHaveBeenCalledWith(
         't1',
         'p1',
         'ag1',
