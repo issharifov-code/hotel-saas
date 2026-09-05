@@ -110,6 +110,7 @@ export function CreateGroupBookingModal({
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
+              maxLength={200}
               className="input"
               placeholder="Masalan: ACME konferensiyasi"
               required
@@ -117,22 +118,22 @@ export function CreateGroupBookingModal({
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Kompaniya (ixtiyoriy)</span>
-            <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input" />
+            <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} maxLength={200} className="input" />
           </label>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Aloqa shaxsi</span>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} className="input" />
+            <input value={contactName} onChange={(e) => setContactName(e.target.value)} maxLength={200} className="input" />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Telefon</span>
-            <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className="input" />
+            <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} maxLength={50} className="input" />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
-            <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="input" />
+            <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} maxLength={200} className="input" />
           </label>
         </div>
 
@@ -220,7 +221,7 @@ export function CreateGroupBookingModal({
 
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Izoh (ixtiyoriy)</span>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input" rows={2} />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} className="input" rows={2} />
         </label>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
