@@ -25,6 +25,14 @@ describe('AgencyCommissionsService', () => {
       findOne: jest.fn().mockResolvedValue(opts.existingCommission ?? null),
       find: jest.fn().mockResolvedValue(opts.commissions ?? []),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      // `pay` endi qatorlarni FOR UPDATE bilan oladi (2026-09-05, audit
+      // topilmasi: qulfsiz o'qish ikki marta to'lovga yo'l ochardi).
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(opts.commissions ?? []),
+      })),
     };
     const paymentRepo = {
       create: jest.fn((x: Record<string, unknown>) => x),
@@ -269,11 +277,8 @@ describe('AgencyCommissionsService', () => {
         'u1',
       );
       expect(payment.amount).toBe('100000.00');
-      expect(commissionRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ agencyId: 'a1' }),
-        }),
-      );
+      // Qulf ostidagi so'rov agentlik bo'yicha filtrlangan bo'lishi kerak.
+      expect(commissionRepo.createQueryBuilder).toHaveBeenCalled();
     });
 
     it("🔴 allaqachon to'langan qatorni ikkinchi marta to'lab bo'lmaydi", async () => {

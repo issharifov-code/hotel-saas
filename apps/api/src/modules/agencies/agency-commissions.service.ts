@@ -257,16 +257,31 @@ export class AgencyCommissionsService {
     await this.findAgency(tenantId, propertyId, agencyId);
 
     const requestedIds = dto.commissionIds;
-    const commissions = await this.commissionRepo.find({
-      where: {
-        tenantId,
-        propertyId,
-        agencyId,
-        ...(requestedIds?.length
-          ? { id: In(requestedIds) }
-          : { status: AgencyCommissionStatus.ACCRUED }),
-      },
-    });
+    // 🔴 2026-09-05 (kod auditi): bu o'qish qulfsiz edi. Ikkita bir
+    // vaqtdagi "hammasini to'lash" so'rovi bir xil ACCRUED to'plamni
+    // ko'rib, IKKITA to'lov yozuvi va ikkita provodka yaratardi —
+    // `agency_commission_payable` manfiyga tushib, agentlikka kassadan
+    // ikki barobar pul chiqqandek ko'rinardi. Pastdagi `alreadyPaid`
+    // tekshiruvi bunga yordam bermaydi: ikkala so'rov ham qatorlarni
+    // hali ACCRUED holatida ko'radi.
+    //
+    // Yechim `InvoicingService.persistPayment` naqshi bilan bir xil:
+    // qatorlarni FOR UPDATE bilan olamiz, shunda ikkinchi so'rov
+    // birinchisi tugagunicha kutadi va keyin `alreadyPaid` ga tushadi.
+    const qb = this.commissionRepo
+      .createQueryBuilder('c')
+      .setLock('pessimistic_write')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.property_id = :propertyId', { propertyId })
+      .andWhere('c.agency_id = :agencyId', { agencyId });
+    if (requestedIds?.length) {
+      qb.andWhere('c.id IN (:...ids)', { ids: requestedIds });
+    } else {
+      qb.andWhere('c.status = :status', {
+        status: AgencyCommissionStatus.ACCRUED,
+      });
+    }
+    const commissions = await qb.getMany();
 
     if (requestedIds?.length && commissions.length !== requestedIds.length) {
       throw new BadRequestException(
