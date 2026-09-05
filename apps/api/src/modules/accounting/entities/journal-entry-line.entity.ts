@@ -1,10 +1,21 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { JournalEntry } from './journal-entry.entity';
 import { Account } from './account.entity';
 
 // Har bir qator debet YOKI kredit (ikkalasi emas) bo'ladi — AccountingService
 // tomonidan yaratilishda tekshiriladi. tenant_id'ga ega emas (ota JournalEntry
 // orqali RLS bilan himoyalanadi — qarang: EnableAccountingRls migratsiyasi).
+// ⚡ Ota kalit bo'yicha indeks (2026-09-05, AddChildTableIndexes) —
+// FK avtomatik indekslanmaydi; bu jadval bazadagi eng tez o'sadigan
+// jadvallardan biri.
+@Index(['journalEntryId'])
 @Entity('journal_entry_lines')
 export class JournalEntryLine {
   @PrimaryGeneratedColumn('uuid')
