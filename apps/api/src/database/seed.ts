@@ -7,6 +7,7 @@ import { Permission } from '../modules/roles/entities/permission.entity';
 import { PermissionAction, PermissionModule } from '../common/enums/permission.enum';
 import {
   readPlatformAdminCredentials,
+  planPlatformAdminUpdate,
   type PlatformAdminCredentials,
 } from './platform-admin-credentials';
 
@@ -66,8 +67,57 @@ async function seedPlatformAdmin(
     email: credentials.email,
   });
 
+  // 🔴 2026-09-05, ishlab chiqarishda aniqlangan. Ilgari bu yerda
+  // shunchaki `return` bor edi: hisob mavjud bo'lsa seed hech narsa
+  // qilmasdan o'tib ketardi. Natijada `PLATFORM_ADMIN_PASSWORD` ni
+  // Render'da almashtirish HECH QANDAY ta'sir qilmasdi — administrator
+  // parolni rotatsiya qildim deb o'ylardi, aslida eski parol (aynan
+  // build loglariga sizib chiqqani) ishlayverardi.
+  //
+  // Bu ayniqsa muhim, chunki platforma adminining parolini boshqa
+  // yo'l bilan almashtirib bo'lmaydi: `PATCH /users/:id/reset-password`
+  // tenant kontekstini talab qiladi, platforma adminida esa
+  // `tenant_id IS NULL`.
+  //
+  // Shuning uchun qoida sodda: `PLATFORM_ADMIN_PASSWORD` — shu hisob
+  // paroli uchun YAGONA HAQIQAT MANBAI. Har deploy'da baza shu qiymatga
+  // moslashtiriladi.
   if (existingAdmin) {
-    console.log(`Platforma super-admin allaqachon mavjud: ${credentials.email}`);
+    const plan = planPlatformAdminUpdate({
+      passwordMatches: await bcrypt.compare(
+        credentials.password,
+        existingAdmin.passwordHash,
+      ),
+      isPlatformAdmin: existingAdmin.isPlatformAdmin,
+      isActive: existingAdmin.status === UserStatus.ACTIVE,
+    });
+
+    if (!plan.needsWrite) {
+      console.log(
+        `Platforma super-admin allaqachon mavjud va mos: ${credentials.email}`,
+      );
+      return;
+    }
+
+    if (plan.rotatePassword) {
+      existingAdmin.passwordHash = await bcrypt.hash(credentials.password, 12);
+    }
+    if (plan.bumpTokenVersion) {
+      // Parol o'zgargani uchun eski sessiyalar ham uzilishi SHART —
+      // aks holda rotatsiya o'z ma'nosini yo'qotadi (eski token 8 soat
+      // ishlayverardi).
+      existingAdmin.tokenVersion += 1;
+    }
+    existingAdmin.isPlatformAdmin = true;
+    existingAdmin.status = UserStatus.ACTIVE;
+    await userRepo.save(existingAdmin);
+
+    console.log(
+      `Platforma super-admin yangilandi: ${credentials.email}` +
+        (plan.rotatePassword
+          ? " (parol va sessiyalar yangilandi)"
+          : ' (huquqlar)'),
+    );
     return;
   }
 

@@ -65,3 +65,42 @@ export function readPlatformAdminCredentials(
   // hech qachon kirib bo'lmaydi.
   return { email: rawEmail.toLowerCase(), password };
 }
+
+export interface ExistingAdminState {
+  passwordMatches: boolean;
+  isPlatformAdmin: boolean;
+  isActive: boolean;
+}
+
+export interface PlatformAdminUpdatePlan {
+  needsWrite: boolean;
+  rotatePassword: boolean;
+  /** Parol almashsa eski sessiyalar ham uzilishi shart. */
+  bumpTokenVersion: boolean;
+}
+
+/**
+ * 🔴 2026-09-05, ishlab chiqarishda aniqlangan. Seed mavjud hisobni topsa
+ * ilgari shunchaki `return` qilardi — ya'ni `PLATFORM_ADMIN_PASSWORD` ni
+ * Render'da almashtirish HECH QANDAY ta'sir qilmasdi. Administrator
+ * parolni rotatsiya qildim deb o'ylardi, aslida eski parol (aynan build
+ * loglariga sizib chiqqani) ishlayverardi.
+ *
+ * Bu ayniqsa muhim, chunki platforma adminining parolini boshqa yo'l
+ * bilan almashtirib bo'lmaydi: `PATCH /users/:id/reset-password` tenant
+ * kontekstini talab qiladi, platforma adminida esa `tenant_id IS NULL`.
+ *
+ * Qoida: `PLATFORM_ADMIN_PASSWORD` — shu hisob paroli uchun YAGONA
+ * HAQIQAT MANBAI.
+ */
+export function planPlatformAdminUpdate(
+  state: ExistingAdminState,
+): PlatformAdminUpdatePlan {
+  const rotatePassword = !state.passwordMatches;
+  const flagsCorrect = state.isPlatformAdmin && state.isActive;
+  return {
+    needsWrite: rotatePassword || !flagsCorrect,
+    rotatePassword,
+    bumpTokenVersion: rotatePassword,
+  };
+}

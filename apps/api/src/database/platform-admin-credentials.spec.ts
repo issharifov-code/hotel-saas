@@ -1,5 +1,6 @@
 import {
   readPlatformAdminCredentials,
+  planPlatformAdminUpdate,
   MIN_ADMIN_PASSWORD_LENGTH,
 } from './platform-admin-credentials';
 
@@ -61,5 +62,64 @@ describe('readPlatformAdminCredentials', () => {
       PLATFORM_ADMIN_PASSWORD: STRONG,
     } as NodeJS.ProcessEnv);
     expect(creds).toEqual({ email: 'issharifov@gmail.com', password: STRONG });
+  });
+});
+
+// 🔴 2026-09-05, ishlab chiqarishda aniqlangan. Seed mavjud hisobni topsa
+// ilgari shunchaki o'tib ketardi — ya'ni `PLATFORM_ADMIN_PASSWORD` ni
+// Render'da almashtirish hech qanday ta'sir qilmasdi. Foydalanuvchi
+// "parolni rotatsiya qildim" deb o'ylardi, aslida eski parol (build
+// loglariga sizib chiqqani) ishlayverardi.
+describe('planPlatformAdminUpdate', () => {
+  it("parol mos kelmasa uni yangilaydi va sessiyalarni uzadi", () => {
+    expect(
+      planPlatformAdminUpdate({
+        passwordMatches: false,
+        isPlatformAdmin: true,
+        isActive: true,
+      }),
+    ).toEqual({
+      needsWrite: true,
+      rotatePassword: true,
+      bumpTokenVersion: true,
+    });
+  });
+
+  it('hammasi mos bo\'lsa bazaga tegmaydi (idempotent)', () => {
+    expect(
+      planPlatformAdminUpdate({
+        passwordMatches: true,
+        isPlatformAdmin: true,
+        isActive: true,
+      }),
+    ).toEqual({
+      needsWrite: false,
+      rotatePassword: false,
+      bumpTokenVersion: false,
+    });
+  });
+
+  it("admin bayrog'i yo'qolgan bo'lsa tiklaydi, lekin sessiyani uzmaydi", () => {
+    expect(
+      planPlatformAdminUpdate({
+        passwordMatches: true,
+        isPlatformAdmin: false,
+        isActive: true,
+      }),
+    ).toEqual({
+      needsWrite: true,
+      rotatePassword: false,
+      bumpTokenVersion: false,
+    });
+  });
+
+  it('hisob bloklangan bo\'lsa faollashtiradi', () => {
+    expect(
+      planPlatformAdminUpdate({
+        passwordMatches: true,
+        isPlatformAdmin: true,
+        isActive: false,
+      }),
+    ).toMatchObject({ needsWrite: true, rotatePassword: false });
   });
 });
