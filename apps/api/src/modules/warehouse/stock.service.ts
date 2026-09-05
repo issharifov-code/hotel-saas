@@ -77,10 +77,15 @@ export class StockService {
       quantityRemaining: params.quantity,
       unitCost: params.unitCost,
       receivedAt: new Date(),
+      // Bosh kitobga aynan shu (yaxlitlangan) summa debetlanadi — partiya
+      // o'zining "kitobdagi qiymati"ni shu tarzda eslab qoladi.
+      bookedCostRemaining: (
+        Number(params.quantity) * Number(params.unitCost)
+      ).toFixed(2),
     });
     const savedLot = await lotRepo.save(lot);
 
-    const totalCost = (Number(params.quantity) * Number(params.unitCost)).toFixed(2);
+    const totalCost = savedLot.bookedCostRemaining;
 
     const transaction = await transactionRepo.save(
       transactionRepo.create({
@@ -162,11 +167,32 @@ export class StockService {
       if (remaining <= 0) break;
       const available = Number(lot.quantityRemaining);
       const consumed = Math.min(available, remaining);
+      const bookedRemaining = Number(lot.bookedCostRemaining);
+
+      // 🔴 2026-09-05 (kod auditi): ilgari shu yerda `consumed * unitCost`
+      // yig'ilar va oxirida bir marta yaxlitlanardi — lekin KIRIM ham
+      // alohida yaxlitlangan edi, ya'ni ikkala tomon bir-biriga
+      // tenglashmasdi va partiya tugagach `inventory` hisobida tiyin
+      // qoldig'i osilib qolardi.
+      //
+      // Endi partiyaning kitobdagi qoldig'idan yechamiz: partiya TO'LIQ
+      // tugasa — qoldiqning HAMMASI (yaxlitlash farqi shu yerda yopiladi),
+      // aks holda ulushi (qoldiqdan oshmagan holda).
+      const lotCost =
+        available - consumed <= 0
+          ? bookedRemaining
+          : Math.min(
+              Math.round(consumed * Number(lot.unitCost) * 100) / 100,
+              bookedRemaining,
+            );
+
       lot.quantityRemaining = (available - consumed).toFixed(3);
-      totalCost += consumed * Number(lot.unitCost);
+      lot.bookedCostRemaining = (bookedRemaining - lotCost).toFixed(2);
+      totalCost += lotCost;
       remaining -= consumed;
       updatedLots.push(lot);
     }
+    totalCost = Math.round(totalCost * 100) / 100;
 
     if (remaining > 0) {
       throw new BadRequestException(
