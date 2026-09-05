@@ -10,8 +10,11 @@ import { JournalEntryLine } from './journal-entry-line.entity';
 
 // Yozuv qaysi modul/harakat orqali avtomatik yaratilganini bildiradi (audit-trail).
 // 'manual' — buxgalter tomonidan qo'lda kiritilgan yozuv.
+// 'agencies' — turagent komissiyasi (check-out'da hisoblash va agentlikka
+// to'lov). Ustun `varchar(20)`, DB enum emas — yangi qiymat qo'shish uchun
+// migratsiya kerak emas.
 export type JournalEntrySourceModule =
-  'invoicing' | 'pos' | 'warehouse' | 'payroll' | 'manual';
+  'invoicing' | 'pos' | 'warehouse' | 'payroll' | 'agencies' | 'manual';
 
 // Bosh kitob yozuvi (jurnal yozuvi boshi). Bitta yozuv >=2 qatorga (JournalEntryLine)
 // ega, va har doim debet jami = kredit jami (AccountingService.postJournalEntry
