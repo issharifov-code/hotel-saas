@@ -269,3 +269,192 @@ describe('StockService.issue (FIFO)', () => {
     expect(result.totalCost).toBe('10.00');
   });
 });
+
+// 🔬 KIRIM VA INVENTARIZATSIYA TUZATISHI (2026-09-05).
+//
+// NIMA UCHUN QO'SHILDI. Qoplama o'lchovida `stock.service.ts` 62.5%
+// edi va qoplanmagan qismning asosiysi — `receiveLot` ning moliyaviy
+// shoxi hamda `adjust` (inventarizatsiya tuzatishi). Ikkalasi ham
+// OMBOR QOLDIG'IGA VA BOSH KITOBGA bir vaqtda ta'sir qiladi.
+//
+// `adjust` da ikki yo'nalish bor va ular butunlay boshqacha ishlaydi:
+//
+//   MUSBAT (ortiqcha topildi) — yangi partiya sifatida qo'shiladi,
+//   narxi 0. Nol narx ataylab: bu tovar hech qanday pulga sotib
+//   olinmagan, ya'ni uni aktiv sifatida baholash kitobni shishirardi.
+//
+//   MANFIY (yo'qotish, o'g'irlik, buzilish) — FIFO bo'yicha yechiladi,
+//   lekin "iste'mol" emas, "TANQISLIK" xarajati sifatida provodka
+//   qilinadi. Farqi muhim: iste'mol normal xarajat, tanqislik esa
+//   nazorat muammosining belgisi va alohida hisobda ko'rinishi kerak.
+describe('StockService.adjust — inventarizatsiya tuzatishi', () => {
+  function createService(lots: LotRow[] = [{ id: 'lot-1', quantityRemaining: '10', unitCost: '5.00' }]) {
+    const lotQueryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      setLock: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue(
+        lots.map((l) => ({
+          bookedCostRemaining: (Number(l.quantityRemaining) * Number(l.unitCost)).toFixed(2),
+          ...l,
+        })),
+      ),
+    };
+    const lotRepo = {
+      createQueryBuilder: jest.fn(() => lotQueryBuilder),
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((row: unknown) =>
+        Promise.resolve(Array.isArray(row) ? row : { id: 'lot-yangi', ...(row as object) }),
+      ),
+    };
+    const transactionRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((data: unknown) => Promise.resolve({ id: 'txn-1', ...(data as object) })),
+    };
+    const stockItemRepo = {
+      findOneBy: jest.fn().mockResolvedValue({ id: 'item-1', name: 'Sochiq', category: null }),
+    };
+    const accountingService = { postSimpleEntry: jest.fn().mockResolvedValue(null) };
+    const service = new StockService(
+      lotRepo as never,
+      transactionRepo as never,
+      stockItemRepo as never,
+      accountingService as never,
+    );
+    return { service, lotRepo, transactionRepo, accountingService };
+  }
+
+  // 📌 XABAR MATNI ATAYLAB TEKSHIRILADI. Faqat `BadRequestException`
+  // turini tekshirish YETARLI EMAS: mutatsion sinovda `qty === 0`
+  // qo'riqchisi butunlay olib tashlanganda ham test yashil qolgan edi
+  // — nol miqdor pastdagi `issue()` ga tushib, u yerdagi "Chiqim
+  // miqdori musbat bo'lishi kerak" xatosini bergan. Ya'ni test
+  // qo'riqchini emas, umuman "biror xato bo'ldi" ni tasdiqlardi.
+  // Aniq matn talab qilinganda mutatsiya endi ushlanadi.
+  it("nol miqdorli tuzatish o'z xabari bilan rad etiladi", async () => {
+    const { service, transactionRepo } = createService();
+    await expect(
+      service.adjust('t1', 'w1', { stockItemId: 'item-1', quantity: '0' } as never),
+    ).rejects.toThrow(/Tuzatish miqdori 0/);
+    expect(transactionRepo.save).not.toHaveBeenCalled();
+  });
+
+  // 🔴 ORTIQCHA TOPILGAN TOVAR NOL NARX BILAN KIRITILADI. Aks holda
+  // hech qanday pulga olinmagan tovar aktiv sifatida baholanib,
+  // balansni shishirardi.
+  it("musbat tuzatish yangi partiyani nol narx bilan qo'shadi", async () => {
+    const { service, lotRepo, transactionRepo } = createService();
+
+    const txn = await service.adjust(
+      't1',
+      'w1',
+      { stockItemId: 'item-1', quantity: '7', reason: 'inventarizatsiya ortig\'i' } as never,
+      'u1',
+      'p1',
+    );
+
+    expect(lotRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ quantityReceived: '7.000', unitCost: '0', bookedCostRemaining: '0.00' }),
+    );
+    expect((txn as unknown as { type: string }).type).toBe('adjustment');
+    expect((txn as unknown as { referenceType: string }).referenceType).toBe('inventory_adjustment');
+    expect(transactionRepo.save).toHaveBeenCalled();
+  });
+
+  // 🔴 MANFIY TUZATISH — FIFO bo'yicha yechiladi va miqdor MANFIY
+  // ko'rinishda yoziladi (tarixda "chiqim" ekani ko'rinib tursin).
+  it('manfiy tuzatish FIFO bo\'yicha yechadi va manfiy miqdor bilan yoziladi', async () => {
+    const { service, lotRepo } = createService([
+      { id: 'lot-1', quantityRemaining: '10', unitCost: '5.00' },
+    ]);
+
+    const txn = (await service.adjust(
+      't1',
+      'w1',
+      { stockItemId: 'item-1', quantity: '-4', reason: 'buzilgan' } as never,
+      'u1',
+      'p1',
+    )) as unknown as { quantity: string; type: string; referenceType: string };
+
+    expect(txn.quantity).toBe('-4.000');
+    expect(txn.type).toBe('adjustment');
+    expect(txn.referenceType).toBe('inventory_adjustment');
+    // Partiya haqiqatan kamaytirilgan bo'lishi kerak.
+    const savedLots = lotRepo.save.mock.calls.find((c) => Array.isArray(c[0]))?.[0] as LotRow[];
+    expect(savedLots[0].quantityRemaining).toBe('6.000');
+  });
+
+  it("zaxira yetmasa manfiy tuzatish butunlay rad etiladi", async () => {
+    const { service } = createService([{ id: 'lot-1', quantityRemaining: '2', unitCost: '5.00' }]);
+    await expect(
+      service.adjust('t1', 'w1', { stockItemId: 'item-1', quantity: '-9' } as never, 'u1', 'p1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('StockService.receiveLot — moliyaviy provodka', () => {
+  function createService() {
+    const lotRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((row: unknown) => Promise.resolve({ id: 'lot-1', ...(row as object) })),
+    };
+    const transactionRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn((data: unknown) => Promise.resolve({ id: 'txn-1', ...(data as object) })),
+    };
+    const accountingService = { postSimpleEntry: jest.fn().mockResolvedValue(null) };
+    const service = new StockService(
+      lotRepo as never,
+      transactionRepo as never,
+      { findOneBy: jest.fn() } as never,
+      accountingService as never,
+    );
+    return { service, lotRepo, transactionRepo, accountingService };
+  }
+
+  const base = {
+    tenantId: 't1',
+    warehouseId: 'w1',
+    stockItemId: 'item-1',
+    quantity: '4.000',
+    unitCost: '2500.00',
+  };
+
+  it("partiya kitobdagi qiymatini o'zi bilan olib yuradi", async () => {
+    const { service, lotRepo } = createService();
+    await service.receiveLot(base);
+    expect(lotRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ bookedCostRemaining: '10000.00', quantityRemaining: '4.000' }),
+    );
+  });
+
+  // 🔴 PROVODKA FAQAT HAQIQIY XARID UCHUN. Qo'lda kirim yoki
+  // inventarizatsiya ortig'i (narxi 0) kitobga yozilmasligi kerak —
+  // aks holda "havodan" aktiv va kreditorlik qarzi paydo bo'lardi.
+  it('xarid buyurtmasisiz kirimda provodka yozilmaydi', async () => {
+    const { service, accountingService } = createService();
+    await service.receiveLot({ ...base, propertyId: 'p1' });
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+  });
+
+  it('xarid buyurtmasi bilan kirimda zaxira va kreditorlik qarzi provodkasi yoziladi', async () => {
+    const { service, accountingService } = createService();
+    await service.receiveLot({ ...base, propertyId: 'p1', purchaseOrderId: 'po-1' });
+    expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debitSystemKey: 'inventory',
+        creditSystemKey: 'accounts_payable',
+        amount: '10000.00',
+      }),
+    );
+  });
+
+  // Mulk berilmasa provodka yozib bo'lmaydi (bosh kitob mulk
+  // darajasida yuritiladi) — bu holat jim o'tishi kerak, xato emas.
+  it("mulk berilmasa provodka yozilmaydi", async () => {
+    const { service, accountingService } = createService();
+    await service.receiveLot({ ...base, purchaseOrderId: 'po-1' });
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+  });
+});
