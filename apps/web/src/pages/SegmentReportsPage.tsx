@@ -149,7 +149,7 @@ export function SegmentReportsPage() {
                         <th className="py-2 pr-4">Agentlik</th>
                         <th className="py-2 pr-4">Bronlar</th>
                         <th className="py-2 pr-4">Daromad</th>
-                        <th className="py-2 pr-4">Komissiya qarzi</th>
+                        <th className="py-2 pr-4">Komissiya (taxminiy)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -164,6 +164,18 @@ export function SegmentReportsPage() {
                     </tbody>
                   </table>
                 </div>
+              )}
+              {/* 🔴 Bu jadvaldagi komissiya — DAVR bo'yicha taxmin: u hozirgi
+                  foizni davrdagi daromadga qo'llaydi va hali chiqib ketmagan
+                  mehmonlarni ham qamrab oladi. Haqiqiy, bosh kitobga yozilgan
+                  qarz agentlikning o'z kartochkasida ko'rinadi — ikkalasi bir
+                  xil emas va shuni aytib qo'yish shart, aks holda buxgalter
+                  ikkita raqamni solishtirib chalkashadi. */}
+              {data.byAgency.length > 0 && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Taxminiy: davrdagi daromadga hozirgi foiz qo'llangan. Haqiqiy qarz —
+                  Bronlar &rarr; Agentliklar sahifasida, har bir agentlik kartochkasida.
+                </p>
               )}
             </SectionCard>
 
