@@ -186,7 +186,10 @@ interface AdminGroup {
 const ADMIN_GROUPS: AdminGroup[] = [
   {
     key: 'sozlamalar',
-    label: 'Sozlamalar',
+    // 🔴 2026-09-05 (foydalanuvchi qarori): guruh nomi "Umumiy".
+    // Panelning O'ZI endi "Sozlamalar" deb ataladi, ya'ni guruh ham
+    // shunday nomlansa so'z ikki marta takrorlanardi.
+    label: 'Umumiy',
     items: [
       { to: '/property-settings', label: 'Mehmonxona', moduleKey: 'tenant_settings' },
       { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
@@ -306,6 +309,19 @@ function CloseIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" d="M5 5l10 10M15 5L5 15" />
+    </svg>
+  );
+}
+
+// Sozlamalar belgisi — panel sarlavhasi uchun (2026-09-05).
+function SettingsGearIcon() {
+  return (
+    // TO'LDIRILGAN (silhouette) variant. Chiziqli tishli g'ildirak
+    // 16px da tanib bo'lmasdi — tishlari ingichka nurga aylanib,
+    // belgi QUYOSHGA o'xshab qolardi. To'ldirilgan shakl kichik
+    // o'lchamda ancha barqaror o'qiladi.
+    <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d="M16.02 8.16L18.25 8.40L18.25 11.60L16.02 11.84L15.56 12.96L16.96 14.70L14.70 16.96L12.96 15.56L11.84 16.02L11.60 18.25L8.40 18.25L8.16 16.02L7.04 15.56L5.30 16.96L3.04 14.70L4.44 12.96L3.98 11.84L1.75 11.60L1.75 8.40L3.98 8.16L4.44 7.04L3.04 5.30L5.30 3.04L7.04 4.44L8.16 3.98L8.40 1.75L11.60 1.75L11.84 3.98L12.96 4.44L14.70 3.04L16.96 5.30L15.56 7.04ZM7.00 10.00a3.00 3.00 0 1 0 6.00 0a3.00 3.00 0 1 0 -6.00 0Z" />
     </svg>
   );
 }
@@ -1100,13 +1116,21 @@ export function AppLayout({
               Yopishning uchta yo'li bor, uchalasi ham ishlaydi:
               shu tugma, qorong'ilashtiruvchi qatlamga bosish, va
               `Escape` (klaviatura foydalanuvchilari uchun shart). */}
-          <Link
-            to="/dashboard"
-            onClick={closeDrawer}
-            className="min-w-0 truncate py-1 text-xs font-semibold text-slate-500 transition-opacity hover:opacity-70"
-          >
-            Folio One
-          </Link>
+          {/* 🔴 2026-09-05 (foydalanuvchi qarori): sarlavha "Folio One"
+              emas, "Sozlamalar".
+
+              Sabab: bu band panelning NIMA ekanini aytishi kerak, kim
+              yasaganini emas. Mahsulot nomi pastdagi footer'da va
+              modul panelidagi F1 belgisida allaqachon bor.
+
+              Havola EMAS, oddiy sarlavha: "Sozlamalar" so'zi biror
+              sahifaga olib borishi kutilmaydi — u ostidagi ro'yxatning
+              nomi. Ilgari u Bosh sahifaga olib borardi, bu esa
+              chalg'ituvchi edi. */}
+          <span className="flex min-w-0 items-center gap-1.5 py-1 text-xs font-semibold text-slate-500">
+            <SettingsGearIcon />
+            <span className="truncate">Sozlamalar</span>
+          </span>
           <button
             type="button"
             onClick={closeDrawer}

@@ -94,7 +94,7 @@ describe('AppLayout — chap paneldagi sozlamalar menyusi', () => {
     renderLayout();
     const drawer = await openDrawer();
 
-    expect(drawer.getByText('Sozlamalar')).toBeInTheDocument();
+    expect(drawer.getByText('Umumiy')).toBeInTheDocument();
     expect(drawer.queryByText('Sotuv kanallari')).not.toBeInTheDocument();
   });
 
@@ -133,7 +133,7 @@ describe('AppLayout — chap paneldagi sozlamalar menyusi', () => {
     renderLayout();
     const drawer = await openDrawer();
 
-    expect(drawer.getByText('Sozlamalar')).toBeInTheDocument();
+    expect(drawer.getByText('Umumiy')).toBeInTheDocument();
     expect(drawer.getByText('Sotuv kanallari')).toBeInTheDocument();
     for (const label of [
       'Mehmonxona',
