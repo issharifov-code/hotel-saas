@@ -310,6 +310,7 @@ function CreateWarehouseModal({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={150}
             className="input"
             placeholder="masalan: Oshxona ombori"
           />
@@ -478,6 +479,7 @@ function StockActionModal({
             required={mode === 'adjust'}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
             className="input"
           />
         </label>
@@ -567,16 +569,16 @@ function CreateStockItemModal({ onClose, onCreated }: { onClose: () => void; onC
       <form onSubmit={submit} className="space-y-3">
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">SKU</span>
-          <input required value={sku} onChange={(e) => setSku(e.target.value)} className="input" />
+          <input required value={sku} onChange={(e) => setSku(e.target.value)} maxLength={50} className="input" />
         </label>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+          <input required value={name} onChange={(e) => setName(e.target.value)} maxLength={200} className="input" />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">O'lchov birligi</span>
-            <input required value={unit} onChange={(e) => setUnit(e.target.value)} className="input" placeholder="kg, dona..." />
+            <input required value={unit} onChange={(e) => setUnit(e.target.value)} maxLength={20} className="input" placeholder="kg, dona..." />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Reorder point</span>
@@ -585,7 +587,7 @@ function CreateStockItemModal({ onClose, onCreated }: { onClose: () => void; onC
         </div>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Toifa (ixtiyoriy)</span>
-          <input value={category} onChange={(e) => setCategory(e.target.value)} className="input" />
+          <input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={100} className="input" />
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">
@@ -668,16 +670,16 @@ function CreateSupplierModal({ onClose, onCreated }: { onClose: () => void; onCr
       <form onSubmit={submit} className="space-y-3">
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+          <input required value={name} onChange={(e) => setName(e.target.value)} maxLength={200} className="input" />
         </label>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Aloqador shaxs</span>
-          <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="input" />
+          <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} maxLength={150} className="input" />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Telefon</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" placeholder="+998..." />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} className="input" placeholder="+998..." />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Email</span>
@@ -686,7 +688,7 @@ function CreateSupplierModal({ onClose, onCreated }: { onClose: () => void; onCr
         </div>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Manzil</span>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} className="input" />
+          <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} className="input" />
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">

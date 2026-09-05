@@ -444,6 +444,7 @@ function PayslipEntryRow({
             />
             <input
               type="text"
+              maxLength={500}
               placeholder="Izoh"
               value={adjustmentNote}
               onChange={(e) => {

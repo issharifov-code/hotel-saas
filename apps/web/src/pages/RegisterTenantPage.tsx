@@ -369,6 +369,7 @@ export function RegisterTenantPage() {
                       id="reg-owner-position"
                       placeholder="masalan: Egasi, Bosh menejer"
                       className={pillInputNoIcon}
+                      maxLength={150}
                       value={form.ownerPosition}
                       onChange={update('ownerPosition')}
                     />

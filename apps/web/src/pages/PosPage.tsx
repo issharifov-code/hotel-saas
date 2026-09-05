@@ -280,7 +280,7 @@ function CreatePosOrderModal({
         )}
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Stol raqami (ixtiyoriy)</span>
-          <input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} className="input" />
+          <input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} maxLength={20} className="input" />
         </label>
 
         <div className="space-y-2">
@@ -361,12 +361,12 @@ function CreateMenuItemModal({ onClose, onCreated }: { onClose: () => void; onCr
       <form onSubmit={submit} className="space-y-3">
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Nomi</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+          <input required value={name} onChange={(e) => setName(e.target.value)} maxLength={200} className="input" />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Toifa</span>
-            <input value={category} onChange={(e) => setCategory(e.target.value)} className="input" placeholder="Taomlar, Ichimliklar..." />
+            <input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={100} className="input" placeholder="Taomlar, Ichimliklar..." />
           </label>
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Narx (UZS)</span>
@@ -421,6 +421,7 @@ function CreateOutletModal({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={150}
             className="input"
             placeholder="masalan: Bar"
           />
