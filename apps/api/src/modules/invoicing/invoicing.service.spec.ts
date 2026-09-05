@@ -391,3 +391,49 @@ describe('InvoicingService.cancel — teskari provodka', () => {
     expect(xona).toMatchObject({ amount: 1250 });
   });
 });
+
+// 🔴 2026-09-05 (kod auditi): foliodagi qo'lda qo'shilgan qatorda
+// bosilgan `quantity × unitPrice` saqlangan `amount` bilan mos kelmasdi.
+describe('InvoicingService.addLine — qator ichki mosligi', () => {
+  it("saqlangan miqdor va narx ko'paytmasi aynan saqlangan summaga teng", async () => {
+    const invoice = {
+      id: 'inv-1',
+      status: InvoiceStatus.OPEN,
+      totalAmount: '0.00',
+      paidAmount: '0.00',
+      lines: [],
+    };
+    const lineRepo = {
+      create: (d: Record<string, unknown>) => d,
+      save: jest.fn((d: Record<string, unknown>) =>
+        Promise.resolve({ id: 'l1', ...d }),
+      ),
+      find: jest.fn().mockResolvedValue([]),
+    };
+    const invoiceRepo = {
+      findOne: jest.fn().mockResolvedValue(invoice),
+      findOneOrFail: jest.fn().mockResolvedValue({ ...invoice }),
+      save: jest.fn((x: unknown) => Promise.resolve(x)),
+    };
+    const service = new InvoicingService(
+      invoiceRepo as never,
+      lineRepo as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      { postSimpleEntry: jest.fn().mockResolvedValue(null) } as never,
+      { awardPointsForPayment: jest.fn() } as never,
+    );
+
+    // 3 × 1333.333 — xom ko'paytma 3999.999 -> 4000.00, saqlangan narx esa
+    // 1333.33 bo'lardi (3 × 1333.33 = 3999.99).
+    await service.addLine('t1', 'p1', 'inv-1', {
+      description: 'Minibar',
+      quantity: 3,
+      unitPrice: 1333.333,
+    } as never);
+
+    const saved = lineRepo.save.mock.calls[0][0] as Record<string, string>;
+    expect(
+      (Number(saved.quantity) * Number(saved.unitPrice)).toFixed(2),
+    ).toBe(saved.amount);
+  });
+});

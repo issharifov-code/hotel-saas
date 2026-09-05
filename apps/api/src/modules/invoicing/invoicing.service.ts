@@ -236,14 +236,22 @@ export class InvoicingService {
     const invoice = await this.findById(tenantId, propertyId, id);
     this.assertChargeable(invoice);
 
-    const amount = (dto.quantity * dto.unitPrice).toFixed(2);
+    // 🔴 2026-09-05 (kod auditi): `amount` XOM qiymatlardan hisoblanar,
+    // `quantity`/`unitPrice` esa alohida 2 xonaga yaxlitlanib saqlanardi.
+    // Natijada foliodagi qator "3 × 1333.33 = 4000.00" ko'rinishida
+    // bosilardi (aslida 3999.99) — mehmon uchun bu shunchaki xato hisob.
+    // Endi saqlanadigan qiymatlar avval yaxlitlanadi va summa AYNAN
+    // ulardan hisoblanadi, ya'ni bosilgan qator har doim o'zaro mos.
+    const quantity = Number(dto.quantity.toFixed(2));
+    const unitPrice = Number(dto.unitPrice.toFixed(2));
+    const amount = (quantity * unitPrice).toFixed(2);
     const savedLine = await this.lineRepo.save(
       this.lineRepo.create({
         invoiceId: invoice.id,
         description: dto.description,
         source: InvoiceLineSource.MANUAL,
-        quantity: dto.quantity.toFixed(2),
-        unitPrice: dto.unitPrice.toFixed(2),
+        quantity: quantity.toFixed(2),
+        unitPrice: unitPrice.toFixed(2),
         amount,
       }),
     );
