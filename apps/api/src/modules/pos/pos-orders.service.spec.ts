@@ -1,5 +1,13 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PosOrdersService } from './pos-orders.service';
+import {
+  PosOrderStatus,
+  PosPaymentMethod,
+} from './entities/pos-order.entity';
 
 // PosOrdersService.buildOrderItems() ilgari har bir buyurtma bandi uchun
 // alohida `menuItemRepo.findOneBy()` so'rovi yuborardi (N+1, POS'da har bir
@@ -119,5 +127,78 @@ describe('PosOrdersService.buildOrderItems — N+1 tuzatish', () => {
       where: { id: unknown; tenantId: string };
     };
     expect(callArg.where.tenantId).toBe('t1');
+  });
+});
+
+
+// 🔴 2026-09-05 (kod auditi): `pay` holat tekshiruvini QULFSIZ qilardi.
+// Ikkita bir vaqtdagi so'rov ikkalasi ham `OPEN` ni ko'rib o'tib ketardi —
+// folio'ga ikkita bir xil qator yozilar va `fb_revenue` ikki marta
+// kreditlanardi (250 000 lik buyurtma mehmon hisobida 500 000 bo'lardi).
+describe("PosOrdersService.pay — qulf ostidagi holat tekshiruvi", () => {
+  function createService(qulflanganHolat: PosOrderStatus) {
+    const ochiqOrder = {
+      id: 'o1',
+      tenantId: 't1',
+      propertyId: 'p1',
+      status: PosOrderStatus.OPEN,
+      totalAmount: '250000.00',
+      tableNumber: '5',
+      items: [{ id: 'i1' }],
+    };
+    const orderRepo = {
+      findOne: jest.fn().mockResolvedValue(ochiqOrder),
+      save: jest.fn((o: unknown) => Promise.resolve(o)),
+      // Qulflangan o'qish — bu yerda "raqib so'rov allaqachon to'lab
+      // bo'lgan" holatni taqlid qilamiz.
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest
+          .fn()
+          .mockResolvedValue({ ...ochiqOrder, status: qulflanganHolat }),
+      })),
+    };
+    const invoicingService = { chargeToFolioByBooking: jest.fn() };
+    const accountingService = { postSimpleEntry: jest.fn() };
+    const service = new PosOrdersService(
+      orderRepo as never,
+      { create: jest.fn() } as never,
+      { find: jest.fn() } as never,
+      invoicingService as never,
+      accountingService as never,
+    );
+    return { service, orderRepo, invoicingService, accountingService };
+  }
+
+  it("qulf ostida buyurtma allaqachon PAID bo'lsa, ikkinchi to'lov rad etiladi", async () => {
+    const { service, invoicingService, accountingService } = createService(
+      PosOrderStatus.PAID,
+    );
+
+    await expect(
+      service.pay('t1', 'p1', 'o1', {
+        paymentMethod: PosPaymentMethod.CASH,
+      } as never),
+    ).rejects.toThrow(ConflictException);
+
+    // Eng muhimi: ikkinchi provodka ham, ikkinchi folio qatori ham yo'q.
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+    expect(invoicingService.chargeToFolioByBooking).not.toHaveBeenCalled();
+  });
+
+  it("qulf ostida hamon OPEN bo'lsa, to'lov o'tadi va qulf so'ralgan bo'ladi", async () => {
+    const { service, orderRepo, accountingService } = createService(
+      PosOrderStatus.OPEN,
+    );
+
+    await service.pay('t1', 'p1', 'o1', {
+      paymentMethod: PosPaymentMethod.CASH,
+    } as never);
+
+    expect(orderRepo.createQueryBuilder).toHaveBeenCalled();
+    expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ creditSystemKey: 'fb_revenue' }),
+    );
   });
 });

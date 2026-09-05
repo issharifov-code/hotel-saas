@@ -125,13 +125,29 @@ export class PosOrdersService {
     dto: PayOrderDto,
   ): Promise<PosOrder> {
     const order = await this.findById(tenantId, propertyId, id);
-    if (order.status !== PosOrderStatus.OPEN) {
-      throw new ConflictException(
-        `Faqat "open" holatidagi buyurtmani to'lash mumkin (joriy holat: ${order.status})`,
-      );
-    }
     if (!order.items || order.items.length === 0) {
       throw new BadRequestException("Bo'sh buyurtmani to'lab bo'lmaydi");
+    }
+
+    // 🔴 2026-09-05 (kod auditi): holat tekshiruvi qulfsiz edi. Ikkita
+    // bir vaqtdagi so'rov (ikki marta bosish yoki ikki xodim) ikkalasi
+    // ham `OPEN` ni ko'rib o'tib ketardi — natijada folio'ga IKKITA bir
+    // xil qator yozilar va `fb_revenue` ikki marta kreditlanardi.
+    // 250 000 lik bitta buyurtma mehmon hisobida 500 000 bo'lib qolardi.
+    //
+    // `invoice_lines.source_id` da unique indeks yo'q, ya'ni bazada ham
+    // to'siq yo'q edi. Yechim — `InvoicingService.persistPayment` dagi
+    // naqsh: qatorni qulflab, holatni QULF OSTIDA qayta tekshirish.
+    const locked = await this.orderRepo
+      .createQueryBuilder('order')
+      .setLock('pessimistic_write')
+      .where('order.id = :id', { id: order.id })
+      .getOne();
+    if (!locked) throw new NotFoundException('Buyurtma topilmadi');
+    if (locked.status !== PosOrderStatus.OPEN) {
+      throw new ConflictException(
+        `Faqat "open" holatidagi buyurtmani to'lash mumkin (joriy holat: ${locked.status})`,
+      );
     }
 
     if (dto.paymentMethod === PosPaymentMethod.ROOM_ACCOUNT) {
