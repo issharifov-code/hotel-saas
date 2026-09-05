@@ -51,6 +51,7 @@ import { AttendanceRecord } from '../modules/attendance/entities/attendance-reco
 import { Budget } from '../modules/budgets/entities/budget.entity';
 import { LeaveRequest } from '../modules/attendance/entities/leave-request.entity';
 import { InsightDismissal } from '../modules/reports/entities/insight-dismissal.entity';
+import { ErrorEvent } from '../common/observability/entities/error-event.entity';
 import { buildDbSsl } from '../common/utils/db-ssl.util';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
@@ -114,6 +115,7 @@ export const AppDataSource = new DataSource({
     Budget,
     LeaveRequest,
     InsightDismissal,
+    ErrorEvent,
   ],
   // __dirname asosida — ts-node orqali ishga tushirilganda (`src/database`) ham,
   // build qilingan holda (`dist/database`) ham to'g'ri migratsiyalarni topadi.

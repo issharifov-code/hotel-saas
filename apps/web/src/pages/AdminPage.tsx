@@ -4,6 +4,7 @@ import { apiFetch, ApiError } from '../lib/api';
 import type {
   AdminSubscriptionInvoiceDto,
   DemoRequestDto,
+  ErrorSummaryDto,
   PaginatedResult,
   PlanPricingDto,
   TenantDto,
@@ -41,7 +42,17 @@ function addMonthIso(iso: string) {
   return d.toISOString().slice(0, 10);
 }
 
-type Tab = 'tenants' | 'billing' | 'demo-requests';
+type Tab = 'tenants' | 'billing' | 'demo-requests' | 'errors';
+
+const TAB_LABELS: Record<Tab, string> = {
+  tenants: 'Tenantlar',
+  billing: 'Billing',
+  'demo-requests': "Demo so'rovlar",
+  errors: 'Xatolar',
+};
+
+// Xato jurnali uchun ko'rish oynasi (soatlarda).
+const ERROR_WINDOW_HOURS = 24;
 
 const DEMO_PAGE_SIZE = 50;
 
@@ -58,6 +69,9 @@ export function AdminPage() {
   const [demoRequests, setDemoRequests] = useState<DemoRequestDto[]>([]);
   const [demoPage, setDemoPage] = useState(1);
   const [demoTotal, setDemoTotal] = useState(0);
+  // 📊 KUZATUV (2026-09-05) — production'dagi 5xx xatolar guruhlangan holda.
+  const [errors, setErrors] = useState<ErrorSummaryDto[]>([]);
+  const [errorsLoaded, setErrorsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [filterTenantId, setFilterTenantId] = useState('');
@@ -109,6 +123,19 @@ export function AdminPage() {
     if (tab === 'demo-requests') loadDemoRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, demoPage]);
+
+  const loadErrors = () =>
+    apiFetch<ErrorSummaryDto[]>(`/admin/error-events/summary?hours=${ERROR_WINDOW_HOURS}`)
+      .then((rows) => {
+        setErrors(rows);
+        setErrorsLoaded(true);
+      })
+      .catch(() => setError('Xato jurnalini yuklashda xatolik'));
+
+  useEffect(() => {
+    if (tab === 'errors') loadErrors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const toggleContacted = async (req: DemoRequestDto) => {
     setError(null);
@@ -190,7 +217,7 @@ export function AdminPage() {
 
       <div className="px-4 sm:px-8 py-6">
         <div className="flex flex-wrap gap-2 mb-6">
-          {(['tenants', 'billing', 'demo-requests'] as Tab[]).map((t) => (
+          {(['tenants', 'billing', 'demo-requests', 'errors'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -198,7 +225,7 @@ export function AdminPage() {
                 tab === t ? 'chip-active' : 'bg-white text-brand-navy border border-slate-200'
               }`}
             >
-              {t === 'tenants' ? 'Tenantlar' : t === 'billing' ? 'Billing' : "Demo so'rovlar"}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </div>
@@ -410,6 +437,51 @@ export function AdminPage() {
                   </button>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'errors' && (
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-sm">
+            <div className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-600">
+                Oxirgi {ERROR_WINDOW_HOURS} soatdagi server xatolari (5xx), takrorlanishi bo'yicha
+                guruhlangan.
+              </p>
+              <button
+                onClick={() => loadErrors()}
+                className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100"
+              >
+                Yangilash
+              </button>
+            </div>
+            {errors.map((e) => (
+              <div key={e.fingerprint} className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 break-words">{e.message}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      <span className="font-mono">{e.method} {e.path}</span>
+                      {' · '}
+                      {e.name}
+                      {' · '}
+                      oxirgi marta {new Date(e.lastSeen).toLocaleString('uz-UZ')}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      e.count >= 10 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {e.count} marta
+                  </span>
+                </div>
+              </div>
+            ))}
+            {errorsLoaded && errors.length === 0 && (
+              <p className="p-4 text-sm text-slate-500">
+                Oxirgi {ERROR_WINDOW_HOURS} soatda server xatosi yo'q.
+              </p>
             )}
           </div>
         )}

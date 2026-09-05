@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { AppController } from './app.controller';
@@ -10,6 +10,11 @@ import configuration from './config/configuration';
 import { RlsContextModule } from './common/rls/rls-context.module';
 import { RlsTransactionInterceptor } from './common/rls/rls-transaction.interceptor';
 import { buildDbSsl } from './common/utils/db-ssl.util';
+import { ObservabilityModule } from './common/observability/observability.module';
+import { ErrorEvent } from './common/observability/entities/error-event.entity';
+import { AllExceptionsFilter } from './common/observability/all-exceptions.filter';
+import { RequestLoggerInterceptor } from './common/observability/request-logger.interceptor';
+import { RequestIdMiddleware } from './common/observability/request-id.middleware';
 
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { Property } from './modules/properties/entities/property.entity';
@@ -162,6 +167,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
           Budget,
           LeaveRequest,
           InsightDismissal,
+          ErrorEvent,
         ],
         // Migration-based flow: sxema endi `pnpm migration:run` orqali boshqariladi
         // (src/database/data-source.ts + src/database/migrations/). `synchronize`
@@ -194,6 +200,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
     // (Redis) kerak bo'ladi.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     RlsContextModule,
+    ObservabilityModule,
     AuthModule,
     UsersModule,
     TenantsModule,
@@ -230,7 +237,19 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
     // Global — ya'ni yangi marshrut qo'shilganda uni ulashni unutib
     // bo'lmaydi (auditda aynan shunday "unutilgan" naqshlar topilgan).
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
+    // 📊 KUZATUV (2026-09-05). Tartib MUHIM: Nest interceptor'larni
+    // ro'yxatdan o'tish tartibida qo'llaydi, ya'ni so'rov log
+    // interceptor'i tashqarida bo'lib, RLS tranzaksiyasining ochilish va
+    // yopilish vaqtini ham o'z o'lchoviga oladi.
+    { provide: APP_INTERCEPTOR, useClass: RequestLoggerInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RlsTransactionInterceptor },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // So'rov ID eng birinchi bo'lishi kerak — guard, interceptor va
+  // filter'larning hammasi undan foydalanadi.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

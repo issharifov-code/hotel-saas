@@ -42,7 +42,7 @@ describe('RLS migratsiyalari', () => {
     for (const file of files) {
       const source = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
       for (const match of source.matchAll(UNSAFE)) {
-        if (!isWrappedInNullif(source, match.index as number)) {
+        if (!isWrappedInNullif(source, match.index)) {
           buzilganlar.push(file);
           break;
         }
@@ -65,7 +65,7 @@ describe('RLS migratsiyalari', () => {
   // bu test buni unutib qo'yilmasligini ta'minlaydi.
   const GRANT_FIX_TIMESTAMP = 1789600000000;
 
-  it("1789600000000 dan keyin CREATE TABLE qilgan migratsiya GRANT ham beradi", () => {
+  it('1789600000000 dan keyin CREATE TABLE qilgan migratsiya GRANT ham beradi', () => {
     const after = readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith('.ts'))
       .filter((f) => Number(f.split('-')[0]) > GRANT_FIX_TIMESTAMP);
@@ -75,7 +75,14 @@ describe('RLS migratsiyalari', () => {
       const source = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
       const createsTable = /CREATE TABLE/i.test(source);
       if (!createsTable) continue;
-      const grants = /GRANT[\s\S]{0,200}?hotel_saas_app/i.test(source);
+      // Rol nomi to'g'ridan-to'g'ri yozilishi ham, konstanta orqali
+      // berilishi ham mumkin (`const APP_ROLE = 'hotel_saas_app'` +
+      // `TO "${APP_ROLE}"`). Ikkinchisi ko'proq uchraydi va bir xil
+      // ma'noni beradi, shuning uchun konstanta avval ochib olinadi.
+      const roleConst = /const\s+APP_ROLE\s*=\s*'hotel_saas_app'/.test(source)
+        ? source.replace(/\$\{APP_ROLE\}/g, 'hotel_saas_app')
+        : source;
+      const grants = /GRANT[\s\S]{0,200}?hotel_saas_app/i.test(roleConst);
       if (!grants) buzilganlar.push(file);
     }
 

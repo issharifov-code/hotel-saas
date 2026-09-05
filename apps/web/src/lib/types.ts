@@ -1070,6 +1070,35 @@ export interface DemoRequestDto {
   createdAt: string;
 }
 
+// --- Kuzatuv: xato jurnali (2026-09-05) ---
+// Faqat platforma admini ko'radi (`/admin/error-events`).
+export interface ErrorEventDto {
+  id: string;
+  requestId: string;
+  statusCode: number;
+  method: string;
+  path: string;
+  tenantId: string | null;
+  userId: string | null;
+  name: string;
+  message: string;
+  stack: string | null;
+  fingerprint: string;
+  occurredAt: string;
+}
+
+// Guruhlangan ko'rinish — "hozir nima buzilgan?" degan savolga javob.
+export interface ErrorSummaryDto {
+  fingerprint: string;
+  count: number;
+  lastSeen: string;
+  name: string;
+  message: string;
+  method: string;
+  path: string;
+  statusCode: number;
+}
+
 // --- Payroll / Ish haqi (2026-09) ---
 
 export type PayrollRunStatus = 'draft' | 'finalized' | 'paid';
