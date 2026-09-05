@@ -107,14 +107,37 @@ ko'rib jimgina o'tib ketadi.
 ## 6. Tekshirish
 
 Sozlash to'g'ri bajarilganini bilishning yagona ishonchli yo'li —
-**haqiqiy xabar yuborib ko'rish**.
+**haqiqiy xabar yuborib ko'rish**. Ikkita mustaqil yo'l bor va
+**ikkalasini ham** sinash kerak: biri Render'dagi o'zgaruvchilarni,
+ikkinchisi GitHub Secrets'ni tekshiradi.
+
+### 6.1. Ilova tomoni (Render o'zgaruvchilari)
 
 1. `https://usali.uz/admin` → **Xatolar** bo'limi.
 2. Yuqorida "Telegram ogohlantirishi yoqilgan" deb turishi kerak.
+   Sariq "Ogohlantirish o'chiq" desa — nom xato yozilgan yoki
+   qiymatda ortiqcha bo'shliq bor.
 3. **Sinov xabari** tugmasini bosing.
-4. Telegram'ga xabar kelsa — tugadi.
 
-**Kelmasa:** Render → `hotel-saas-api` → **Logs**, va
+### 6.2. GitHub tomoni (Secrets)
+
+GitHub → **Actions** → **"Ogohlantirishni sinash"** → **Run workflow**.
+
+Bu ish faqat qo'lda ishga tushadi va boshqa hech narsa qilmaydi —
+o'sha `curl` buyrug'ini yuboradi, xolos.
+
+> **Nega bu alohida ish bor.** Zaxira va CI ogohlantirishlari faqat
+> nosozlik kunida ishlaydi, ya'ni o'sha yo'l hech qachon sinalmaydi.
+> Sirlar noto'g'ri qo'yilganini aynan eng yomon kuni bilib olardik.
+> Bu ish o'sha bo'shliqni yopadi va uni istalgan vaqtda qayta
+> ishlatish mumkin (masalan tokenni almashtirgandan keyin).
+
+> **Nega bu ish sirsiz QIZIL bo'ladi**, zaxira qadami esa jimgina
+> o'tadi. Farq maqsadda: zaxirada ogohlantirish — qo'shimcha qatlam
+> va u zaxiraning o'zini to'sib qo'ymasligi kerak; bu yerda esa
+> sirlarning yo'qligi — aynan sinovning muvaffaqiyatsizligi.
+
+**6.1 dagi xabar kelmasa:** Render → `hotel-saas-api` → **Logs**, va
 `NotificationsService` qatorlarini qidiring. Eng ko'p uchraydigan ikki
 sabab:
 
@@ -122,6 +145,15 @@ sabab:
 |---|---|
 | `chat not found` | `chat_id` xato, yoki 2-qadam (botga `/start`) bajarilmagan |
 | `bot was blocked by the user` | Botni bloklagansiz — suhbatni ochib blokdan chiqaring |
+
+**6.2 dagi ish qizil bo'lsa** — log to'g'ridan-to'g'ri sababni yozadi:
+sirlar topilmadi, yoki Telegram qaysi HTTP kodi bilan rad etgani.
+(Log'da token yo'q: u faqat manzilda edi, javob tanasida emas.)
+
+> 🔴 **Tokenni almashtirgan bo'lsangiz** — uni **ikkala joyda** ham
+> yangilash kerak: Render Environment VA GitHub Secrets. Faqat
+> bittasini yangilash eng aldamchi holat: admin sahifasidagi sinov
+> ishlaydi, zaxira ogohlantirishi esa jimgina o'lik qoladi.
 
 ---
 
