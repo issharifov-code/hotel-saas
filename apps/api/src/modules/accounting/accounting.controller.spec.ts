@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AccountingController } from './accounting.controller';
 import { AccountingService } from './accounting.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -50,6 +51,7 @@ describe('AccountingController (HTTP)', () => {
         { provide: AccountingService, useValue: accountingService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

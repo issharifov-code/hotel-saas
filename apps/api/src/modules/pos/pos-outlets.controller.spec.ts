@@ -7,6 +7,7 @@ import request from 'supertest';
 import { PosOutletsController } from './pos-outlets.controller';
 import { PosOutletsService } from './pos-outlets.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -35,6 +36,7 @@ describe('PosOutletsController (HTTP)', () => {
         { provide: PosOutletsService, useValue: posOutletsService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

@@ -11,11 +11,45 @@ import { nullable } from '../../common/utils/typeorm.util';
 
 const SALT_ROUNDS = 12;
 
+// Har so'rovda tekshiriladigan minimal holat (JwtStrategy uchun).
+export interface UserAuthState {
+  status: UserStatus;
+  tokenVersion: number;
+}
+
+// Kesh muddati. Nima uchun umuman kesh kerak: `getAuthState` HAR BIR
+// autentifikatsiyalangan so'rovda chaqiriladi, va u RLS bypass'i uchun
+// tranzaksiya ochadi (BEGIN + set_config + SELECT + COMMIT). Bitta sahifa
+// ochilishi 5-10 ta parallel so'rov yuboradi — kesh ularni bitta so'rovga
+// yig'adi.
+//
+// Muddat qanchalik uzun bo'lsa, bekor qilish shunchalik kech ta'sir qiladi.
+// 15 soniya tanlandi: audit topilmasi "8 soat" edi, ya'ni bu 2000 barobar
+// yaxshilanish, lekin har so'rovda bazaga borish narxisiz.
+//
+// MUHIM: shu instansiyada bekor qilish DARHOL ishlaydi — `updateStatus` va
+// `resetPassword` keshni o'zi tozalaydi. 15 soniya faqat BOSHQA instansiya
+// (ko'p nusxali deploy) uchun yuqori chegara.
+const AUTH_STATE_TTL_MS = 15_000;
+
+// Keshdan eskirgan yozuvlarni tozalash chegarasi — foydalanuvchilar soni
+// kam bo'lgani uchun amalda hech qachon ishlamaydi, lekin xotira cheksiz
+// o'smasligiga kafolat beradi.
+const AUTH_STATE_PRUNE_AT = 500;
+
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
+
+  // userId -> holat. `null` qiymat "bunday foydalanuvchi yo'q" degani va u
+  // ham keshlanadi (o'chirilgan foydalanuvchining tokeni bazani bezovta
+  // qilmasligi uchun).
+  private readonly authStateCache = new Map<
+    string,
+    { state: UserAuthState | null; expiresAt: number }
+  >();
 
   // 🔴 `users` jadvalida RLS bor (migratsiya 1789300000000). Bu servis
   // RolesService/TenantsService bilan BIR XIL naqshni ishlatadi: ambient
@@ -105,6 +139,10 @@ export class UsersService {
       status: UserStatus.ACTIVE,
       isPlatformAdmin: params.isPlatformAdmin ?? false,
       position: params.position?.trim() || null,
+      // Aniq yozamiz: `issueToken` darhol shu qiymatni tokenga soladi,
+      // ya'ni u `undefined` bo'lib qolsa yangi foydalanuvchi birinchi
+      // so'rovidayoq 401 olardi.
+      tokenVersion: 0,
     });
     return this.withBypass((m) => m.getRepository(User).save(user));
   }
@@ -146,6 +184,52 @@ export class UsersService {
     return bcrypt.compare(password, user.passwordHash);
   }
 
+  // 🔴 Token bekor qilish (2026-09-05). HAR BIR autentifikatsiyalangan
+  // so'rovda `JwtStrategy` shu metodni chaqiradi va tokendagi `tv` ni
+  // bazadagi `token_version` bilan solishtiradi.
+  //
+  // Bypass shart: bu tekshiruv tenant konteksti O'RNATILISHIDAN OLDIN,
+  // ya'ni guard bosqichida bo'ladi (kontekst interceptor'da o'rnatiladi).
+  // Faqat ikkita ustun o'qiladi — parol hash'i umuman ko'tarilmaydi.
+  async getAuthState(userId: string): Promise<UserAuthState | null> {
+    const cached = this.authStateCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) return cached.state;
+
+    const row = await this.withBypass((m) =>
+      m
+        .getRepository(User)
+        .createQueryBuilder('u')
+        // `u.id` ataylab qo'shilgan: TypeORM entity'ni birlamchi kalitsiz
+        // ham yig'adi, lekin bu xatti-harakatga tayanmaslik arzonroq.
+        .select(['u.id', 'u.status', 'u.tokenVersion'])
+        .where('u.id = :id', { id: userId })
+        .getOne(),
+    );
+
+    const state: UserAuthState | null = row
+      ? { status: row.status, tokenVersion: row.tokenVersion }
+      : null;
+
+    if (this.authStateCache.size >= AUTH_STATE_PRUNE_AT) {
+      const now = Date.now();
+      for (const [key, value] of this.authStateCache) {
+        if (value.expiresAt <= now) this.authStateCache.delete(key);
+      }
+    }
+    this.authStateCache.set(userId, {
+      state,
+      expiresAt: Date.now() + AUTH_STATE_TTL_MS,
+    });
+    return state;
+  }
+
+  // Keshni darhol bo'shatadi — shu instansiyada bekor qilish kechikishsiz
+  // ta'sir qilishi uchun. Hisoblagichni oshiradigan har bir metod buni
+  // chaqirishi SHART, aks holda o'zgarish 15 soniyagacha ko'rinmaydi.
+  private invalidateAuthState(userId: string): void {
+    this.authStateCache.delete(userId);
+  }
+
   async listByTenant(tenantId: string): Promise<User[]> {
     return this.withTenant(tenantId, (m) =>
       m.getRepository(User).find({
@@ -171,8 +255,13 @@ export class UsersService {
       const user = await repo.findOneBy({ id: userId, tenantId });
       if (!user) throw new NotFoundException('Xodim topilmadi');
       user.passwordHash = passwordHash;
+      // Parol almashtirilganda eski sessiyalar tirik qolmasligi kerak —
+      // aks holda parolni "o'g'irlangan" deb almashtirish ma'nosini
+      // yo'qotadi (o'g'ri eski token bilan 8 soat ishlayveradi).
+      user.tokenVersion += 1;
       await repo.save(user);
     });
+    this.invalidateAuthState(userId);
   }
 
   async updateStatus(
@@ -180,13 +269,21 @@ export class UsersService {
     userId: string,
     status: UserStatus,
   ): Promise<User> {
-    return this.withTenant(tenantId, async (m) => {
+    const saved = await this.withTenant(tenantId, async (m) => {
       const repo = m.getRepository(User);
       const user = await repo.findOneBy({ id: userId, tenantId });
       if (!user) throw new NotFoundException('Xodim topilmadi');
+      // Status HAQIQATAN o'zgargandagina hisoblagich oshiriladi. Bloklash
+      // — bu yerdagi asosiy holat: xodim bloklangan zahoti uning mavjud
+      // tokeni ham kuchini yo'qotadi (avval 8 soatgacha ishlayverardi).
+      // Bir xil statusni qayta yozish (ACTIVE -> ACTIVE) esa hech kimning
+      // sessiyasini uzmasligi kerak.
+      if (user.status !== status) user.tokenVersion += 1;
       user.status = status;
       return repo.save(user);
     });
+    this.invalidateAuthState(userId);
+    return saved;
   }
 
   // Payroll moduli (2026-09): Xodimlar sahifasidagi "Maosh belgilash" orqali

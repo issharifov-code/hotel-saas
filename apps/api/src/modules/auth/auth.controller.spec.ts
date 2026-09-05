@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ACTIVE_AUTH_STATE } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 const JWT_SECRET = 'test-secret-auth-controller';
@@ -30,7 +31,13 @@ describe('AuthController (HTTP)', () => {
       registerTenant: jest.fn(),
       login: jest.fn(),
     };
-    usersService = { findById: jest.fn() };
+    // `getAuthState` — `JwtStrategy` har so'rovda chaqiradigan token bekor
+    // qilish tekshiruvi (2026-09-05). Bu yerda "mavjud, faol, hisoblagich 0"
+    // holati beriladi; bekor qilishning o'zi jwt.strategy.spec.ts da.
+    usersService = {
+      findById: jest.fn(),
+      getAuthState: jest.fn().mockResolvedValue(ACTIVE_AUTH_STATE),
+    };
     tenantsService = { findById: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({

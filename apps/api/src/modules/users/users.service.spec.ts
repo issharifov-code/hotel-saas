@@ -7,9 +7,25 @@ describe('UsersService', () => {
     opts: {
       existingByEmail?: Record<string, unknown> | null;
       findOneByResult?: Record<string, unknown> | null;
+      // `getAuthState` uchun: bazadan qaytadigan qator (yoki null).
+      authStateRow?: Record<string, unknown> | null;
     } = {},
   ) {
+    // `getAuthState` QueryBuilder ishlatadi (faqat ikkita ustun o'qish
+    // uchun) — zanjir shu yerda mock qilinadi. `getOne` chaqiruvlari
+    // sonini sanash keshni tekshirish uchun kerak.
+    const getOne = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(opts.authStateRow ?? null),
+      );
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne,
+    };
     const repo = {
+      createQueryBuilder: jest.fn().mockReturnValue(qb),
       findOneBy: jest
         .fn()
         .mockImplementation((where: Record<string, unknown>) => {
@@ -42,7 +58,7 @@ describe('UsersService', () => {
     };
     (repo as Record<string, unknown>).manager = manager;
     const service = new UsersService(repo as never);
-    return { service, repo };
+    return { service, repo, getOne };
   }
 
   describe('createUser', () => {
@@ -121,6 +137,118 @@ describe('UsersService', () => {
         UserStatus.DISABLED,
       );
       expect(updated.status).toBe(UserStatus.DISABLED);
+    });
+  });
+
+  // 🔴 Token bekor qilish (2026-09-05, auditning oxirgi ochiq topilmasi).
+  // Avval bloklangan xodimning tokeni muddati tugagunicha (8 soat)
+  // ishlayverardi. Endi `token_version` hisoblagichi tokendagi `tv` bilan
+  // solishtiriladi — hisoblagich oshsa, eski tokenlar kuchini yo'qotadi.
+  describe('token_version — sessiyani bekor qilish', () => {
+    it("xodim bloklanganda hisoblagichni oshiradi (eski token kuchsizlanadi)", async () => {
+      const { service } = createService({
+        findOneByResult: {
+          id: 'u1',
+          tenantId: 't1',
+          status: UserStatus.ACTIVE,
+          tokenVersion: 3,
+        },
+      });
+      const updated = await service.updateStatus(
+        't1',
+        'u1',
+        UserStatus.DISABLED,
+      );
+      expect(updated.tokenVersion).toBe(4);
+    });
+
+    it("bir xil status qayta yozilsa hisoblagich oshmaydi (sessiya uzilmaydi)", async () => {
+      const { service } = createService({
+        findOneByResult: {
+          id: 'u1',
+          tenantId: 't1',
+          status: UserStatus.ACTIVE,
+          tokenVersion: 3,
+        },
+      });
+      const updated = await service.updateStatus('t1', 'u1', UserStatus.ACTIVE);
+      expect(updated.tokenVersion).toBe(3);
+    });
+
+    it('parol almashtirilganda hisoblagichni oshiradi', async () => {
+      const { service, repo } = createService({
+        findOneByResult: {
+          id: 'u1',
+          tenantId: 't1',
+          passwordHash: 'old-hash',
+          tokenVersion: 0,
+        },
+      });
+      await service.resetPassword('t1', 'u1', 'newpass123');
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenVersion: 1 }),
+      );
+    });
+  });
+
+  describe("getAuthState — har so'rovdagi tekshiruv", () => {
+    it('holat va hisoblagichni qaytaradi', async () => {
+      const { service } = createService({
+        authStateRow: { id: 'u1', status: UserStatus.ACTIVE, tokenVersion: 2 },
+      });
+      await expect(service.getAuthState('u1')).resolves.toEqual({
+        status: UserStatus.ACTIVE,
+        tokenVersion: 2,
+      });
+    });
+
+    it("foydalanuvchi topilmasa null qaytaradi", async () => {
+      const { service } = createService({ authStateRow: null });
+      await expect(service.getAuthState('yoq')).resolves.toBeNull();
+    });
+
+    it('ketma-ket chaqiruvlarni keshdan beradi (bazaga bir marta boradi)', async () => {
+      const { service, getOne } = createService({
+        authStateRow: { id: 'u1', status: UserStatus.ACTIVE, tokenVersion: 0 },
+      });
+      await service.getAuthState('u1');
+      await service.getAuthState('u1');
+      await service.getAuthState('u1');
+      expect(getOne).toHaveBeenCalledTimes(1);
+    });
+
+    it("status o'zgargach keshni tozalaydi — keyingi chaqiruv bazaga boradi", async () => {
+      const { service, getOne } = createService({
+        authStateRow: { id: 'u1', status: UserStatus.ACTIVE, tokenVersion: 0 },
+        findOneByResult: {
+          id: 'u1',
+          tenantId: 't1',
+          status: UserStatus.ACTIVE,
+          tokenVersion: 0,
+        },
+      });
+      await service.getAuthState('u1');
+      expect(getOne).toHaveBeenCalledTimes(1);
+
+      await service.updateStatus('t1', 'u1', UserStatus.DISABLED);
+      await service.getAuthState('u1');
+      expect(getOne).toHaveBeenCalledTimes(2);
+    });
+
+    it('parol almashtirilgach ham keshni tozalaydi', async () => {
+      const { service, getOne } = createService({
+        authStateRow: { id: 'u1', status: UserStatus.ACTIVE, tokenVersion: 0 },
+        findOneByResult: {
+          id: 'u1',
+          tenantId: 't1',
+          passwordHash: 'old-hash',
+          tokenVersion: 0,
+        },
+      });
+      await service.getAuthState('u1');
+      await service.resetPassword('t1', 'u1', 'newpass123');
+      await service.getAuthState('u1');
+      expect(getOne).toHaveBeenCalledTimes(2);
     });
   });
 });

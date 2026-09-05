@@ -8,6 +8,7 @@ import { AdminBillingController } from './admin-billing.controller';
 import { BillingService } from './billing.service';
 import { SubscriptionInvoiceStatus } from './entities/subscription-invoice.entity';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
@@ -45,6 +46,7 @@ describe('AdminBillingController (HTTP)', () => {
       providers: [
         { provide: BillingService, useValue: billingService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PlatformAdminGuard,

@@ -86,6 +86,19 @@ export class User {
   @Column({ name: 'is_platform_admin', default: false })
   isPlatformAdmin: boolean;
 
+  // 🔴 Token bekor qilish hisoblagichi (2026-09-05, kod auditi). Berilgan
+  // token ichiga `tv` sifatida yoziladi va har so'rovda shu qiymat bilan
+  // solishtiriladi (JwtStrategy). Statusni o'zgartirish yoki parolni
+  // almashtirish uni oshiradi — natijada o'sha foydalanuvchining barcha
+  // eski tokenlari bir zumda kuchini yo'qotadi.
+  //
+  // Buni oshiradigan joylar SANOQLI va hammasi `UsersService` ichida:
+  // `updateStatus`, `resetPassword`. Yangi "sessiyani tugatuvchi" amal
+  // qo'shilsa (masalan email orqali parol tiklash), u ham shu yerdan
+  // o'tishi kerak.
+  @Column({ name: 'token_version', type: 'integer', default: 0 })
+  tokenVersion: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
