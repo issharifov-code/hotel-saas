@@ -7,6 +7,7 @@ import request from 'supertest';
 import { BudgetsController } from './budgets.controller';
 import { BudgetsService } from './budgets.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -33,6 +34,7 @@ describe('BudgetsController (HTTP)', () => {
         { provide: BudgetsService, useValue: budgetsService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

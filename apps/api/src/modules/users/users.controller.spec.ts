@@ -8,6 +8,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UserStatus } from './entities/user.entity';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { ACTIVE_AUTH_STATE } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -29,6 +30,7 @@ describe('UsersController (HTTP)', () => {
     createUser: jest.Mock;
     resetPassword: jest.Mock;
     updateStatus: jest.Mock;
+    getAuthState: jest.Mock;
   };
   let rolesService: { getEffectivePermissions: jest.Mock };
 
@@ -38,6 +40,9 @@ describe('UsersController (HTTP)', () => {
       createUser: jest.fn(),
       resetPassword: jest.fn(),
       updateStatus: jest.fn(),
+      // `JwtStrategy` har so'rovda chaqiradigan token bekor qilish
+      // tekshiruvi (2026-09-05) — bu yerda "mavjud, faol, hisoblagich 0".
+      getAuthState: jest.fn().mockResolvedValue(ACTIVE_AUTH_STATE),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),

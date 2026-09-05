@@ -8,6 +8,7 @@ import { AgenciesController } from './agencies.controller';
 import { AgenciesService } from './agencies.service';
 import { AgencyCommissionsService } from './agency-commissions.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -59,6 +60,7 @@ describe('AgenciesController (HTTP)', () => {
         { provide: AgencyCommissionsService, useValue: commissionsService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

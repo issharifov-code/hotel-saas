@@ -7,6 +7,7 @@ import request from 'supertest';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyService } from './loyalty.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -41,6 +42,7 @@ describe('LoyaltyController (HTTP)', () => {
         { provide: LoyaltyService, useValue: loyaltyService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

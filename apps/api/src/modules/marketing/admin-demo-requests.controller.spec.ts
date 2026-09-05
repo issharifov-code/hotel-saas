@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AdminDemoRequestsController } from './admin-demo-requests.controller';
 import { MarketingService } from './marketing.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
@@ -34,6 +35,7 @@ describe('AdminDemoRequestsController (HTTP)', () => {
       providers: [
         { provide: MarketingService, useValue: marketingService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PlatformAdminGuard,

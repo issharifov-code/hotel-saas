@@ -15,6 +15,7 @@ describe('AuthService', () => {
       fullName: string;
       isPlatformAdmin: boolean;
       status: UserStatus;
+      tokenVersion: number;
     }>,
   ) {
     const tenantId: string | null =
@@ -29,6 +30,7 @@ describe('AuthService', () => {
       fullName: overrides.fullName ?? 'Test User',
       status: overrides.status ?? UserStatus.ACTIVE,
       isPlatformAdmin: overrides.isPlatformAdmin ?? false,
+      tokenVersion: overrides.tokenVersion ?? 0,
     };
   }
 
@@ -103,6 +105,30 @@ describe('AuthService', () => {
         accessToken: 'signed-jwt',
         user: { id: 'u1', tenantId: 't1', tenantSubdomain: 'demo' },
       });
+    });
+
+    // 🔴 Token bekor qilish (2026-09-05): login paytidagi `token_version`
+    // tokenga muhrlanadi. Agar `tv` tokenga tushmay qolsa, `JwtStrategy`
+    // uni 0 deb hisoblaydi va hisoblagichi oshgan foydalanuvchi umuman
+    // kira olmaydi — ya'ni bu maydonning yo'qolishi jimgina buzilish
+    // bo'lardi.
+    it("tokenga foydalanuvchining token_version qiymatini yozadi", async () => {
+      const user = makeUser({ id: 'u1', tenantId: 't1', tokenVersion: 7 });
+      const { service, jwtService } = createService({
+        tenantBySubdomain: { id: 't1', subdomain: 'demo', name: 'Demo Hotel' },
+        findByEmailAndTenantResult: user,
+        validPasswordForUserIds: ['u1'],
+      });
+
+      await service.login({
+        subdomain: 'demo',
+        email: user.email,
+        password: 'secret',
+      });
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ sub: 'u1', tv: 7 }),
+      );
     });
 
     // 🔴 2026-09-05 (audit): `User.status` login yo'lida umuman o'qilmasdi —

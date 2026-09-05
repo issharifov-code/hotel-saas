@@ -8,6 +8,7 @@ import { PurchaseOrdersController } from './purchase-orders.controller';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { WarehousesService } from './warehouses.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { authStateTestProvider } from '../../common/testing/auth-state.testing';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RolesService } from '../roles/roles.service';
@@ -54,6 +55,7 @@ describe('PurchaseOrdersController (HTTP)', () => {
         { provide: WarehousesService, useValue: warehousesService },
         { provide: RolesService, useValue: rolesService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
+        authStateTestProvider(),
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,

@@ -78,6 +78,7 @@ export class AuthService {
       sub: owner.id,
       tenantId: tenant.id,
       isPlatformAdmin: false,
+      tv: owner.tokenVersion,
     });
 
     return {
@@ -204,6 +205,10 @@ export class AuthService {
       sub: user.id,
       tenantId: user.tenantId,
       isPlatformAdmin: user.isPlatformAdmin,
+      // Token bekor qilish hisoblagichi (2026-09-05). Login paytidagi
+      // qiymat tokenga muhrlanadi; keyin u o'zgarsa (bloklash, parol
+      // almashtirish) shu token yaroqsiz bo'ladi.
+      tv: user.tokenVersion,
     });
 
     return {
