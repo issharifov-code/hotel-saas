@@ -55,6 +55,8 @@ export enum MarketSegment {
 @Index(['tenantId', 'propertyId', 'status', 'checkOut'])
 // Manba bo'yicha hisobot ("qaysi manba qancha daromad keltirdi").
 @Index(['tenantId', 'propertyId', 'sourceProfileId'])
+// Kontakt bo'yicha ("shu menejer orqali qancha bron keldi").
+@Index(['tenantId', 'propertyId', 'contactProfileId'])
 export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -192,6 +194,22 @@ export class Booking {
   @ManyToOne(() => Guest, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'source_profile_id' })
   sourceProfile: Guest | null;
+
+  // Bronni tashkil qilgan ODAM — tashkilotdagi aniq kontakt (2026-09-05).
+  // `guests.contact_person` dan farqi: u tashkilot profilidagi bir qatorlik
+  // ism va butun tashkilot uchun bitta; bu esa alohida CONTACT profili,
+  // ya'ni har bronda boshqa menejer bo'lishi va uning o'z telefoni/emaili
+  // bo'lishi mumkin.
+  //
+  // Bron agentlik yoki korporativ hisobga tegishli bo'lsa, kontakt AYNAN
+  // shu tashkilotning odami bo'lishi tekshiriladi (BookingsService) —
+  // boshqa kompaniyaning xodimini bog'lab qo'yish deyarli har doim xato.
+  @Column({ name: 'contact_profile_id', type: 'uuid', nullable: true })
+  contactProfileId: string | null;
+
+  @ManyToOne(() => Guest, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'contact_profile_id' })
+  contactProfile: Guest | null;
 
   // Bekor qilish yoki kelmaslik (no-show) sababli olingan jarima summasi
   // (agar rate plan'da bekor qilish siyosati sozlangan bo'lsa va jarima
