@@ -437,3 +437,130 @@ describe('InvoicingService.addLine — qator ichki mosligi', () => {
     ).toBe(saved.amount);
   });
 });
+
+// 🔬 FOLIO'GA YOZISH — CHEGARALAR (2026-09-05).
+//
+// NIMA UCHUN QO'SHILDI. `invoicing.service.ts` qoplamasi 65% edi va
+// qoplanmagan qismda ikkita metod bor: `chargeToFolioByBooking`
+// (POS'dan "xona hisobiga" yozish) va `addAdjustmentLine` (xona
+// almashtirish yoki sana o'zgarishidagi narx farqi).
+//
+// Ikkalasi ham BOSHQA MODULLAR tomonidan chaqiriladi (POS va Front
+// Desk), ya'ni ular tashqi chaqiruvchi uchun "shartnoma". Va
+// ikkalasining ham eng muhim qoidasi bir xil: folio OCHIQ bo'lishi
+// shart. Yopilgan (issued/paid) yoki bekor qilingan folio'ga yozish
+// mumkin bo'lsa, allaqachon yakunlangan hisob keyin jimgina
+// o'zgarardi — mehmon ketgan, hisob yopilgan, lekin summasi
+// o'zgargan.
+describe('InvoicingService — folio ochiq bo\'lmasa yozib bo\'lmaydi', () => {
+  function createService(invoice: Record<string, unknown> | null) {
+    const invoiceRepo = {
+      findOne: jest.fn().mockResolvedValue(invoice),
+      findOneOrFail: jest.fn().mockResolvedValue(invoice),
+      save: jest.fn((x: unknown) => Promise.resolve(x)),
+    };
+    const lineRepo = {
+      create: jest.fn((d: unknown) => d),
+      save: jest.fn((d: unknown) => Promise.resolve(d)),
+      find: jest.fn().mockResolvedValue([]),
+    };
+    const accountingService = { postSimpleEntry: jest.fn().mockResolvedValue(null) };
+    const service = new InvoicingService(
+      invoiceRepo as never,
+      lineRepo as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      accountingService as never,
+      { awardPointsForPayment: jest.fn() } as never,
+    );
+    return { service, invoiceRepo, lineRepo, accountingService };
+  }
+
+  const openInvoice = { id: 'inv-1', status: InvoiceStatus.OPEN, totalAmount: '0.00', paidAmount: '0.00', lines: [], payments: [] };
+
+  describe('chargeToFolioByBooking (POS -> xona hisobi)', () => {
+    it("bron uchun folio umuman yo'q bo'lsa aniq xato beriladi", async () => {
+      const { service, lineRepo } = createService(null);
+      await expect(
+        service.chargeToFolioByBooking('t1', 'p1', 'b1', 'Choy', '50000', 'src1'),
+      ).rejects.toThrow(/check-in qilinganmi/);
+      expect(lineRepo.save).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [InvoiceStatus.ISSUED],
+      [InvoiceStatus.PAID],
+      [InvoiceStatus.CANCELLED],
+    ])("%s holatidagi folio'ga yozib bo'lmaydi", async (status) => {
+      const { service, lineRepo, accountingService } = createService({ ...openInvoice, status });
+      await expect(
+        service.chargeToFolioByBooking('t1', 'p1', 'b1', 'Choy', '50000', 'src1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(lineRepo.save).not.toHaveBeenCalled();
+      expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+    });
+
+    // 🔴 POS XARAJATI F&B DAROMADIGA TUSHADI, xona daromadiga emas.
+    // Aralashib ketsa departament hisobotlari (USALI) noto'g'ri
+    // bo'ladi — restoran daromadi xona daromadi bo'lib ko'rinadi.
+    it("ochiq folio'ga yozilganda F&B daromadi kreditlanadi", async () => {
+      const { service, lineRepo, accountingService } = createService(openInvoice);
+
+      await service.chargeToFolioByBooking('t1', 'p1', 'b1', 'Choy', '50000', 'src1');
+
+      expect(lineRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ source: InvoiceLineSource.POS_ORDER, amount: '50000' }),
+      );
+      expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debitSystemKey: 'guest_ledger_ar',
+          creditSystemKey: 'fb_revenue',
+          amount: '50000',
+        }),
+      );
+    });
+  });
+
+  describe('addAdjustmentLine (narx farqi)', () => {
+    it.each([
+      [InvoiceStatus.ISSUED],
+      [InvoiceStatus.PAID],
+      [InvoiceStatus.CANCELLED],
+    ])("%s holatidagi folio'ga narx farqi yozilmaydi", async (status) => {
+      const { service, lineRepo } = createService({ ...openInvoice, status });
+      await expect(
+        service.addAdjustmentLine('t1', 'p1', 'b1', 'Xona almashtirildi', '120000'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(lineRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('narx farqi tuzatish qatori sifatida xona daromadiga yoziladi', async () => {
+      const { service, lineRepo, accountingService } = createService(openInvoice);
+
+      await service.addAdjustmentLine('t1', 'p1', 'b1', 'Xona almashtirildi', '120000');
+
+      expect(lineRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ source: InvoiceLineSource.ADJUSTMENT, amount: '120000' }),
+      );
+      expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ creditSystemKey: 'room_revenue', amount: '120000' }),
+      );
+    });
+
+    // 🔴 MANFIY FARQ HAM O'TISHI KERAK. Arzonroq xonaga o'tkazishda
+    // farq manfiy bo'ladi va u ham yozilishi shart — aks holda mehmon
+    // ortiqcha to'lab qolardi. Yo'nalishni `postSimpleEntry` o'zi
+    // teskari qiladi (uning o'z testlariga qarang).
+    it('arzonroq xonaga o\'tkazishdagi manfiy farq ham yoziladi', async () => {
+      const { service, lineRepo, accountingService } = createService(openInvoice);
+
+      await service.addAdjustmentLine('t1', 'p1', 'b1', 'Arzon xonaga', '-80000');
+
+      expect(lineRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ source: InvoiceLineSource.ADJUSTMENT, amount: '-80000' }),
+      );
+      expect(accountingService.postSimpleEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: '-80000' }),
+      );
+    });
+  });
+});
