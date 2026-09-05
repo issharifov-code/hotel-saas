@@ -3,8 +3,15 @@ import { REQUEST } from '@nestjs/core';
 import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 import { AuthenticatedUser } from '../interfaces/jwt-payload.interface';
 
+interface ResponseLike {
+  once?: (event: string, listener: () => void) => unknown;
+}
+
 interface RequestWithUser {
   user?: AuthenticatedUser;
+  // Express `req.res` — javob tugaganini eshitish uchun (pastdagi
+  // `open()` izohiga qarang).
+  res?: ResponseLike;
 }
 
 /**
@@ -46,6 +53,27 @@ export class RlsContextService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     this.queryRunner = queryRunner;
+
+    // 🔴 2026-09-05 (kod auditi): tranzaksiya OCHILIB QOLIB KETARDI.
+    //
+    // `RlsModule.forFeature` factory'si `await rlsContext.getManager()` ni
+    // repository YARATILAYOTGAN paytda chaqiradi — ya'ni Nest so'rov
+    // subtree'sini qurayotganda, GUARD'LARDAN OLDIN. Commit/rollback esa
+    // faqat `RlsTransactionInterceptor` da, interceptor'lar esa guard'lardan
+    // KEYIN ishlaydi. Demak guard 401/403 tashlasa, interceptor umuman
+    // chaqirilmaydi va tranzaksiya ham, pool ulanishi ham bo'shatilmasdan
+    // qolardi. (Interceptor izohidagi "guard 401/403 qaytarsa bu no-op"
+    // degan gap shu sababdan noto'g'ri edi.) Ketma-ket kelgan bir necha
+    // yuz 403 ulanishlar hovuzini tugatib qo'yishi mumkin edi.
+    //
+    // Yechim — javob tugashini eshitish: nima bo'lishidan qat'i nazar
+    // (guard rad etdi, so'rov uzildi, timeout) ulanish qaytariladi. Agar
+    // interceptor allaqachon commit/rollback qilgan bo'lsa, `queryRunner`
+    // null bo'ladi va bu no-op.
+    this.request.res?.once?.('close', () => {
+      void this.rollback();
+    });
+
     return queryRunner.manager;
   }
 

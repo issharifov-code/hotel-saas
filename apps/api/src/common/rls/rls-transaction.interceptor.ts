@@ -14,9 +14,17 @@ import { RequestWithUser } from '../interfaces/request-with-user.interface';
  * Global interceptor: har bir so'rov tugaganda RlsContextService ochgan
  * tranzaksiyani commit (muvaffaqiyat) yoki rollback (xatolik) qiladi va
  * ulanishni pool'ga qaytaradi. Agar so'rov davomida RLS-himoyalangan hech
- * qanday repository ishlatilmagan bo'lsa (masalan auth/roles bilan ishlash
- * yoki guard 401/403 qaytarsa), bu no-op bo'ladi — qo'shimcha ulanish band
- * qilinmaydi.
+ * qanday repository ishlatilmagan bo'lsa (masalan faqat auth/roles bilan
+ * ishlaydigan so'rov), bu no-op bo'ladi.
+ *
+ * 🔴 2026-09-05 (kod auditi) TUZATISH: bu izohda ilgari "guard 401/403
+ * qaytarsa ham no-op" deb yozilgan edi — bu NOTO'G'RI edi. Interceptor'lar
+ * guard'lardan KEYIN ishlaydi, ya'ni guard rad etsa bu yerga umuman
+ * kelinmaydi; tranzaksiya esa `RlsModule.forFeature` factory'si tomonidan
+ * guard'lardan OLDIN ochilgan bo'ladi. Natijada har bir 403 bitta ulanishni
+ * band qilib qoldirardi. Endi `RlsContextService` javob tugashini ham
+ * eshitadi (`res.once('close')`) — bu yerdagi commit/rollback esa odatiy
+ * (muvaffaqiyatli) yo'l bo'lib qoladi.
  *
  * DIQQAT: RlsContextService REQUEST-scope, lekin bu interceptor'ning o'zi
  * `APP_INTERCEPTOR` orqali global ro'yxatdan o'tgan (demak singleton sifatida
