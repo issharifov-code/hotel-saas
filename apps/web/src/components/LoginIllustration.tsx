@@ -35,12 +35,12 @@ export function LoginIllustration({ className }: { className?: string }) {
         <path
           d="M -20 26 C -20 4, -12 -10, 0 -10 C 12 -10, 20 4, 20 26 Z"
           fill="#ffffff"
-          stroke="#002283"
+          stroke="#002385"
           strokeWidth="3"
         />
-        <rect x="-26" y="26" width="52" height="8" rx="4" fill="#e0a237" />
-        <circle cx="0" cy="34" r="3.5" fill="#002283" />
-        <circle cx="0" cy="-16" r="4" fill="#002283" />
+        <rect x="-26" y="26" width="52" height="8" rx="4" fill="#d99a2c" />
+        <circle cx="0" cy="34" r="3.5" fill="#002385" />
+        <circle cx="0" cy="-16" r="4" fill="#002385" />
       </g>
 
       {/* xona eshigi / kalit-karta paneli */}
@@ -62,12 +62,12 @@ export function LoginIllustration({ className }: { className?: string }) {
         />
 
         <rect x="200" y="182" width="80" height="10" rx="5" fill="#dbe4fb" />
-        <rect x="212" y="200" width="56" height="8" rx="4" fill="#eef2fd" />
+        <rect x="212" y="200" width="56" height="8" rx="4" fill="#f7f2e8" />
 
         {/* kalit-karta uyasi */}
-        <rect x="210" y="234" width="60" height="80" rx="12" fill="#eef2fd" stroke="#c9d7f8" strokeWidth="2" />
-        <circle cx="240" cy="264" r="10" fill="#e0a237" />
-        <rect x="236" y="272" width="8" height="24" fill="#e0a237" />
+        <rect x="210" y="234" width="60" height="80" rx="12" fill="#f7f2e8" stroke="#c9d7f8" strokeWidth="2" />
+        <circle cx="240" cy="264" r="10" fill="#d99a2c" />
+        <rect x="236" y="272" width="8" height="24" fill="#d99a2c" />
 
         <rect x="200" y="332" width="80" height="10" rx="5" fill="#c9d7f8" />
       </g>
@@ -85,7 +85,7 @@ export function LoginIllustration({ className }: { className?: string }) {
       <g transform="translate(96,150)">
         <rect x="14" y="150" width="16" height="70" rx="8" fill="#0b2a86" />
         <rect x="40" y="150" width="16" height="70" rx="8" fill="#12358f" />
-        <ellipse cx="22" cy="222" rx="14" ry="7" fill="#e0a237" />
+        <ellipse cx="22" cy="222" rx="14" ry="7" fill="#d99a2c" />
         <ellipse cx="48" cy="222" rx="14" ry="7" fill="#c98a1f" />
 
         <rect x="4" y="70" width="64" height="90" rx="26" fill="#1746b5" />
@@ -111,7 +111,7 @@ export function LoginIllustration({ className }: { className?: string }) {
         />
 
         <g transform="translate(118,20) rotate(28)">
-          <rect x="0" y="0" width="70" height="44" rx="8" fill="#e0a237" />
+          <rect x="0" y="0" width="70" height="44" rx="8" fill="#d99a2c" />
           <rect x="8" y="8" width="18" height="12" rx="3" fill="#0b2a86" />
           <rect x="8" y="26" width="46" height="4" rx="2" fill="#ffffff" opacity="0.8" />
           <rect x="8" y="34" width="30" height="4" rx="2" fill="#ffffff" opacity="0.6" />
@@ -122,7 +122,7 @@ export function LoginIllustration({ className }: { className?: string }) {
       <g transform="translate(340,320)">
         <rect x="0" y="14" width="56" height="42" rx="8" fill="#12358f" />
         <rect x="18" y="2" width="20" height="14" rx="4" fill="none" stroke="#12358f" strokeWidth="5" />
-        <rect x="24" y="30" width="8" height="8" rx="2" fill="#e0a237" />
+        <rect x="24" y="30" width="8" height="8" rx="2" fill="#d99a2c" />
       </g>
     </svg>
   );

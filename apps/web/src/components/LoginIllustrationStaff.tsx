@@ -40,7 +40,7 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
           stroke="#0b2a86"
           strokeWidth="3"
         />
-        <path d="m-9 12 6 6 13-14" stroke="#e0a237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="m-9 12 6 6 13-14" stroke="#d99a2c" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </g>
 
       {/* markaziy panel - vazifalar/ruxsatlar kartochkasi */}
@@ -52,7 +52,7 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
         <g transform="translate(240,150)">
           <path
             d="M 0 -34 L 34 -20 C 34 12, 22 40, 0 54 C -22 40, -34 12, -34 -20 Z"
-            fill="#eef2fd"
+            fill="#f7f2e8"
             stroke="#c9d7f8"
             strokeWidth="2"
           />
@@ -79,13 +79,13 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
           <rect x="212" y="257" width="56" height="6" rx="3" fill="#c9d7f8" />
 
           <rect x="188" y="276" width="104" height="16" rx="5" fill="#f4f6fd" />
-          <circle cx="198" cy="284" r="5" fill="none" stroke="#e0a237" strokeWidth="2" />
+          <circle cx="198" cy="284" r="5" fill="none" stroke="#d99a2c" strokeWidth="2" />
           <rect x="212" y="281" width="64" height="6" rx="3" fill="#dbe4fb" />
         </g>
 
         {/* rol yorlig'i pastda */}
-        <rect x="188" y="308" width="104" height="30" rx="14" fill="#eef2fd" stroke="#c9d7f8" strokeWidth="2" />
-        <circle cx="206" cy="323" r="8" fill="#e0a237" />
+        <rect x="188" y="308" width="104" height="30" rx="14" fill="#f7f2e8" stroke="#c9d7f8" strokeWidth="2" />
+        <circle cx="206" cy="323" r="8" fill="#d99a2c" />
         <rect x="222" y="318" width="58" height="6" rx="3" fill="#c9d7f8" />
         <rect x="222" y="328" width="40" height="5" rx="2.5" fill="#dbe4fb" />
       </g>
@@ -103,7 +103,7 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
       <g transform="translate(90,146)">
         <rect x="14" y="154" width="16" height="70" rx="8" fill="#0b2a86" />
         <rect x="40" y="154" width="16" height="70" rx="8" fill="#12358f" />
-        <ellipse cx="22" cy="226" rx="14" ry="7" fill="#e0a237" />
+        <ellipse cx="22" cy="226" rx="14" ry="7" fill="#d99a2c" />
         <ellipse cx="48" cy="226" rx="14" ry="7" fill="#c98a1f" />
 
         <rect x="4" y="74" width="64" height="90" rx="26" fill="#1746b5" />
@@ -125,7 +125,7 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
           <rect x="0" y="0" width="34" height="46" rx="6" fill="#ffffff" stroke="#0b2a86" strokeWidth="3" />
           <rect x="7" y="9" width="20" height="4" rx="2" fill="#c9d7f8" />
           <rect x="7" y="18" width="20" height="4" rx="2" fill="#c9d7f8" />
-          <rect x="7" y="27" width="14" height="4" rx="2" fill="#e0a237" />
+          <rect x="7" y="27" width="14" height="4" rx="2" fill="#d99a2c" />
         </g>
       </g>
 
@@ -133,7 +133,7 @@ export function LoginIllustrationStaff({ className }: { className?: string }) {
       <g transform="translate(340,320)">
         <rect x="0" y="14" width="56" height="42" rx="8" fill="#12358f" />
         <rect x="18" y="2" width="20" height="14" rx="4" fill="none" stroke="#12358f" strokeWidth="5" />
-        <rect x="24" y="30" width="8" height="8" rx="2" fill="#e0a237" />
+        <rect x="24" y="30" width="8" height="8" rx="2" fill="#d99a2c" />
       </g>
     </svg>
   );

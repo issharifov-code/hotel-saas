@@ -50,35 +50,35 @@ export function LoginIllustrationBooking({ className }: { className?: string }) 
         <circle cx="284" cy="117" r="3.2" fill="#ffffff" />
 
         {/* hafta kunlari qatori */}
-        <rect x="180" y="140" width="120" height="10" rx="4" fill="#eef2fd" />
+        <rect x="180" y="140" width="120" height="10" rx="4" fill="#f7f2e8" />
 
         {/* kun kataklari - 4 qator x 4 ustun */}
         <g>
           {/* 1-qator */}
-          <rect x="180" y="160" width="24" height="24" rx="6" fill="#eef2fd" />
-          <rect x="212" y="160" width="24" height="24" rx="6" fill="#e0a237" />
-          <rect x="244" y="160" width="24" height="24" rx="6" fill="#eef2fd" />
-          <rect x="276" y="160" width="24" height="24" rx="6" fill="#eef2fd" />
+          <rect x="180" y="160" width="24" height="24" rx="6" fill="#f7f2e8" />
+          <rect x="212" y="160" width="24" height="24" rx="6" fill="#d99a2c" />
+          <rect x="244" y="160" width="24" height="24" rx="6" fill="#f7f2e8" />
+          <rect x="276" y="160" width="24" height="24" rx="6" fill="#f7f2e8" />
           {/* 2-qator */}
           <rect x="180" y="192" width="24" height="24" rx="6" fill="#0b2a86" />
           <rect x="212" y="192" width="24" height="24" rx="6" fill="#0b2a86" />
-          <rect x="244" y="192" width="24" height="24" rx="6" fill="#eef2fd" />
+          <rect x="244" y="192" width="24" height="24" rx="6" fill="#f7f2e8" />
           <rect x="276" y="192" width="24" height="24" rx="6" fill="#dbe4fb" />
           {/* 3-qator */}
           <rect x="180" y="224" width="24" height="24" rx="6" fill="#dbe4fb" />
-          <rect x="212" y="224" width="24" height="24" rx="6" fill="#eef2fd" />
+          <rect x="212" y="224" width="24" height="24" rx="6" fill="#f7f2e8" />
           <rect x="244" y="224" width="24" height="24" rx="6" fill="#0b2a86" />
-          <rect x="276" y="224" width="24" height="24" rx="6" fill="#eef2fd" />
+          <rect x="276" y="224" width="24" height="24" rx="6" fill="#f7f2e8" />
           {/* 4-qator */}
-          <rect x="180" y="256" width="24" height="24" rx="6" fill="#eef2fd" />
+          <rect x="180" y="256" width="24" height="24" rx="6" fill="#f7f2e8" />
           <rect x="212" y="256" width="24" height="24" rx="6" fill="#dbe4fb" />
-          <rect x="244" y="256" width="24" height="24" rx="6" fill="#eef2fd" />
-          <rect x="276" y="256" width="24" height="24" rx="6" fill="#e0a237" />
+          <rect x="244" y="256" width="24" height="24" rx="6" fill="#f7f2e8" />
+          <rect x="276" y="256" width="24" height="24" rx="6" fill="#d99a2c" />
         </g>
 
         {/* xona-band belgisi pastda */}
-        <rect x="180" y="298" width="120" height="40" rx="14" fill="#eef2fd" stroke="#c9d7f8" strokeWidth="2" />
-        <rect x="192" y="310" width="18" height="16" rx="4" fill="#e0a237" />
+        <rect x="180" y="298" width="120" height="40" rx="14" fill="#f7f2e8" stroke="#c9d7f8" strokeWidth="2" />
+        <rect x="192" y="310" width="18" height="16" rx="4" fill="#d99a2c" />
         <rect x="218" y="312" width="70" height="6" rx="3" fill="#c9d7f8" />
         <rect x="218" y="322" width="46" height="6" rx="3" fill="#dbe4fb" />
       </g>
@@ -96,7 +96,7 @@ export function LoginIllustrationBooking({ className }: { className?: string }) 
       <g transform="translate(96,150)">
         <rect x="14" y="150" width="16" height="70" rx="8" fill="#0b2a86" />
         <rect x="40" y="150" width="16" height="70" rx="8" fill="#12358f" />
-        <ellipse cx="22" cy="222" rx="14" ry="7" fill="#e0a237" />
+        <ellipse cx="22" cy="222" rx="14" ry="7" fill="#d99a2c" />
         <ellipse cx="48" cy="222" rx="14" ry="7" fill="#c98a1f" />
 
         <rect x="4" y="70" width="64" height="90" rx="26" fill="#1746b5" />
@@ -126,7 +126,7 @@ export function LoginIllustrationBooking({ className }: { className?: string }) 
       <g transform="translate(340,320)">
         <rect x="0" y="14" width="56" height="42" rx="8" fill="#12358f" />
         <rect x="18" y="2" width="20" height="14" rx="4" fill="none" stroke="#12358f" strokeWidth="5" />
-        <rect x="24" y="30" width="8" height="8" rx="2" fill="#e0a237" />
+        <rect x="24" y="30" width="8" height="8" rx="2" fill="#d99a2c" />
       </g>
     </svg>
   );
