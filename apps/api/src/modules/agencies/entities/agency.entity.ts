@@ -14,11 +14,12 @@ import { Guest } from '../../guests/entities/guest.entity';
 // Turizm agentligi / korporativ hamkor (Travel Agent / Corporate Account) —
 // mehmonxonaga muntazam mehmon yo'naltiradigan tashqi tashkilot. Har bir shu
 // agentlik orqali kelgan bron (Booking.agencyId) shu yerga bog'lanadi.
-// Komissiya moliyaviy provodka sifatida YOZILMAYDI (accounting zanjiriga
-// ataylab tegilmagan, Night Audit/Group Booking'dagi additiv dizayn
-// tamoyiliga muvofiq) — buning o'rniga AgenciesService.getSummary() mavjud
-// Booking.totalAmount'lardan real vaqtda hisoblab beradi (ReportsService
-// naqshiga o'xshab, faqat-o'qish agregatsiya).
+// 🔴 2026-09-04'dan boshlab komissiya MOLIYAVIY PROVODKA sifatida yoziladi
+// (avval faqat real vaqtda hisoblanardi). Check-out paytida
+// `AgencyCommissionsService.accrueForBooking` `agency_commissions` jadvaliga
+// qator ochadi va bosh kitobga debet 5142 / kredit 2010 yozuvini tushiradi.
+// Shu sababdan quyidagi `commissionPct` — KELGUSI bronlar uchun stavka;
+// o'tgan bronlarniki qatorning o'zida snapshot qilingan va o'zgarmaydi.
 @Entity('agencies')
 @Index(['tenantId', 'propertyId'])
 export class Agency {
@@ -64,9 +65,9 @@ export class Agency {
   @Column({ name: 'contact_email', length: 200, nullable: true, type: 'varchar' })
   contactEmail: string | null;
 
-  // Komissiya foizi — har bir shu agentlik orqali kelgan bronning
-  // totalAmount'idan qancha foiz agentlikka to'lanishi hisoblanadi
-  // (faqat hisobot uchun, avtomatik to'lov/provodka qilinmaydi).
+  // Komissiya foizi — bron check-out qilinganda uning xona narxidan
+  // (`totalAmount`) shuncha foiz agentlik foydasiga yoziladi. Bu qiymatni
+  // o'zgartirish faqat KEYINGI check-out'larga ta'sir qiladi.
   @Column({
     name: 'commission_pct',
     type: 'numeric',
