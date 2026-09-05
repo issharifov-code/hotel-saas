@@ -639,7 +639,7 @@ export interface HousekeepingTaskDto {
 // --- Invoicing (Hisob-faktura) ---
 
 export type InvoiceStatus = 'open' | 'issued' | 'paid' | 'cancelled';
-export type InvoiceLineSource = 'room_charge' | 'pos_order' | 'manual';
+export type InvoiceLineSource = 'room_charge' | 'pos_order' | 'manual' | 'adjustment' | 'cancellation_fee';
 export type InvoicePaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'online';
 
 export interface InvoiceLineDto {
