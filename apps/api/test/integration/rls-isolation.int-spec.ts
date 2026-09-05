@@ -138,6 +138,46 @@ describe('Tenant izolyatsiyasi (haqiqiy PostgreSQL + RLS)', () => {
     expect(rows.map((r) => r.tablename)).toEqual([]);
   });
 
+  // 🔴 `tenant_id` USTUNI YO'Q JADVALLAR HAM QO'RIQLANISHI KERAK.
+  //
+  // Yuqoridagi test faqat `tenant_id` ustuni BOR jadvallarni tekshiradi.
+  // Lekin bazadagi eng nozik jadvallarning bir qismida bu ustun umuman
+  // yo'q: `invoice_lines`, `journal_entry_lines`, `payslip_entries`,
+  // `pos_order_items`, `purchase_order_items`, `loyalty_transactions`...
+  // Ular ota jadval orqali himoyalanadi (siyosat ichida
+  // `EXISTS (SELECT 1 FROM parent WHERE parent.tenant_id = ...)`).
+  //
+  // Ya'ni yangi bola jadval qo'shilganda RLS unutilsa, oldingi test
+  // buni SEZMAYDI — jadvalda `tenant_id` yo'q, demak u tekshiruvga
+  // umuman tushmaydi. Natijasi: bitta mehmonxonaning hisob-faktura
+  // qatorlari boshqasiga ko'rinib qolishi mumkin.
+  //
+  // Shuning uchun bu yerda teskari mantiq: RLS'siz jadval FAQAT aniq
+  // nomlangan ro'yxatda bo'lishi mumkin. Yangi jadval qo'shgan odam
+  // yo RLS yoqadi, yo bu ro'yxatga ataylab yozadi — ikkalasi ham
+  // ONGLI qaror.
+  it("RLS'siz jadval faqat ataylab ruxsat etilganlar ro'yxatida bo'ladi", async () => {
+    // Global (tenantga tegishli bo'lmagan) jadvallar:
+    //   migrations    — TypeORM xizmat jadvali
+    //   permissions   — ruxsatlar katalogi, hamma tenant uchun bir xil
+    //   tenants       — tenantlarning o'zi (platforma admini ko'radi)
+    //   demo_requests — marketing murojaatlari, hali tenanti yo'q odamlardan
+    const GLOBAL_TABLES = ['demo_requests', 'migrations', 'permissions', 'tenants'];
+
+    const rows: { relname: string }[] = await migrationDs.query(`
+      SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+        AND (c.relrowsecurity = false
+             OR (SELECT count(*) FROM pg_policies p
+                  WHERE p.schemaname = 'public' AND p.tablename = c.relname) = 0)
+      ORDER BY 1
+    `);
+
+    expect(rows.map((r) => r.relname)).toEqual(GLOBAL_TABLES);
+  });
+
   // 🔴 NEGA BAZAGA TO'G'RIDAN-TO'G'RI MUROJAAT QILADIGAN TESTLAR HAM KERAK.
   //
   // Mutatsiya sinovida (2026-09-05) `properties` jadvalida RLS o'chirib
