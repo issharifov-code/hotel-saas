@@ -450,6 +450,69 @@ describe('RolesService', () => {
       expect(perms.has('warehouse:edit')).toBe(false);
     });
 
+    // 🔴 2026-09-05 (kod auditi): ilgari `propertyId` berilmaganda (tenant
+    // darajasidagi yo'llar — /users, /roles, /guests ...) filtr HAMMA rolni
+    // o'tkazib yuborardi. Ya'ni faqat bitta filialga biriktirilgan buxgalter
+    // `PATCH /users/:id/salary` orqali butun tenant maoshlarini boshqara
+    // olardi. Endi tenant darajasidagi amal tenant darajasidagi rolni talab
+    // qiladi.
+    it("🔴 mulkka biriktirilgan rol TENANT darajasidagi so'rovda hisobga OLINMAYDI", async () => {
+      const { service, saved } = createService();
+      saved.Role.push({
+        id: 'r1',
+        tenantId: 't1',
+        name: 'Buxgalter (faqat filial B)',
+        isSystem: true,
+        permissions: [
+          {
+            id: 'p1',
+            module: PermissionModule.PAYROLL,
+            action: PermissionAction.EDIT,
+          },
+        ],
+      });
+      saved.UserRole.push({
+        id: 'ur1',
+        tenantId: 't1',
+        userId: 'u1',
+        roleId: 'r1',
+        propertyId: 'prop-B',
+      });
+
+      // propertyId BERILMAGAN — tenant darajasidagi yo'l.
+      const perms = await service.getEffectivePermissions('t1', 'u1');
+
+      expect(perms.has('payroll:edit')).toBe(false);
+    });
+
+    it("tenant darajasidagi rol tenant darajasidagi so'rovda ishlaydi", async () => {
+      const { service, saved } = createService();
+      saved.Role.push({
+        id: 'r1',
+        tenantId: 't1',
+        name: 'Egasi',
+        isSystem: true,
+        permissions: [
+          {
+            id: 'p1',
+            module: PermissionModule.PAYROLL,
+            action: PermissionAction.EDIT,
+          },
+        ],
+      });
+      saved.UserRole.push({
+        id: 'ur1',
+        tenantId: 't1',
+        userId: 'u1',
+        roleId: 'r1',
+        propertyId: null,
+      });
+
+      const perms = await service.getEffectivePermissions('t1', 'u1');
+
+      expect(perms.has('payroll:edit')).toBe(true);
+    });
+
     it("mos mulkka tegishli rol ruxsatlarini qo'shadi", async () => {
       const { service, saved } = createService();
       const permA = {

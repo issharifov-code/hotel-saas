@@ -210,9 +210,25 @@ export class RolesService {
       }),
     );
 
-    const relevant = userRoles.filter(
-      (ur) =>
-        ur.propertyId === null || !propertyId || ur.propertyId === propertyId,
+    // 🔴 2026-09-05 (audit): ilgari bu yerda `|| !propertyId` sharti bor edi,
+    // ya'ni so'rovda `propertyId` bo'lmasa (tenant darajasidagi yo'llar —
+    // /users, /roles, /user-roles, /guests, /stock-items ...) HAMMA rol
+    // hisobga olinardi. Natijada mulkka biriktirilgan rol o'z chegarasidan
+    // jimgina chiqib ketardi: faqat bitta filialga biriktirilgan buxgalter
+    // `PATCH /users/:id/salary` orqali butun tenantdagi har bir xodimning
+    // maoshini ko'rib, o'zgartira olardi.
+    //
+    // Endi qoida sodda: TENANT darajasidagi amal uchun TENANT darajasidagi
+    // rol kerak. Mulkka biriktirilgan rol faqat o'z mulkining yo'llarida
+    // ishlaydi.
+    //
+    // Bu bugungi ma'lumotni buzmaydi: interfeys rol biriktirishda
+    // `propertyId` yubormaydi (StaffPage), ya'ni mavjud barcha
+    // biriktirishlar tenant darajasida (`property_id IS NULL`).
+    const relevant = userRoles.filter((ur) =>
+      ur.propertyId === null
+        ? true
+        : propertyId !== undefined && ur.propertyId === propertyId,
     );
 
     const result = new Set<string>();
