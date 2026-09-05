@@ -9,6 +9,7 @@ import { EntityManager, In, Repository } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { UserRole } from './entities/user-role.entity';
 import { Permission } from './entities/permission.entity';
+import { Property } from '../properties/entities/property.entity';
 import { PermissionsService } from './permissions.service';
 import { SYSTEM_ROLE_DEFINITIONS } from '../../common/constants/role-permission-matrix';
 import {
@@ -16,6 +17,12 @@ import {
   PermissionModule,
 } from '../../common/enums/permission.enum';
 import { nullable } from '../../common/utils/typeorm.util';
+
+// Mulk -> tenant bog'lanishi amalda o'zgarmas, shuning uchun qisqa kesh
+// xavfsiz. U har `:propertyId` li so'rovdagi qo'shimcha SELECT'ni oldini
+// oladi.
+const PROPERTY_SCOPE_TTL_MS = 60_000;
+const PROPERTY_SCOPE_CACHE_MAX = 500;
 
 @Injectable()
 export class RolesService {
@@ -268,6 +275,66 @@ export class RolesService {
   // Qoida: NISHONNING ruxsatlari CHAQIRUVCHINIKIDAN oshib ketmasligi
   // kerak. Ega hamma ruxsatga ega, shuning uchun u hech kim tomonidan
   // "boshqarib" bo'lmaydi, o'zi esa hammani boshqara oladi.
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium — M12). Marshrutdagi
+  // `:propertyId` hech qayerda joriy tenantga tegishliligi bo'yicha
+  // TEKSHIRILMASDI: 25 ta controllerda 133 ta `@Param('propertyId')` bor
+  // edi va yagona umumiy tekshiruv yo'q edi.
+  //
+  // Cross-tenant O'QISH bundan kelib chiqmasdi (RLS + har servisdagi
+  // `where {tenantId, propertyId}` ushlab turardi — bu jonli sinovda
+  // tasdiqlangan). Lekin YOZISH yo'llari URL'dagi qiymatni to'g'ridan-
+  // to'g'ri qatorga yozardi: `POST /properties/<begona-id>/warehouses`
+  // 201 qaytarib, hujumchining O'Z tenantida begona `property_id` ga
+  // havola qiluvchi qator yaratardi. Bu B ning ma'lumotini oshkor
+  // qilmasdi, lekin hech bir ro'yxatda ko'rinmaydigan "yetim" qatorlar
+  // to'plardi va butun izolyatsiya ~100 ta takrorlangan `where` bandiga
+  // tayanib qolardi — yagona chokepoint yo'q edi.
+  //
+  // Endi chokepoint bor: `PermissionsGuard` har bir `:propertyId` li
+  // marshrutda shuni chaqiradi.
+  //
+  // NIMA UCHUN AYNAN SHU SERVISDA. Tekshiruv guard'dan chaqirilishi
+  // kerak, guard esa har bir controller moduli kontekstida quriladi.
+  // `PropertiesService` ni bog'lash 25 ta modulga `PropertiesModule`
+  // importini qo'shishni (va aylanma bog'liqlik xavfini) talab qilardi;
+  // `RolesService` esa guard'da ALLAQACHON bor. Amalga oshirish esa
+  // sodda: tenant konteksti ichida `properties` jadvali RLS bilan
+  // filtrlanadi, ya'ni "shu tenantda bunday mulk bormi" degan savol
+  // aynan kerakli savol.
+  private readonly propertyScopeCache = new Map<string, number>();
+
+  async assertPropertyBelongsToTenant(
+    tenantId: string,
+    propertyId: string,
+  ): Promise<void> {
+    const key = `${tenantId}:${propertyId}`;
+    const cached = this.propertyScopeCache.get(key);
+    if (cached && cached > Date.now()) return;
+
+    const found = await this.withTenantContext(tenantId, (manager) =>
+      manager
+        .getRepository(Property)
+        .findOne({ where: { id: propertyId, tenantId }, select: { id: true } }),
+    );
+    if (!found) {
+      // Mavjud bo'lmagan va begona mulk uchun BIR XIL javob — aks holda
+      // bu boshqa mehmonxonaning mulk UUID'ini tasdiqlovchi orakul
+      // bo'lib qolardi.
+      throw new NotFoundException('Mulk topilmadi');
+    }
+
+    // Mulkning tenanti amalda hech qachon o'zgarmaydi, shuning uchun
+    // qisqa kesh xavfsiz va har so'rovdagi qo'shimcha SELECT'ni oldini
+    // oladi. Kesh faqat IJOBIY natijani saqlaydi.
+    if (this.propertyScopeCache.size >= PROPERTY_SCOPE_CACHE_MAX) {
+      const now = Date.now();
+      for (const [k, exp] of this.propertyScopeCache) {
+        if (exp <= now) this.propertyScopeCache.delete(k);
+      }
+    }
+    this.propertyScopeCache.set(key, Date.now() + PROPERTY_SCOPE_TTL_MS);
+  }
+
   async assertActorOutranksTarget(
     tenantId: string,
     actorUserId: string,

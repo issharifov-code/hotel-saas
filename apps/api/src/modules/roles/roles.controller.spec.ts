@@ -25,6 +25,7 @@ describe('RolesController (HTTP)', () => {
   let jwtService: JwtService;
   let rolesService: {
     getEffectivePermissions: jest.Mock;
+    assertPropertyBelongsToTenant: jest.Mock;
     listRolesForTenant: jest.Mock;
     createCustomRole: jest.Mock;
     updateRolePermissions: jest.Mock;
@@ -37,6 +38,9 @@ describe('RolesController (HTTP)', () => {
   beforeAll(async () => {
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
+      // 🔴 2026-09-05 auditi (M12): guard endi `:propertyId` ning joriy
+      // tenantga tegishliligini ham tekshiradi.
+      assertPropertyBelongsToTenant: jest.fn().mockResolvedValue(undefined),
       listRolesForTenant: jest.fn(),
       createCustomRole: jest.fn(),
       updateRolePermissions: jest.fn(),

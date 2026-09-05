@@ -27,7 +27,7 @@ describe('CityLedgerController (HTTP)', () => {
     create: jest.Mock;
     update: jest.Mock;
   };
-  let rolesService: { getEffectivePermissions: jest.Mock };
+  let rolesService: { getEffectivePermissions: jest.Mock; assertPropertyBelongsToTenant: jest.Mock };
 
   beforeAll(async () => {
     cityLedgerService = {
@@ -39,6 +39,9 @@ describe('CityLedgerController (HTTP)', () => {
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
+      // 🔴 2026-09-05 auditi (M12): guard endi `:propertyId` ning joriy
+      // tenantga tegishliligini ham tekshiradi.
+      assertPropertyBelongsToTenant: jest.fn().mockResolvedValue(undefined),
     };
 
     const moduleRef = await Test.createTestingModule({

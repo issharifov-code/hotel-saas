@@ -3,7 +3,12 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import {
+  assertRlsRuntimeRole,
+  inspectRlsRuntimeRole,
+} from './common/rls/assert-rls-runtime-role';
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -16,6 +21,14 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, L5). Butun tenant izolyatsiyasi
+  // ilova jadval EGASI BO'LMAGAN rol bilan ulanishiga tayanadi —
+  // PostgreSQL egaga RLS qo'llamaydi. `DB_APP_USERNAME` bir kun egaga
+  // yo'naltirilsa, barcha siyosatlar JIMGINA kuchsizlanadi: xato ham,
+  // log ham, yiqilgan test ham bo'lmaydi. Bu tekshiruv shu jim buzilishni
+  // shovqinli ishga tushmaslikka aylantiradi.
+  assertRlsRuntimeRole(await inspectRlsRuntimeRole(app.get(DataSource)));
 
   // 🔴 XAVFSIZLIK AUDITI (2026-09-05). Render API'ni teskari proksi ortida
   // ishga tushiradi, ya'ni `req.ip` proksi manzili bo'ladi. Buni to'g'rilamasak

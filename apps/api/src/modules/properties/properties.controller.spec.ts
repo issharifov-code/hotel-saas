@@ -33,7 +33,10 @@ describe('PropertiesController (HTTP)', () => {
     setLogo: jest.Mock;
     removeLogo: jest.Mock;
   };
-  let rolesService: { getEffectivePermissions: jest.Mock };
+  let rolesService: {
+    getEffectivePermissions: jest.Mock;
+    assertPropertyBelongsToTenant: jest.Mock;
+  };
 
   // Haqiqiy (juda kichik) 1x1 PNG — DTO regex'i uchun yaroqli data URL.
   const VALID_LOGO =
@@ -45,7 +48,12 @@ describe('PropertiesController (HTTP)', () => {
       setLogo: jest.fn(),
       removeLogo: jest.fn(),
     };
-    rolesService = { getEffectivePermissions: jest.fn() };
+    rolesService = {
+      getEffectivePermissions: jest.fn(),
+      // 🔴 2026-09-05 auditi (M12): guard endi `:propertyId` ning joriy
+      // tenantga tegishliligini ham tekshiradi.
+      assertPropertyBelongsToTenant: jest.fn().mockResolvedValue(undefined),
+    };
 
     const moduleRef = await Test.createTestingModule({
       imports: [PassportModule, JwtModule.register({ secret: JWT_SECRET })],

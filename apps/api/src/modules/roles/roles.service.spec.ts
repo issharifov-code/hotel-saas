@@ -439,6 +439,67 @@ describe('RolesService', () => {
     });
   });
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M12). Marshrutdagi `:propertyId`
+  // joriy tenantga tegishliligi hech qayerda tekshirilmasdi.
+  describe('assertPropertyBelongsToTenant', () => {
+    it("o'z tenantidagi mulk uchun o'tadi", async () => {
+      const { service, saved } = createService();
+      saved.Property = [{ id: 'p1', tenantId: 't1' }];
+      await expect(
+        service.assertPropertyBelongsToTenant('t1', 'p1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('begona mulk uchun NotFoundException tashlaydi', async () => {
+      const { service, saved } = createService();
+      saved.Property = [{ id: 'p2', tenantId: 't2' }];
+      await expect(
+        service.assertPropertyBelongsToTenant('t1', 'p2'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    // Begona va mavjud bo'lmagan mulk BIR XIL javob berishi kerak — aks
+    // holda bu boshqa mehmonxonaning mulk UUID'ini tasdiqlovchi orakul
+    // bo'lib qolardi.
+    it("mavjud bo'lmagan mulk ham aynan bir xil xato beradi", async () => {
+      const { service, saved } = createService();
+      saved.Property = [{ id: 'p2', tenantId: 't2' }];
+      const begona = await service
+        .assertPropertyBelongsToTenant('t1', 'p2')
+        .catch((e: Error) => e.message);
+      const yoq = await service
+        .assertPropertyBelongsToTenant('t1', 'umuman-yoq')
+        .catch((e: Error) => e.message);
+      expect(begona).toBe(yoq);
+    });
+
+    // Kesh borligini isbotlash: birinchi chaqiruvdan keyin qatorni
+    // bazadan olib tashlaymiz — ikkinchi chaqiruv baribir o'tishi kerak.
+    it('ijobiy natija keshlanadi (ikkinchi chaqiruv bazaga bormaydi)', async () => {
+      const { service, saved } = createService();
+      saved.Property = [{ id: 'p1', tenantId: 't1' }];
+      await service.assertPropertyBelongsToTenant('t1', 'p1');
+
+      saved.Property = [];
+      await expect(
+        service.assertPropertyBelongsToTenant('t1', 'p1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it("salbiy natija keshlanmaydi (mulk keyin qo'shilsa o'tadi)", async () => {
+      const { service, saved } = createService();
+      saved.Property = [];
+      await expect(
+        service.assertPropertyBelongsToTenant('t1', 'p1'),
+      ).rejects.toThrow(NotFoundException);
+
+      saved.Property = [{ id: 'p1', tenantId: 't1' }];
+      await expect(
+        service.assertPropertyBelongsToTenant('t1', 'p1'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('assertActorOutranksTarget', () => {
     it("nishonning ruxsatlari kengroq bo'lsa rad etadi", async () => {
       const { service, saved } = createService();

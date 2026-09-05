@@ -26,10 +26,30 @@ export class PermissionsGuard implements CanActivate {
     const required = this.reflector.getAllAndOverride<
       RequiredPermission | undefined
     >(PERMISSION_KEY, [context.getHandler(), context.getClass()]);
-    if (!required) return true;
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user: AuthenticatedUser | undefined = request.user;
+
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium — M12). Marshrutdagi
+    // `:propertyId` hech qayerda joriy tenantga tegishliligi bo'yicha
+    // tekshirilmasdi (25 controllerda 133 ta joy, yagona tekshiruv yo'q).
+    // Cross-tenant o'qish bundan kelib chiqmasdi, lekin YOZISH yo'llari
+    // URL'dagi qiymatni to'g'ridan-to'g'ri qatorga yozardi:
+    // `POST /properties/<begona-id>/warehouses` 201 qaytarardi.
+    //
+    // Bu tekshiruv `required` (ya'ni @RequirePermission bor-yo'qligi)
+    // dan OLDIN turadi — ATAYLAB: mulk chegarasi ruxsat tekshiruvidan
+    // mustaqil bo'lishi kerak, aks holda @RequirePermission qo'yilmagan
+    // marshrut yana ochiq qolardi.
+    const propertyId = request.params?.propertyId as string | undefined;
+    if (propertyId && user?.tenantId) {
+      await this.rolesService.assertPropertyBelongsToTenant(
+        user.tenantId,
+        propertyId,
+      );
+    }
+
+    if (!required) return true;
     if (!user) return false;
 
     // Platforma super-admin barcha tenant ruxsatlarini chetlab o'tadi
@@ -56,11 +76,9 @@ export class PermissionsGuard implements CanActivate {
     // query'ni tekshiradi, bu yo'llar esa query DTO bog'lamaydi.
     //
     // Endi mulk konteksti FAQAT marshrut parametridan olinadi — ya'ni uni
-    // marshrutning o'zi belgilaydi, mijoz emas.
-    const propertyId: string | undefined = request.params?.propertyId as
-      | string
-      | undefined;
-
+    // marshrutning o'zi belgilaydi, mijoz emas (yuqorida o'qilgan
+    // `propertyId` — o'sha qiymat, u yerda tenantga tegishliligi ham
+    // tekshirilgan).
     const permissions = await this.rolesService.getEffectivePermissions(
       user.tenantId,
       user.userId,
