@@ -146,6 +146,11 @@ export interface BookingDto {
   externalRef: string | null;
   notes: string | null;
   cancellationFeeAmount: string | null;
+  // Bronni tashkil qilgan odam (2026-09-05) — KONTAKT turidagi profil.
+  // `contactProfile` faqat bitta bronni olganda (findById) keladi,
+  // ro'yxatda emas.
+  contactProfileId: string | null;
+  contactProfile?: GuestDto | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -173,6 +178,9 @@ export interface AgencyDto {
   id: string;
   tenantId: string;
   propertyId: string;
+  // Agentlikning PROFIL id'si — kontakt tanlashda kerak: kontakt profili
+  // `parentProfileId` orqali aynan shu profilga bog'lanadi.
+  profileId: string;
   name: string;
   contactName: string | null;
   contactPhone: string | null;
@@ -183,11 +191,56 @@ export interface AgencyDto {
   createdAt: string;
 }
 
+// 2026-09-04: komissiya endi CHECK-OUT paytida bosh kitobga yoziladi
+// (`agency_commissions`), ya'ni bu raqamlar real vaqtda qayta hisoblanmaydi.
 export interface AgencySummaryDto {
   agencyId: string;
+  commissionPct: string;
+  currency: string;
+  // Komissiyasi yozilgan (check-out qilingan) bronlar
   bookingCount: number;
   totalRevenue: string;
+  accruedAmount: string;
+  paidAmount: string;
+  outstandingAmount: string;
+  // Eski nom — endi "hozir qarzdormiz" degani (= outstandingAmount).
   commissionOwed: string;
+  // Hali chiqib ketmagan bronlardan kutilayotgan summa (hech qayerga
+  // yozilmagan, faqat prognoz).
+  projectedBookingCount: number;
+  projectedAmount: string;
+  // Komissiya yozuvi joriy qilinishidan oldin yakunlangan bronlar.
+  historicalBookingCount: number;
+  historicalEstimate: string;
+}
+
+export type AgencyCommissionStatus = 'accrued' | 'paid';
+export type AgencyPaymentMethod = 'cash' | 'card' | 'bank_transfer';
+
+export interface AgencyCommissionDto {
+  id: string;
+  agencyId: string;
+  bookingId: string;
+  baseAmount: string;
+  commissionPct: string;
+  amount: string;
+  currency: string;
+  status: AgencyCommissionStatus;
+  accruedOn: string;
+  paymentId: string | null;
+  booking?: { id: string; checkIn: string; checkOut: string; totalAmount: string } | null;
+}
+
+export interface AgencyCommissionPaymentDto {
+  id: string;
+  agencyId: string;
+  amount: string;
+  currency: string;
+  method: AgencyPaymentMethod;
+  paidOn: string;
+  reference: string | null;
+  notes: string | null;
+  createdAt: string;
 }
 
 // --- City Ledger / Korporativ hisoblar (Corporate Accounts) ---
@@ -196,6 +249,7 @@ export interface CorporateAccountDto {
   id: string;
   tenantId: string;
   propertyId: string;
+  profileId: string;
   name: string;
   taxId: string | null;
   contactName: string | null;
