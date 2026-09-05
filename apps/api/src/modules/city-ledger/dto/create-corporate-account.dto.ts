@@ -1,13 +1,13 @@
 import {
   IsEmail,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateCorporateAccountDto {
   // Mavjud KOMPANIYA profilini ulash (2026-09-04). Berilmasa yangisi ochiladi.
@@ -40,13 +40,7 @@ export class CreateCorporateAccountDto {
   billingAddress?: string;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    {
-      message:
-        'creditLimit raqam ko\'rinishida bo\'lishi kerak (masalan "5000000.00")',
-    },
-  )
+  @IsMoneyString('creditLimit')
   creditLimit?: string;
 
   @IsOptional()

@@ -1,10 +1,11 @@
-import { IsEnum, IsNumberString } from 'class-validator';
+import { IsEnum } from 'class-validator';
 import { SalaryType } from '../entities/user.entity';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class SetSalaryDto {
   @IsEnum(SalaryType)
   salaryType: SalaryType;
 
-  @IsNumberString()
+  @IsMoneyString('salaryAmount')
   salaryAmount: string;
 }

@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumberString, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsQuantityString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateStockItemDto {
   @IsString()
@@ -22,7 +23,7 @@ export class CreateStockItemDto {
   category?: string;
 
   @IsOptional()
-  @IsNumberString()
+  @IsQuantityString('reorderPoint')
   reorderPoint?: string;
 
   @IsOptional()

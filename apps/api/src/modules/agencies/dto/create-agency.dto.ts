@@ -1,11 +1,11 @@
 import {
   IsEmail,
-  IsNumberString,
   IsOptional,
   IsString,
   IsUUID,
   MinLength,
 } from 'class-validator';
+import { IsPercentString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateAgencyDto {
   // Mavjud TURAGENT profilini ulash (2026-09-04). Berilmasa, quyidagi
@@ -31,7 +31,7 @@ export class CreateAgencyDto {
   contactEmail?: string;
 
   @IsOptional()
-  @IsNumberString({}, { message: "commissionPct raqam ko'rinishida bo'lishi kerak (masalan \"10.00\")" })
+  @IsPercentString('commissionPct')
   commissionPct?: string;
 
   @IsOptional()

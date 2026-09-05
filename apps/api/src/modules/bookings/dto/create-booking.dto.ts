@@ -1,12 +1,12 @@
 import {
   IsDateString,
   IsIn,
-  IsNumberString,
   IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
 import { BookingSource, MarketSegment } from '../entities/booking.entity';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateBookingDto {
   @IsUUID('4')
@@ -59,7 +59,7 @@ export class CreateBookingDto {
   // Berilmasa, xona turi bazaviy narxi (yoki ratePlanId berilgan bo'lsa, shu
   // rejaning narxi) * tunlar soni asosida avtomatik hisoblanadi.
   @IsOptional()
-  @IsNumberString()
+  @IsMoneyString('totalAmount')
   totalAmount?: string;
 
   @IsOptional()

@@ -1,4 +1,5 @@
-import { IsBoolean, IsEmail, IsNumberString, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsPercentString } from '../../../common/validators/numeric-string.validator';
 
 // Agentlikni tahrirlash — hammasi ixtiyoriy (partial update).
 export class UpdateAgencyDto {
@@ -20,7 +21,7 @@ export class UpdateAgencyDto {
   contactEmail?: string;
 
   @IsOptional()
-  @IsNumberString({}, { message: "commissionPct raqam ko'rinishida bo'lishi kerak" })
+  @IsPercentString('commissionPct')
   commissionPct?: string;
 
   @IsOptional()

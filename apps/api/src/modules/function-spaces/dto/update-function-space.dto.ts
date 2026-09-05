@@ -1,12 +1,12 @@
 import {
   IsBoolean,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 // Zalni tahrirlash — hammasi ixtiyoriy (partial update).
 export class UpdateFunctionSpaceDto {
@@ -21,10 +21,7 @@ export class UpdateFunctionSpaceDto {
   capacity?: number;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "dailyRate raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('dailyRate')
   dailyRate?: string;
 
   @IsOptional()

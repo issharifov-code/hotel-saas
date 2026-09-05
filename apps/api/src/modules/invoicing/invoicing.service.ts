@@ -381,6 +381,60 @@ export class InvoicingService {
     });
   }
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). To'lov shlyuziga murojaat
+  // QULFDAN OLDIN sodir bo'lardi: `PaymentsService.chargeInvoice` qoldiqni
+  // qulflanmagan qatordan o'qib tekshirar, keyin `adapter.charge()` ni
+  // chaqirar, va faqat undan keyin `persistPayment` qatorni qulflardi.
+  //
+  // Baza izchil qolardi (qulf ostidagi qayta tekshiruv ortiqcha to'lovni
+  // yozmasdi), LEKIN ikkita bir vaqtdagi so'rov (masalan "To'lash"
+  // tugmasini ikki marta bosish) mehmonning kartasidan IKKI MARTA pul
+  // yechib, bittasini umuman yozib qo'ymasdi — ya'ni olingan pulning
+  // hech qanday izi qolmasdi. Hozircha faqat `mock` adapter ulangani
+  // uchun bu latent edi; haqiqiy provayder ulangan zahoti pul yo'qotishga
+  // aylanardi.
+  //
+  // Yechim: qulfni shlyuzga murojaatdan OLDIN olish. Qulf so'rov
+  // tranzaksiyasi ichida olinadi va tranzaksiya tugagunicha ushlab
+  // turiladi, ya'ni ayni bir hisob-faktura uchun ikkinchi so'rov
+  // birinchisi tugagunicha kutadi va keyin yangilangan qoldiqni ko'radi.
+  // Bu instansiyalar bo'ylab ham ishlaydi (baza darajasidagi qulf).
+  //
+  // Narxi: shlyuz chaqiruvi davomida bitta qator qulflanib turadi. Bu
+  // ikki marta pul yechilishidan ko'ra ancha arzon.
+  async lockInvoiceForPayment(
+    tenantId: string,
+    propertyId: string,
+    invoiceId: string,
+    amount: string,
+  ): Promise<Invoice> {
+    // `findById` tenant/property tegishliligini tekshiradi — qulfdan
+    // oldin shu tekshiruv o'tishi shart.
+    await this.findById(tenantId, propertyId, invoiceId);
+
+    const locked = await this.invoiceRepo
+      .createQueryBuilder('invoice')
+      .setLock('pessimistic_write')
+      .where('invoice.id = :id', { id: invoiceId })
+      .getOne();
+    if (!locked) {
+      throw new NotFoundException('Hisob-faktura topilmadi');
+    }
+    if (locked.status === InvoiceStatus.CANCELLED) {
+      throw new ConflictException(
+        "Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi",
+      );
+    }
+
+    const balance = Number(locked.totalAmount) - Number(locked.paidAmount);
+    if (Number(amount) > balance + 0.005) {
+      throw new ConflictException(
+        `To'lov summasi qoldiqdan (${balance.toFixed(2)}) oshib ketmasligi kerak`,
+      );
+    }
+    return locked;
+  }
+
   // Payments moduli (to'lov shlyuzi adapterlari — mock/Payme/Click) orqali
   // muvaffaqiyatli amalga oshirilgan to'lovni yozib qo'yish uchun. Chaqiruvchi
   // (PaymentsService) shlyuzga chindan ham murojaat qilib, natija

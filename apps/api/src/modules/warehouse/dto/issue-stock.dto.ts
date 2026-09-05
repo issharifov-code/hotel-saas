@@ -1,10 +1,11 @@
-import { IsNumberString, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsQuantityString } from '../../../common/validators/numeric-string.validator';
 
 export class IssueStockDto {
   @IsUUID()
   stockItemId: string;
 
-  @IsNumberString()
+  @IsQuantityString('quantity')
   quantity: string;
 
   @IsOptional()

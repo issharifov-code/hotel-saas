@@ -3,7 +3,6 @@ import {
   IsEmail,
   IsIn,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   IsUUID,
@@ -11,6 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { FunctionSpaceBookingStatus } from '../entities/function-space-booking.entity';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 // Tadbir bronini tahrirlash — hammasi ixtiyoriy (partial update). Vaqt yoki
 // zal o'zgarsa (va status CANCELLED bo'lmasa), backend to'qnashuvni qayta
@@ -60,10 +60,7 @@ export class UpdateFunctionSpaceBookingDto {
   status?: FunctionSpaceBookingStatus;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "totalAmount raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('totalAmount')
   totalAmount?: string;
 
   @IsOptional()

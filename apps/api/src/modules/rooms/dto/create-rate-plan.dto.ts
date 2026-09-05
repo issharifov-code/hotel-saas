@@ -2,7 +2,6 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   IsUUID,
@@ -10,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CancellationFeeType } from '../entities/rate-plan.entity';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateRatePlanDto {
   @IsUUID('4')
@@ -19,13 +19,7 @@ export class CreateRatePlanDto {
   @MinLength(1)
   name: string;
 
-  @IsNumberString(
-    {},
-    {
-      message:
-        'nightlyPrice raqam ko\'rinishida bo\'lishi kerak (masalan "650000.00")',
-    },
-  )
+  @IsMoneyString('nightlyPrice')
   nightlyPrice: string;
 
   @IsOptional()
@@ -49,10 +43,7 @@ export class CreateRatePlanDto {
   cancellationFeeType?: CancellationFeeType;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "cancellationFeeValue raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('cancellationFeeValue')
   cancellationFeeValue?: string;
 
   // Kelmaslik (no-show) jarimasi — muddatsiz, Night Audit tomonidan qo'llanadi.
@@ -61,9 +52,6 @@ export class CreateRatePlanDto {
   noShowFeeType?: CancellationFeeType;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "noShowFeeValue raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('noShowFeeValue')
   noShowFeeValue?: string;
 }

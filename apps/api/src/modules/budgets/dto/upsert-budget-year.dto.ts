@@ -4,12 +4,12 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
-  IsNumberString,
   IsOptional,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { IsMoneyString, IsPercentString } from '../../../common/validators/numeric-string.validator';
 
 export class BudgetMonthDto {
   @IsInt()
@@ -22,15 +22,15 @@ export class BudgetMonthDto {
   // maydonni bo'shatsa, mavjud qiymat o'chirilishi kerak, shuning uchun
   // `undefined` (umuman yubormaslik) bilan farqlanadi.
   @IsOptional()
-  @IsNumberString({}, { message: "Daromad raqam ko'rinishida bo'lishi kerak" })
+  @IsMoneyString('roomsRevenue')
   roomsRevenue?: string | null;
 
   @IsOptional()
-  @IsNumberString({}, { message: "Bandlik raqam ko'rinishida bo'lishi kerak" })
+  @IsPercentString('occupancyRatePct')
   occupancyRatePct?: string | null;
 
   @IsOptional()
-  @IsNumberString({}, { message: "ADR raqam ko'rinishida bo'lishi kerak" })
+  @IsMoneyString('adr')
   adr?: string | null;
 }
 

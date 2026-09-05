@@ -1,11 +1,12 @@
-import { IsInt, IsNumberString, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateRoomTypeDto {
   @IsString()
   @MinLength(1)
   name: string;
 
-  @IsNumberString({}, { message: "basePrice raqam ko'rinishida bo'lishi kerak (masalan \"350000.00\")" })
+  @IsMoneyString('basePrice')
   basePrice: string;
 
   @IsOptional()

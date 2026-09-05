@@ -1,12 +1,11 @@
 import {
   BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InvoicingService } from '../invoicing/invoicing.service';
-import { Invoice, InvoiceStatus } from '../invoicing/entities/invoice.entity';
+import { Invoice } from '../invoicing/entities/invoice.entity';
 import { ChargeInvoiceDto } from './dto/charge-invoice.dto';
 import {
   PAYMENT_ADAPTERS,
@@ -44,24 +43,6 @@ export class PaymentsService {
     dto: ChargeInvoiceDto,
     userId: string,
   ): Promise<Invoice> {
-    const invoice = await this.invoicingService.findById(
-      tenantId,
-      propertyId,
-      invoiceId,
-    );
-
-    if (invoice.status === InvoiceStatus.CANCELLED) {
-      throw new ConflictException(
-        "Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi",
-      );
-    }
-    const balance = Number(invoice.totalAmount) - Number(invoice.paidAmount);
-    if (dto.amount > balance + 0.005) {
-      throw new BadRequestException(
-        `To'lov summasi qoldiqdan (${balance.toFixed(2)}) oshib ketmasligi kerak`,
-      );
-    }
-
     const provider = dto.provider ?? DEFAULT_PROVIDER;
     const adapter = this.adaptersByProvider.get(provider);
     if (!adapter) {
@@ -69,6 +50,25 @@ export class PaymentsService {
     }
 
     const amount = dto.amount.toFixed(2);
+
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Ilgari bu yerda qoldiq
+    // QULFLANMAGAN qatordan o'qilib tekshirilar, keyin shlyuz chaqirilar,
+    // va faqat undan keyin `persistPayment` qatorni qulflardi. Natijada
+    // ikkita bir vaqtdagi so'rov (masalan tugmani ikki marta bosish)
+    // mehmon kartasidan IKKI MARTA pul yechib, bittasini yozib
+    // qo'ymasdi — olingan pulning izi qolmasdi.
+    //
+    // Endi qulf shlyuzga murojaatdan OLDIN olinadi va so'rov
+    // tranzaksiyasi tugagunicha ushlanadi: ikkinchi so'rov kutadi va
+    // yangilangan qoldiqni ko'radi. Tekshiruvlar (bekor qilinganmi,
+    // qoldiqdan oshmaydimi) o'sha qulf ostida bajariladi.
+    const invoice = await this.invoicingService.lockInvoiceForPayment(
+      tenantId,
+      propertyId,
+      invoiceId,
+      amount,
+    );
+
     const result = await adapter.charge({
       amount,
       currency: invoice.currency,

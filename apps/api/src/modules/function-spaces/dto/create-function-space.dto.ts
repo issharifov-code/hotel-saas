@@ -1,11 +1,11 @@
 import {
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateFunctionSpaceDto {
   @IsString()
@@ -17,13 +17,7 @@ export class CreateFunctionSpaceDto {
   capacity: number;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    {
-      message:
-        'dailyRate raqam ko\'rinishida bo\'lishi kerak (masalan "500000.00")',
-    },
-  )
+  @IsMoneyString('dailyRate')
   dailyRate?: string;
 
   @IsOptional()

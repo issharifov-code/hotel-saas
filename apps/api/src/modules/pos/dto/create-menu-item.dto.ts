@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumberString, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 export class CreateMenuItemDto {
   @IsString()
@@ -11,7 +12,7 @@ export class CreateMenuItemDto {
   @MaxLength(100)
   category?: string;
 
-  @IsNumberString()
+  @IsMoneyString('price')
   price: string;
 
   @IsOptional()

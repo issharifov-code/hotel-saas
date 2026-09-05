@@ -2,12 +2,12 @@ import {
   IsBoolean,
   IsEmail,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 // Korporativ hisobni tahrirlash — hammasi ixtiyoriy (partial update).
 export class UpdateCorporateAccountDto {
@@ -37,10 +37,7 @@ export class UpdateCorporateAccountDto {
   billingAddress?: string;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "creditLimit raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('creditLimit')
   creditLimit?: string;
 
   @IsOptional()

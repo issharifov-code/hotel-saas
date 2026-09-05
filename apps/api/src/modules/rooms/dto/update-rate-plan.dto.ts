@@ -2,13 +2,13 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
-  IsNumberString,
   IsOptional,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
 import { CancellationFeeType } from '../entities/rate-plan.entity';
+import { IsMoneyString } from '../../../common/validators/numeric-string.validator';
 
 // Rate plan tahrirlash — hammasi ixtiyoriy (partial update): odatda faqat
 // narxni yangilash yoki isActive'ni almashtirish (deaktivatsiya) uchun ishlatiladi.
@@ -19,10 +19,7 @@ export class UpdateRatePlanDto {
   name?: string;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "nightlyPrice raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('nightlyPrice')
   nightlyPrice?: string;
 
   @IsOptional()
@@ -47,10 +44,7 @@ export class UpdateRatePlanDto {
   cancellationFeeType?: CancellationFeeType | null;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "cancellationFeeValue raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('cancellationFeeValue')
   cancellationFeeValue?: string | null;
 
   @IsOptional()
@@ -58,9 +52,6 @@ export class UpdateRatePlanDto {
   noShowFeeType?: CancellationFeeType | null;
 
   @IsOptional()
-  @IsNumberString(
-    {},
-    { message: "noShowFeeValue raqam ko'rinishida bo'lishi kerak" },
-  )
+  @IsMoneyString('noShowFeeValue')
   noShowFeeValue?: string | null;
 }
