@@ -33,6 +33,14 @@ const PAYMENT_METHOD_SYSTEM_KEY: Record<InvoicePaymentMethod, string> = {
   [InvoicePaymentMethod.ONLINE]: 'card_clearing',
 };
 
+// To'lov summasini qoldiq bilan solishtirishda ishlatiladigan tolerantlik.
+// Sabab: summalar bazada `numeric` (satr) sifatida saqlanadi va JS'da
+// `Number()` orqali ikkilik kasrga aylanadi — 0.1 + 0.2 === 0.30000000000000004.
+// Tolerantliksiz mehmon qoldiqni TO'LIQ to'lay olmasdi: oxirgi tiyinda
+// "qoldiqdan oshib ketdi" xatosi chiqardi. 0.005 — yarim tiyin, ya'ni
+// haqiqiy ortiqcha to'lovni (eng kichigi 0.01) hech qachon o'tkazmaydi.
+const PAYMENT_ROUNDING_TOLERANCE = 0.005;
+
 @Injectable()
 export class InvoicingService {
   constructor(
@@ -412,6 +420,28 @@ export class InvoicingService {
     // oldin shu tekshiruv o'tishi shart.
     await this.findById(tenantId, propertyId, invoiceId);
 
+    return this.lockAndAssertPayable(invoiceId, amount);
+  }
+
+  // 🔴 YAGONA QO'RIQCHI (2026-09-05). Bu tekshiruv ilgari IKKI JOYDA
+  // so'zma-so'z takrorlangan edi: `lockInvoiceForPayment` (shlyuz yo'li)
+  // va `persistPayment` (yozuv yo'li).
+  //
+  // Takrorlanish nuqson emas, KAMUFLYAJ edi: mutatsion tekshiruvda
+  // chegara sharti (`> balance + 0.005`) bitta nusxada buzilganda
+  // testlar YASHIL qolardi — ikkinchi nusxa hali ham ushlab qolardi.
+  // Ya'ni testlar qo'riqchining o'zini emas, faqat "kamida bittasi
+  // ishlayapti" degan holatni tasdiqlar edi. Bir nusxa jimgina
+  // noto'g'ri o'zgartirilsa, hech kim bilmasdi.
+  //
+  // Endi shart bitta joyda. Ikkala yo'l ham shu yerga kiradi, ya'ni
+  // himoya qatlamlari saqlanib qoladi (shlyuzga murojaatdan oldin
+  // bir marta, yozuvdan oldin yana bir marta — oradagi vaqtda holat
+  // o'zgargan bo'lishi mumkin), lekin MANTIQ yagona.
+  private async lockAndAssertPayable(
+    invoiceId: string,
+    amount: string,
+  ): Promise<Invoice> {
     const locked = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .setLock('pessimistic_write')
@@ -427,7 +457,10 @@ export class InvoicingService {
     }
 
     const balance = Number(locked.totalAmount) - Number(locked.paidAmount);
-    if (Number(amount) > balance + 0.005) {
+    // `PAYMENT_ROUNDING_TOLERANCE` — ikkilik kasrlar xatosi uchun (masalan
+    // 0.1 + 0.2 === 0.30000000000000004). Tiyindan kichik, ya'ni haqiqiy
+    // ortiqcha to'lovni o'tkazib yubormaydi.
+    if (Number(amount) > balance + PAYMENT_ROUNDING_TOLERANCE) {
       throw new ConflictException(
         `To'lov summasi qoldiqdan (${balance.toFixed(2)}) oshib ketmasligi kerak`,
       );
@@ -478,27 +511,7 @@ export class InvoicingService {
     // esa hech qanday yuqori chegara tekshirilmasdi), va (b) ikkita bir vaqtdagi
     // to'lov so'rovi (masalan ikki xodim yoki gateway+qo'lda) bir-birini "ko'rmasdan"
     // ikkalasi ham eski qoldiqni tekshirib o'tib ketishi (TOCTOU race) xavfini yopadi.
-    const locked = await this.invoiceRepo
-      .createQueryBuilder('invoice')
-      .setLock('pessimistic_write')
-      .where('invoice.id = :id', { id: invoice.id })
-      .getOne();
-    if (!locked) {
-      throw new NotFoundException('Hisob-faktura topilmadi');
-    }
-
-    if (locked.status === InvoiceStatus.CANCELLED) {
-      throw new ConflictException(
-        "Bekor qilingan hisob-fakturaga to'lov qo'shib bo'lmaydi",
-      );
-    }
-
-    const balance = Number(locked.totalAmount) - Number(locked.paidAmount);
-    if (Number(params.amount) > balance + 0.005) {
-      throw new ConflictException(
-        `To'lov summasi qoldiqdan (${balance.toFixed(2)}) oshib ketmasligi kerak`,
-      );
-    }
+    await this.lockAndAssertPayable(invoice.id, params.amount);
 
     const savedPayment = await this.paymentRepo.save(
       this.paymentRepo.create({
