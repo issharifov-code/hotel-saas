@@ -1,0 +1,119 @@
+# Folio One — bazaning kunlik zaxirasi (2026-09-05).
+#
+# NIMA UCHUN GITHUB ACTIONS, RENDER CRON EMAS.
+# Zaxiraning butun ma'nosi — nusxa ASOSIY TIZIMDAN TASHQARIDA turishi.
+# Render'ning o'z cron ishi ham, o'z tiklash oynasi ham bitta hisobga
+# bog'liq: hisob to'xtatilsa (masalan to'lov o'tmasa) yoki o'chirilsa,
+# baza bilan birga zaxira ham ketadi. GitHub esa alohida provayder va
+# repozitoriy allaqachon shu yerda.
+#
+# TIKLASH OYNASI. Render Hobby tarifida atigi 3 kun. GitHub artefaktlari
+# bu yerda 30 kun saqlanadi — ya'ni oyna 10 barobar kengayadi.
+#
+# HAR BIR ZAXIRA TIKLAB TEKSHIRILADI. "Sinalmagan zaxira — zaxira emas"
+# degan qoida odatda bir martalik qo'lda mashqqa aylanadi va keyin
+# unutiladi. Shuning uchun tekshiruv ishning O'ZIGA kiritilgan: har
+# kuni zaxira olinadi va DARHOL bo'sh PostgreSQL'ga tiklanadi, jadval
+# soni, sxema versiyasi va RLS siyosatlari solishtiriladi. Zaxira
+# tiklanmasa — ish qizil bo'ladi va siz buni o'sha kuni bilasiz, falokat
+# kunida emas.
+#
+# KERAKLI SIRLAR (Settings -> Secrets and variables -> Actions):
+#   DATABASE_URL       Render -> hotel-saas-db -> Connect ->
+#                      "External Database URL" (Internal EMAS — GitHub
+#                      Render tarmog'idan tashqarida).
+#   BACKUP_PASSPHRASE  O'zingiz o'ylab topgan uzun parol. Zaxirada
+#                      mehmonlarning ismi, telefoni va hujjat ma'lumoti
+#                      bor — u shifrlanmasdan saqlanmasligi kerak.
+#                      🔴 BU PAROLNI YO'QOTSANGIZ ZAXIRALAR OCHILMAYDI.
+#                      Uni parol menejeringizda alohida saqlang.
+#
+# DIQQAT: Render bazasi tashqi ulanishlarni qabul qilishi kerak
+# (Database -> Info -> Inbound IP Rules). GitHub runner'lari aylanib
+# turadigan IP'lardan keladi, shuning uchun `0.0.0.0/0` ruxsati kerak
+# bo'ladi. Bu ko'ringanidek qo'rqinchli emas: ulanish TLS bilan va
+# baza paroli bilan himoyalangan; ammo agar Render'da tarmoqni tor
+# qilish imkoni bo'lsa, undan foydalangan ma'qul.
+
+name: Bazaning kunlik zaxirasi
+
+on:
+  schedule:
+    # Har kuni 02:00 UTC = Toshkent vaqti bilan 07:00. Kechasi emas —
+    # ish yiqilsa ertalab ko'rasiz.
+    - cron: '0 2 * * *'
+  # Qo'lda ham ishga tushirish mumkin (deploydan oldin zaxira olish
+  # yoki tiklashni sinash uchun).
+  workflow_dispatch:
+
+# Bir vaqtda ikkita zaxira ishi ketmasin.
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Zaxirani tekshirish uchun bo'sh PostgreSQL. Versiyasi Render
+    # bilan bir xil (18) bo'lishi SHART — aks holda tiklash "server
+    # version mismatch" bilan yiqiladi.
+    services:
+      verify-db:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: verify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ubuntu runner'da standart holatda PostgreSQL 16 mijozi bor,
+      # Render'da esa server 18. `pg_dump` serverdan eski bo'lsa
+      # ishlamaydi, shuning uchun PGDG repozitoriysidan 18 o'rnatiladi.
+      - name: PostgreSQL 18 mijozini o'rnatish
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          pg_dump --version
+
+      - name: Zaxira olish
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        # `bash ...` — skript bajariluvchi bayrog'iga bog'liq bo'lmasin
+        # (GitHub veb-interfeysi orqali yuklangan fayl uni yo'qotadi).
+        run: bash ./scripts/db-backup.sh ./backups
+
+      # 🔴 ENG MUHIM QADAM. Zaxira olinishi — hali hech narsa emas;
+      # u TIKLANISHI kerak. Shu yerda zaxira bo'sh bazaga tiklanadi va
+      # natija (jadvallar, sxema versiyasi, RLS siyosatlari)
+      # solishtiriladi. Yiqilsa — butun ish qizil.
+      - name: Zaxirani tiklab tekshirish
+        env:
+          TARGET_URL: postgresql://postgres:verify@localhost:5432/verify
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: bash ./scripts/db-restore.sh "$(ls ./backups/* | head -1)"
+
+      - name: Zaxirani saqlash
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/*
+          # Render'ning 3 kunlik oynasidan 10 barobar uzun.
+          retention-days: 30
+          if-no-files-found: error

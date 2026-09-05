@@ -9,3 +9,10 @@ build/
 coverage/
 .turbo/
 generated/
+
+# Zaxira nusxalari — hech qachon repozitoriyga tushmasin.
+# Ular mehmonlarning ismi, telefoni va hujjat ma'lumotini o'z ichiga
+# oladi (docs/zaxira-va-tiklash.md ga qarang).
+/backups/
+*.dump
+*.dump.gpg
