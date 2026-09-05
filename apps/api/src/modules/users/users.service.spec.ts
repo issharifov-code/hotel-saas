@@ -30,6 +30,17 @@ describe('UsersService', () => {
           Promise.resolve(entity),
         ),
     };
+    // 🔴 2026-09-05: `users` jadvalida RLS bor (migratsiya 1789300000000),
+    // shuning uchun servis har bir metodda O'Z tranzaksiyasini ochib,
+    // ichida `set_config` qiladi (RolesService/TenantsService naqshi).
+    // Mock'da tranzaksiya shunchaki callback'ni bir xil repo bilan
+    // chaqiradi — mantiq o'zgarmaydi, faqat manager orqali o'tadi.
+    const manager = {
+      query: jest.fn().mockResolvedValue(undefined),
+      getRepository: jest.fn().mockReturnValue(repo),
+      transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+    };
+    (repo as Record<string, unknown>).manager = manager;
     const service = new UsersService(repo as never);
     return { service, repo };
   }
