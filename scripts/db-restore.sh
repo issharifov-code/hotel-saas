@@ -32,6 +32,18 @@ if [[ -z "${TARGET_URL:-}" ]]; then
   exit 1
 fi
 
+# --- PG_WRAPPER TUZOG'I — izoh `db-backup.sh` da ----------------------------
+# `pg_restore` uchun ham xuddi shu muammo: eski versiya yangi formatdagi
+# arxivni ocholmaydi ("unsupported version in file header").
+if [ -d /usr/lib/postgresql ]; then
+  newest_bin="$(find /usr/lib/postgresql -maxdepth 2 -type d -name bin 2>/dev/null \
+    | sort -t/ -k5 -V | tail -1)"
+  if [ -n "$newest_bin" ] && [ -x "$newest_bin/pg_restore" ]; then
+    PATH="$newest_bin:$PATH"
+    export PATH
+  fi
+fi
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 

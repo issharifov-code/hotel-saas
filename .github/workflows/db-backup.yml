@@ -89,7 +89,31 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-18
+
+          # 🔴 BIRINCHI ISHDA TOPILGAN NUQSON (2026-09-05). Paket
+          # o'rnatilgani YETARLI EMAS: Debian/Ubuntu'da `/usr/bin/pg_dump`
+          # — haqiqiy dastur emas, `pg_wrapper` degan vositachi. Bir
+          # nechta versiya o'rnatilganda u ESKISINI tanlaydi, ya'ni
+          # `postgresql-client-18` muvaffaqiyatli o'rnatilgani holda
+          # `pg_dump --version` hamon 16.15 deb javob berardi.
+          #
+          # Haqiqiy 18-versiya binarlari `/usr/lib/postgresql/18/bin` da
+          # yotadi — o'shani PATH boshiga qo'yamiz.
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      # PATH o'zgarishi keyingi qadamda kuchga kiradi, shuning uchun
+      # tekshiruv alohida qadam sifatida.
+      - name: Mijoz versiyasini tasdiqlash
+        run: |
+          which pg_dump
           pg_dump --version
+          # Server 18, mijoz 18 dan kichik bo'lsa keyingi qadam baribir
+          # yiqilardi — bu yerda aniq xabar bilan to'xtagan ma'qul.
+          major="$(pg_dump --version | grep -oE '[0-9]+' | head -1)"
+          if [ "$major" -lt 18 ]; then
+            echo "XATO: pg_dump $major — PostgreSQL 18 kutilgandi." >&2
+            exit 1
+          fi
 
       - name: Zaxira olish
         env:

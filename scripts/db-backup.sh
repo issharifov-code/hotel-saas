@@ -35,6 +35,24 @@ fi
 
 command -v pg_dump >/dev/null || { echo "XATO: pg_dump topilmadi." >&2; exit 1; }
 
+# --- PG_WRAPPER TUZOG'I (2026-09-05 da jonli ishda topilgan) ----------------
+# Debian/Ubuntu'da `/usr/bin/pg_dump` haqiqiy dastur EMAS — u
+# `pg_wrapper` degan vositachi. Bir nechta mijoz versiyasi o'rnatilgan
+# bo'lsa u ESKISINI tanlaydi: `postgresql-client-18` muvaffaqiyatli
+# o'rnatilgani holda `pg_dump --version` 16.15 deb javob bergan edi.
+#
+# Shuning uchun avval `/usr/lib/postgresql/<versiya>/bin` papkalaridan
+# eng yangisini topib, PATH boshiga qo'yamiz. Bunday papka bo'lmasa
+# (macOS, boshqa distributiv) hech narsa o'zgarmaydi.
+if [ -d /usr/lib/postgresql ]; then
+  newest_bin="$(find /usr/lib/postgresql -maxdepth 2 -type d -name bin 2>/dev/null \
+    | sort -t/ -k5 -V | tail -1)"
+  if [ -n "$newest_bin" ] && [ -x "$newest_bin/pg_dump" ]; then
+    PATH="$newest_bin:$PATH"
+    export PATH
+  fi
+fi
+
 # --- Versiya tekshiruvi -----------------------------------------------------
 server_version="$(psql "$DATABASE_URL" -tAc 'SHOW server_version_num' 2>/dev/null || true)"
 if [[ -z "$server_version" ]]; then

@@ -81,6 +81,14 @@ brew install postgresql@18
 sudo apt-get install -y postgresql-client-18
 ```
 
+> **Ubuntu/Debian'dagi tuzoq.** Paket o'rnatilgani yetarli emas:
+> `/usr/bin/pg_dump` — haqiqiy dastur emas, `pg_wrapper` degan
+> vositachi, va bir nechta versiya bo'lsa u **eskisini** tanlaydi.
+> Tekshirish: `pg_dump --version` 18 dan kichik chiqsa, muammo shu.
+> Skriptlar buni o'zi hal qiladi (`/usr/lib/postgresql/<eng-yangi>/bin`
+> ni PATH boshiga qo'yadi), lekin qo'lda buyruq berayotgan bo'lsangiz
+> to'liq yo'lni yozing: `/usr/lib/postgresql/18/bin/pg_restore`.
+
 Repozitoriyni klonlang (skriptlar shu yerda):
 
 ```bash
