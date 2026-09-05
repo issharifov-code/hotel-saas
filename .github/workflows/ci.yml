@@ -123,6 +123,18 @@ jobs:
           fi
           echo "dist/ toza."
 
+      # 🔬 WEB TESTLARI (2026-09-05). Bugungacha web tomonida NOLTA
+      # test bor edi: foydalanuvchi ko'radigan hamma narsa — ruxsatga
+      # qarab nima ko'rinishi, xato xabari qanday chiqishi, tokenning
+      # qo'yilishi — hech narsa bilan qo'riqlanmagan edi.
+      #
+      # `jsdom` muhitida ishlaydi, ya'ni bu yerda CSS va haqiqiy
+      # tartib-tarkib tekshirilmaydi (buning uchun Playwright kerak
+      # bo'lardi). Bu yerdagi vazifa MANTIQ: nima ko'rinadi, nima
+      # ko'rinmaydi, qanday so'rov ketadi.
+      - name: Testlar (web)
+        run: pnpm --filter web test
+
       # Web'ning `build` skripti `tsc -b && vite build` — ya'ni tip
       # tekshiruvi ham shu yerda bajariladi.
       - name: Build va TypeScript tekshiruvi (web)

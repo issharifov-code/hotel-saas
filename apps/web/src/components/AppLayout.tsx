@@ -80,7 +80,11 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/group-bookings', label: 'Guruh bronlari', moduleKey: 'booking' },
       { to: '/agencies', label: 'Agentliklar', moduleKey: 'booking' },
       { to: '/function-spaces', label: 'Tadbir zallari', moduleKey: 'booking' },
-      { to: '/channel-manager', label: 'Channel Manager', moduleKey: 'booking' },
+      // 🔴 2026-09-05 (foydalanuvchi qarori): "Channel Manager" bu
+      // yerdan OLIB TASHLANDI — u endi faqat chap paneldagi "Sotuv
+      // kanallari" guruhida. Sabab: kanal menejeri kundalik operatsiya
+      // emas, bir marta sozlanadigan integratsiya; bu ro'yxatda u
+      // bronlar bilan bir xil og'irlikda ko'rinardi.
     ],
   },
   {
@@ -92,7 +96,10 @@ const NAV_SECTIONS: NavSection[] = [
     key: 'inventory',
     label: 'Nomer fondi',
     items: [
-      { to: '/rooms', label: 'Xonalar', moduleKey: 'booking' },
+      // 🔴 2026-09-05 (foydalanuvchi qarori): "Xonalar" bu yerdan
+      // OLIB TASHLANDI — u endi faqat chap paneldagi "Sozlamalar"
+      // guruhida ("Xonalar va xona turlari"). Sabab: xona va xona
+      // turlarini sozlash kundalik ish emas.
       { to: '/housekeeping', label: 'Housekeeping', moduleKey: 'housekeeping' },
       { to: '/maintenance', label: 'Texnik xizmat', moduleKey: 'housekeeping' },
       { to: '/warehouse', label: 'Ombor', moduleKey: 'warehouse' },
@@ -184,7 +191,11 @@ const ADMIN_GROUPS: AdminGroup[] = [
       { to: '/property-settings', label: 'Mehmonxona', moduleKey: 'tenant_settings' },
       { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
       { to: '/rooms', label: 'Xonalar va xona turlari', moduleKey: 'booking' },
-      { to: '/staff?tab=roles', label: 'Foydalanuvchilar va rollar', moduleKey: 'users_roles' },
+      // 🔴 2026-09-05 (foydalanuvchi qarori): yorliq "Rollar" — chunki
+      // XODIMLAR ro'yxati o'z bo'limida (yuqoridagi "Xodimlar"
+      // menyusida) qoladi. Bu havola faqat rol sozlamalarini ochadi,
+      // ya'ni nomi ham aynan shuni aytishi kerak edi.
+      { to: '/staff?tab=roles', label: 'Rollar', moduleKey: 'users_roles' },
       // 2026-09-04 (foydalanuvchi fikri): "Xabarlar" — mehmonlarga
       // yuboriladigan xabar shablonlari va jo'natish tarixi, ya'ni
       // KUNDALIK ish emas, bir marta sozlab qo'yiladigan narsa.
@@ -282,11 +293,19 @@ function HamburgerIcon() {
 // SURILIB kirib ketadi va istalgan payt qaytadi. Chapga qaragan chevron
 // aynan shu harakatni oldindan aytadi — tugma bosilishidan oldin
 // foydalanuvchi natijani biladi.
-function CollapseIcon() {
+// 🔴 2026-09-05 (foydalanuvchi qarori). Bu belgi ketma-ketligi
+// bo'ldi: header'dagi "X" -> panel ichidagi "<<" (yig'ish) -> panel
+// ichidagi hamburger -> "X".
+//
+// Oxirgisi panel XULQI o'zgargandan keyin to'g'ri: u endi kontentni
+// surmaydi, ustidan ochiladi — ya'ni oddiy qatlam (overlay). Qatlam
+// esa yig'ilmaydi, YOPILADI, va "X" aynan shuni aytadi. Chevron
+// ("<<") noto'g'ri va'da berardi: go'yo panel qisqaradi-yu, kontent
+// joyida qoladi.
+function CloseIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 5.5L10 10l4.5 4.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 5.5L5 10l4.5 4.5" />
+      <path strokeLinecap="round" d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
 }
@@ -462,19 +481,6 @@ export function AppLayout({
   const togglePanel = (p: 'help' | 'actions') =>
     setOpenPanel((prev) => (prev === p ? null : p));
 
-  // Kontentni surish faqat keng ekranda (Tailwind `lg` = 64rem). Inline
-  // style'da media query ishlatib bo'lmagani uchun buni JS kuzatadi.
-  const [isWideScreen, setIsWideScreen] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 64rem)').matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 64rem)');
-    const onChange = () => setIsWideScreen(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-
   // Escape bilan yopish — panel butun ekranni egallaganda klaviatura orqali
   // chiqish yo'li bo'lishi kerak.
   useEffect(() => {
@@ -502,39 +508,21 @@ export function AppLayout({
 
   return (
     <div className="h-screen bg-slate-50 overflow-hidden">
-      {/* Panel ochilganda butun ilova o'ngga suriladi (2026-09-04,
-          foydalanuvchi fikri: "navigatsiya paneli orqasida to'silib
-          qolmasin, o'ngga surilsin") — panel kontent USTIGA chiqmaydi,
-          uni itaradi.
+      {/* 🔴 2026-09-05 (foydalanuvchi qarori): panel endi kontentni
+          SURMAYDI — u ustidan ochiladi, xuddi yuqoridagi "Mijozlar"
+          kabi dropdown menyular singari (referens: OPERA Cloud).
 
-          Faqat `lg:`+ da: 390px enli telefonda 300px surish deyarli hech
-          narsa qoldirmaydi, shuning uchun u yerda panel odatdagidek
-          ustidan ochiladi (qorong'ilashtiruvchi qatlam bilan).
+          Ilgari keng ekranda butun ilova 300px o'ngga surilardi. U
+          murakkab edi: surish qiymati panel kengligi bilan qo'lda
+          bog'langan, media query JS bilan kuzatilgan (`isWideScreen`),
+          va inline style ishlatishga majbur bo'lingan — Tailwind
+          utility'si production'da ishlamagani uchun (2026-09-04
+          izohi). Bularning hammasi endi kerak emas.
 
-          🔴 Panelning O'ZI shu konteynerdan TASHQARIDA turishi SHART:
-          `transform` qo'llangan element o'zining `position: fixed`
-          farzandlari uchun yangi containing block yaratadi, ya'ni panel
-          ham u bilan birga surilib ketardi. */}
-      <div
-        className="flex h-full flex-col"
-        // 🔴 NIMA UCHUN INLINE STYLE, CSS klassi emas (2026-09-04):
-        // avval `lg:translate-x-[300px]` (Tailwind utility) va keyin qo'lda
-        // yozilgan `.app-shell-pushed` klassi sinaldi — IKKALASI HAM
-        // production'da ishlamadi: aynan shu elementda `transform` identity
-        // (0px) bo'lib qolardi, holbuki AYNAN SHU klasslar bilan yaratilgan
-        // sinov elementi 300px ni to'g'ri olardi. Sabab jonli saytda ham
-        // aniqlanmadi (kaskadda `transform` qo'yadigan boshqa mos qoida
-        // topilmadi). Inline style stylesheet'dagi har qanday qoidadan
-        // ustun, shuning uchun bu yerda u yagona ishonchli yo'l.
-        //
-        // `isWideScreen` kerak, chunki inline style'da media query bo'lmaydi:
-        // tor ekranda panel kontent USTIDAN ochiladi (300px surish 390px
-        // ekranda hech narsa qoldirmasdi).
-        style={{
-          transform: drawerOpen && isWideScreen ? 'translateX(300px)' : 'translateX(0)',
-          transition: 'transform 300ms cubic-bezier(0, 0, 0.2, 1)',
-        }}
-      >
+          Yon foyda: panel kengligi endi OLDINDAN ma'lum bo'lishi shart
+          emas, ya'ni u KONTENTGA moslasha oladi (`w-max`) — eng uzun
+          yorliq qayerda tugasa, panel ham o'sha yerda tugaydi. */}
+      <div className="flex h-full flex-col">
       {/* Eng tepadagi ingichka oltin chiziq (2026-09, OPERA Cloud
           referensiga ko'ra) — sahifaning eng yuqori chetida, navy panelidan
           ham yuqorida, brend rangimizni darhol ko'rsatadigan aksent. */}
@@ -1042,7 +1030,7 @@ export function AppLayout({
           o'ngga suriladi (yuqoriga qarang) va hech narsa qoplanmaydi —
           shuning uchun u yerda qatlam ham, qorong'ilashtirish ham yo'q. */}
       <div
-        className={`fixed inset-0 z-40 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${
+        className={`fixed inset-0 z-40 bg-slate-900/40 transition-opacity duration-300 ${
           drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={closeDrawer}
@@ -1053,7 +1041,7 @@ export function AppLayout({
         role="dialog"
         aria-modal="true"
         aria-label="Asosiy menyu"
-        className={`fixed inset-y-0 left-0 z-50 flex w-[300px] max-w-[85vw] flex-col border-r border-slate-200 bg-slate-50 text-slate-900 shadow-2xl transition-[transform,visibility] duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-max max-w-[85vw] flex-col border-r border-slate-200 bg-slate-50 text-slate-900 shadow-2xl transition-[transform,visibility] duration-300 ease-out ${
           drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
         }`}
       >
@@ -1100,6 +1088,18 @@ export function AppLayout({
               u pastdagi modul panelida allaqachon bor.
               Havola bo'lib qoladi (Bosh sahifaga), lekin ko'rinishi
               footer'dagidan farq qilmaydi. */}
+          {/* 🔴 2026-09-05 (foydalanuvchi qarori, referens: OPERA Cloud).
+              Yopish tugmasi panelning O'NG burchagida.
+
+              Panel header'ni qoplagani uchun ostidagi hamburgerga
+              yetib bo'lmaydi, ya'ni panel o'z yopish tugmasini
+              berishi kerak. O'ng burchak — chunki panel chapdan
+              ochiladi va tugma uning CHEKKASIDA turgani "bu qatlamni
+              yopish" degan ishorani beradi.
+
+              Yopishning uchta yo'li bor, uchalasi ham ishlaydi:
+              shu tugma, qorong'ilashtiruvchi qatlamga bosish, va
+              `Escape` (klaviatura foydalanuvchilari uchun shart). */}
           <Link
             to="/dashboard"
             onClick={closeDrawer}
@@ -1107,22 +1107,14 @@ export function AppLayout({
           >
             Folio One
           </Link>
-          {/* 🔴 2026-09-05 (foydalanuvchi fikri): "< ichkarida bo'lsin".
-              Yig'ish tugmasi endi panelning ICHIDA, o'ng chetida — ya'ni
-              u yig'iladigan narsaning o'zida turadi va chevron qaysi
-              tomonga ketishini ko'rsatadi. Ilgari u header'da edi
-              (hamburger o'rniga "X" bo'lib almashardi) va panelning
-              tashqarisida turardi.
-              Endi HAR DOIM ko'rinadi (avvalgi `lg:hidden` olib tashlandi):
-              keng ekranda ham panelni yig'ishning eng tabiiy joyi shu. */}
           <button
             type="button"
             onClick={closeDrawer}
-            aria-label="Menyuni yig'ish"
-            title="Menyuni yig'ish"
+            aria-label="Menyuni yopish"
+            title="Menyuni yopish"
             className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-brand-navy-light"
           >
-            <CollapseIcon />
+            <CloseIcon />
           </button>
         </div>
 
