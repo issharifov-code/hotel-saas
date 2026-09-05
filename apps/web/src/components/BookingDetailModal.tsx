@@ -133,6 +133,21 @@ export function BookingDetailModal({
             value={`${Number(booking.cancellationFeeAmount).toLocaleString('uz-UZ')} ${booking.currency}`}
           />
         )}
+        {/* Kontakt shaxs (2026-09-05) — telefoni birga ko'rsatiladi, chunki
+            front-desk uchun bu maydonning butun ma'nosi "kimga qo'ng'iroq
+            qilaman" degan savolga javob berish. */}
+        {booking.contactProfile && (
+          <Row
+            label="Kontakt shaxs"
+            value={[
+              booking.contactProfile.fullName,
+              booking.contactProfile.phone,
+              booking.contactProfile.email,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
+        )}
         {booking.notes && <Row label="Izoh" value={booking.notes} />}
 
         {error && <p className="text-sm text-rose-600">{error}</p>}

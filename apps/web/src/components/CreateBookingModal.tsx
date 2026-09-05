@@ -47,7 +47,18 @@ export function CreateBookingModal({
   // (source enum) bilan aralashtirmaslik kerak: kanal — texnik yo'l,
   // manba — kim/nima olib keldi.
   const [sourceProfileId, setSourceProfileId] = useState('');
+  // Bronni tashkil qilgan ODAM (2026-09-05). Agentlik/korporativ hisob
+  // tanlangan bo'lsa, ro'yxat faqat shu tashkilotning kontaktlarini
+  // ko'rsatadi — server ham aynan shuni talab qiladi.
+  const [contactProfileId, setContactProfileId] = useState('');
   const [notes, setNotes] = useState('');
+  // Bron qaysi tashkilotga tegishli (profil id'si bo'yicha). Agentlik
+  // ustuvor: ikkalasi tanlangan bo'lsa ham kontakt agentlikdan olinadi,
+  // chunki bronni odatda o'sha olib keladi.
+  const organizationProfileId =
+    agencies.find((a) => a.id === agencyId)?.profileId ??
+    corporateAccounts.find((a) => a.id === corporateAccountId)?.profileId ??
+    null;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -109,6 +120,7 @@ export function CreateBookingModal({
           agencyId: agencyId || undefined,
           corporateAccountId: corporateAccountId || undefined,
           sourceProfileId: sourceProfileId || undefined,
+          contactProfileId: contactProfileId || undefined,
           marketSegment,
           notes: notes || undefined,
         }),
@@ -236,6 +248,22 @@ export function CreateBookingModal({
             </select>
           </label>
         )}
+
+        {/* Kontakt — tashkilot bron qilganda "kim bilan gaplashamiz".
+            Manba va agentlik/korporativ hisobdan KEYIN turadi, chunki
+            ro'yxati o'shalarga bog'liq. */}
+        <ProfilePicker
+          type="contact"
+          value={contactProfileId}
+          onChange={setContactProfileId}
+          parentProfileId={organizationProfileId}
+          label="Kontakt shaxs (ixtiyoriy)"
+          hint={
+            organizationProfileId
+              ? "Tanlangan tashkilotning kontaktlari va mustaqil kontaktlar"
+              : "Bronni tashkil qilgan odam — telefoni bron tafsilotida ko'rinadi"
+          }
+        />
 
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Izoh (ixtiyoriy)</span>
