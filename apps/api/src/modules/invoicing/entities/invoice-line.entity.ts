@@ -6,6 +6,11 @@ export enum InvoiceLineSource {
   POS_ORDER = 'pos_order', // POS'dan "xona hisobiga" yozilgan buyurtma
   MANUAL = 'manual', // xodim qo'lda qo'shgan qo'shimcha xarajat (minibar, zarar va h.k.)
   ADJUSTMENT = 'adjustment', // Front Desk: xona almashtirish yoki sana o'zgartirish natijasida narx farqi (musbat/manfiy)
+  // 🔴 2026-09-05: jarima ilgari `adjustment` bilan yozilardi, lekin u
+  // `cancellation_fee_revenue` ni kreditlaydi, `adjustment` esa
+  // `room_revenue` ni. Bitta tur ikki xil daromad hisobiga ishlatilgani
+  // uchun bekor qilishdagi teskari yozuv noto'g'ri hisobga tushardi.
+  CANCELLATION_FEE = 'cancellation_fee', // bekor qilish / no-show jarimasi
 }
 
 @Entity('invoice_lines')
