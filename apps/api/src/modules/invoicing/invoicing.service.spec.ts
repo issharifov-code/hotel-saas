@@ -338,6 +338,49 @@ describe('InvoicingService.cancel — teskari provodka', () => {
     amount,
   });
 
+  // 🔴 TO'LIQ TO'LANGAN HISOB-FAKTURA BEKOR QILINMAYDI (2026-09-05,
+  // mutatsion sinovda topilgan bo'shliq — bu shart hech qanday test
+  // bilan qo'riqlanmagan edi).
+  //
+  // Sabab: mehmon pulni allaqachon to'lagan. Bekor qilish uni
+  // avtomatik qaytarmaydi — bu qaytarish (refund) jarayoni, va u
+  // alohida qaror. Agar bekor qilishga ruxsat berilsa, daromad
+  // teskari yozilardi-yu, kassadagi pul o'z joyida qolardi: kitob
+  // haqiqatga zid bo'lib qolardi.
+  it("to'liq to'langan hisob-fakturani bekor qilib bo'lmaydi", async () => {
+    const { service, accountingService, invoiceRepo } = createService({
+      status: InvoiceStatus.PAID,
+      totalAmount: '1000.00',
+      paidAmount: '1000.00',
+      lines: [line(InvoiceLineSource.ROOM_CHARGE, '1000.00')],
+    });
+
+    await expect(service.cancel('t1', 'p1', 'inv-11111111')).rejects.toThrow(
+      /to'langan hisob-fakturani bekor/,
+    );
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+    expect(invoiceRepo.save).not.toHaveBeenCalled();
+  });
+
+  // Qisman to'langan hisob-fakturani bekor qilish MUMKIN, lekin
+  // teskari provodka avtomatik yozilmaydi — buxgalter qo'lda tuzatadi
+  // (kod izohida yozilgan qoida).
+  it("qisman to'langan hisob-fakturada teskari provodka yozilmaydi", async () => {
+    const { service, accountingService } = createService({
+      status: InvoiceStatus.ISSUED,
+      totalAmount: '1000.00',
+      paidAmount: '300.00',
+      lines: [line(InvoiceLineSource.ROOM_CHARGE, '1000.00')],
+    });
+
+    const result = (await service.cancel('t1', 'p1', 'inv-11111111')) as unknown as {
+      status: string;
+    };
+
+    expect(result.status).toBe(InvoiceStatus.CANCELLED);
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+  });
+
   it('allaqachon bekor qilingan hisob-fakturani qayta bekor qilib bo\'lmaydi', async () => {
     const { service, accountingService } = createService({
       status: InvoiceStatus.CANCELLED,

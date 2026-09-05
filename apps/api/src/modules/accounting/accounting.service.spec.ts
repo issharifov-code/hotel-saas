@@ -66,6 +66,16 @@ describe('AccountingService.postJournalEntry', () => {
     sourceModule: 'manual' as const,
   };
 
+  // 📌 XATO MATNI ATAYLAB TEKSHIRILADI (2026-09-05, mutatsion sinov).
+  //
+  // Faqat `BadRequestException` TURINI tekshirish bu yerda yetarli emas
+  // edi va uchala quyidagi test ham "yashil, lekin bo'sh" bo'lib chiqdi:
+  // qo'riqchi butunlay olib tashlansa ham, xuddi shu kirish ma'lumoti
+  // pastdagi BALANS tekshiruvidan o'ta olmaydi va o'sha turdagi xato
+  // baribir tashlanadi. Ya'ni testlar aynan shu shartni emas, "biror
+  // validatsiya ishladi" ni tasdiqlardi.
+  //
+  // Aniq matn talab qilinganda mutatsiya darhol ushlanadi.
   it("kamida 2 qatordan kam bo'lsa xato tashlaydi", async () => {
     const { service } = createService();
     await expect(
@@ -73,7 +83,7 @@ describe('AccountingService.postJournalEntry', () => {
         ...baseInput,
         lines: [{ accountId: 'a1', debit: '100' }],
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/kamida 2 qatordan/);
   });
 
   it("bitta qatorda ham debet, ham kredit bo'lsa xato tashlaydi", async () => {
@@ -86,7 +96,7 @@ describe('AccountingService.postJournalEntry', () => {
           { accountId: 'a2', credit: '100' },
         ],
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/FAQAT debet YOKI FAQAT kredit/);
   });
 
   it("bitta qatorda debet ham, kredit ham 0 bo'lsa xato tashlaydi", async () => {
@@ -99,7 +109,7 @@ describe('AccountingService.postJournalEntry', () => {
           { accountId: 'a2', credit: '100' },
         ],
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/FAQAT debet YOKI FAQAT kredit/);
   });
 
   it("manfiy summa bo'lsa xato tashlaydi", async () => {
@@ -112,7 +122,7 @@ describe('AccountingService.postJournalEntry', () => {
           { accountId: 'a2', credit: '10' },
         ],
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/manfiy bo'lishi mumkin emas/);
   });
 
   it("debet jami kredit jamiga teng bo'lmasa xato tashlaydi (balanslanmagan)", async () => {
@@ -125,7 +135,7 @@ describe('AccountingService.postJournalEntry', () => {
           { accountId: 'a2', credit: '99.5' },
         ],
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/balanslanmagan/);
   });
 
   it("debet jami = kredit jami bo'lsa yozuvni muvaffaqiyatli saqlaydi", async () => {

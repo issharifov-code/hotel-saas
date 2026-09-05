@@ -1407,3 +1407,90 @@ describe('BookingsService — check-in va check-out', () => {
     await expect(service.checkIn('t1', 'p1', 'yoq')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+// 🔬 XONA ALMASHTIRISH — CHEGARA SHARTLARI (2026-09-05).
+//
+// Mutatsion sinovda ikkita qo'riqchi hech qanday test bilan
+// qoplanmagani aniqlandi: "allaqachon shu xonada" va "xona turi
+// topilmadi". Ikkalasi ham kichik, lekin ularsiz natija sassiz
+// buziladi: birinchisida narx farqi 0 bo'lgan bo'sh tuzatish qatori
+// folio'ga yozilardi, ikkinchisida esa `undefined` narx bilan
+// hisob-kitob qilinardi.
+describe('BookingsService.changeRoom — chegara shartlari', () => {
+  function createService(booking: Record<string, unknown>) {
+    const bookingRepo = {
+      findOne: jest.fn().mockResolvedValue(booking),
+      save: jest.fn((b: unknown) => Promise.resolve(b)),
+      update: jest.fn(),
+      createQueryBuilder: jest.fn(() => ({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      })),
+    };
+    const roomsService = {
+      findById: jest.fn().mockResolvedValue({ id: 'r2', roomTypeId: 'rt-1', roomNumber: '202' }),
+    };
+    const roomTypeRepo = { findOneBy: jest.fn().mockResolvedValue({ id: 'rt-1', basePrice: '500000' }) };
+    const service = new BookingsService(
+      bookingRepo as never,
+      { update: jest.fn() } as never,
+      roomTypeRepo as never,
+      roomsService as never,
+      { findById: jest.fn() } as never,
+      { assertBookingAllowed: jest.fn() } as never,
+      {} as never,
+      { assertRoomCleanForCheckIn: jest.fn(), markDirtyAndQueueTask: jest.fn() } as never,
+      { addAdjustmentLine: jest.fn() } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    return { service, bookingRepo, roomTypeRepo };
+  }
+
+  const booking = {
+    id: 'b1',
+    roomId: 'r1',
+    status: BookingStatus.CONFIRMED,
+    checkIn: '2026-09-05',
+    checkOut: '2026-09-07',
+    totalAmount: '1000000.00',
+    ratePlanId: null,
+  };
+
+  it("bron allaqachon shu xonada bo'lsa almashtirib bo'lmaydi", async () => {
+    const { service, bookingRepo } = createService(booking);
+
+    await expect(
+      service.changeRoom('t1', 'p1', 'b1', { roomId: 'r1' } as never),
+    ).rejects.toThrow(/allaqachon shu xonada/);
+    expect(bookingRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("xona turi topilmasa aniq xato beriladi", async () => {
+    const { service, roomTypeRepo, bookingRepo } = createService(booking);
+    roomTypeRepo.findOneBy.mockResolvedValue(null);
+
+    await expect(
+      service.changeRoom('t1', 'p1', 'b1', { roomId: 'r2' } as never),
+    ).rejects.toThrow(/[Xx]ona turi/);
+    expect(bookingRepo.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [BookingStatus.PENDING],
+    [BookingStatus.CHECKED_OUT],
+    [BookingStatus.CANCELLED],
+    [BookingStatus.NO_SHOW],
+  ])("%s holatidagi bronda xona almashtirib bo'lmaydi", async (status) => {
+    const { service, bookingRepo } = createService({ ...booking, status });
+
+    await expect(
+      service.changeRoom('t1', 'p1', 'b1', { roomId: 'r2' } as never),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(bookingRepo.update).not.toHaveBeenCalled();
+  });
+});

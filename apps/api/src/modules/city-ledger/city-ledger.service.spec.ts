@@ -165,4 +165,53 @@ describe('CityLedgerService', () => {
       service.getStatement('t1', 'p1', 'no-such-id'),
     ).rejects.toThrow(NotFoundException);
   });
+
+  // 🔴 KORPORATIV HISOB FAQAT KOMPANIYA PROFILIGA BOG'LANADI
+  // (2026-09-05, mutatsion sinovda topilgan bo'shliq — bu shart hech
+  // qanday test bilan qo'riqlanmagan edi).
+  //
+  // Nima uchun muhim: korporativ hisob — bu "kompaniya bizga qarz"
+  // degani. Uni mehmon profiliga yoki turagentga bog'lab qo'yish
+  // qarzni noto'g'ri yuzga yozadi, hisobotlar esa jimgina aralashib
+  // ketadi (turagent komissiyasi va korporativ qarz butunlay
+  // boshqa narsalar).
+  describe("profil turi tekshiruvi", () => {
+    it("kompaniya bo'lmagan profilga korporativ hisob ochib bo'lmaydi", async () => {
+      const { service, guestRepo, accountRepo } = createService();
+      guestRepo.findOneBy.mockResolvedValue({ id: 'p1', profileType: 'guest' });
+
+      await expect(
+        service.create('t1', 'p1', { name: 'Acme', profileId: 'p1' } as never),
+      ).rejects.toThrow(/Kompaniya/);
+      expect(accountRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("turagent profiliga ham bog'lab bo'lmaydi", async () => {
+      const { service, guestRepo } = createService();
+      guestRepo.findOneBy.mockResolvedValue({ id: 'p1', profileType: 'travel_agent' });
+
+      await expect(
+        service.create('t1', 'p1', { name: 'Acme', profileId: 'p1' } as never),
+      ).rejects.toThrow(/Kompaniya/);
+    });
+
+    it("kompaniya profiliga bog'lash ishlaydi", async () => {
+      const { service, accountRepo } = createService();
+
+      await service.create('t1', 'p1', { name: 'Acme', profileId: 'prof1' } as never);
+
+      expect(accountRepo.save).toHaveBeenCalled();
+    });
+
+    it("mavjud bo'lmagan profilga bog'lab bo'lmaydi", async () => {
+      const { service, guestRepo, accountRepo } = createService();
+      guestRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.create('t1', 'p1', { name: 'Acme', profileId: 'yoq' } as never),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(accountRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
 });
