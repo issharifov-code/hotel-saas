@@ -8,8 +8,45 @@
   --color-brand-navy: #002385;
   --color-brand-navy-dark: #001a63;
   --color-brand-navy-light: #e8ecf7;
-  --color-brand-gold: #e1a339;
-  --color-brand-gold-dark: #c98a1f;
+  /* 🔴 2026-09-05 (foydalanuvchi fikri): "eng tepadagi sariq liniyani ham
+     F1 dagi 1 ning rangida qilib bersang".
+     O'lchov: logotipdagi oltin piksellarning MEDIANASI aynan #e1a339 —
+     ya'ni chiziq allaqachon o'sha rangda edi. Farq idrokda: 7.62px'lik
+     ingichka chiziq oq fonda logotipning qalin shtrixlaridan ochiqroq va
+     "yuvilganroq" ko'rinadi. Shuning uchun rang burchagi (hue 38.5°)
+     saqlangan holda biroz to'qroq va to'yingan variant olindi — chiziq
+     endi logotipdagi "1" bilan bir xil salmoqda o'qiladi. */
+  --color-brand-gold: #d99a2c;
+  --color-brand-gold-dark: #b8801d;
+
+  /* 🔴 2026-09-05 (foydalanuvchi fikri): "umuman olganda ranglarni warm
+     temperature qilish kerak".
+     Ilovada neytral ranglar Tailwind'ning `slate` shkalasidan olinadi —
+     u SOVUQ (ko'kimtir) kulrang, 1197 joyda ishlatilgan. Har bir joyni
+     qo'lda almashtirish o'rniga shkalaning O'ZI shu yerda qayta
+     ta'riflanadi: bitta fayl o'zgaradi, butun ilova iliqlashadi.
+     `slate-` sinf nomlari o'z joyida qoladi (diff kichik, kod tarixi
+     buzilmaydi).
+     USUL — bu shunchaki "jigarrang qilish" emas. Har bir pog'ona uchun:
+       * rang burchagi (hue) logotip oltiniga qaratildi (38.7°);
+       * to'yinganlik slate'nikining 60% i (iliq, lekin bej emas);
+       * YORQINLIK esa luminans bo'yicha AYNAN moslandi.
+     Oxirgi shart eng muhimi: kontrast nisbatlari o'zgarmaydi. Masalan
+     `slate-500` oq fonda ilgari ham, hozir ham 4.76:1 — ya'ni matn
+     o'qilishi va WCAG holati bir zarra ham pasaymaydi, faqat harorat
+     o'zgaradi. (Sof hue-rotatsiya qilinganda 4.02:1 ga tushib, AA
+     chegarasidan o'tib ketardi — shuning uchun luminans moslash shart.) */
+  --color-slate-50: #fbfaf8;
+  --color-slate-100: #f6f4f1;
+  --color-slate-200: #eae7e1;
+  --color-slate-300: #d9d3ca;
+  --color-slate-400: #a9a192;
+  --color-slate-500: #7a7264;
+  --color-slate-600: #5a5347;
+  --color-slate-700: #463f34;
+  --color-slate-800: #2d281e;
+  --color-slate-900: #1b170f;
+  --color-slate-950: #090703;
 }
 
 /* 2026-09: fade + yengil pastdan-yuqoriga siljish — sof opacity-fade
