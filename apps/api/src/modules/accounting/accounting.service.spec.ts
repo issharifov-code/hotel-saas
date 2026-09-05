@@ -35,7 +35,21 @@ describe('AccountingService.postJournalEntry', () => {
       },
     );
 
-    const accountRepo = {} as never;
+    // 🔴 2026-09-05 (audit): postJournalEntry endi har bir qatordagi
+    // `accountId` shu tenantga tegishli ekanini tekshiradi (FK tekshiruvi
+    // RLS'ni chetlab o'tadi, ya'ni begona hisob UUID'i bilan qator
+    // yozilib, keyin hisobotlardan jimgina yo'qolardi).
+    const accountRepo = {
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          // Sinovdagi barcha qatorlar shu tenantniki deb qabul qilinadi.
+          count: jest.fn().mockImplementation(({ where }) => {
+            const ids = where.id?._value ?? [];
+            return Promise.resolve(ids.length);
+          }),
+        }),
+      },
+    } as never;
     const lineRepo = {} as never;
     const service = new AccountingService(
       accountRepo,
@@ -150,5 +164,55 @@ describe('AccountingService.postJournalEntry', () => {
       ],
     });
     expect(fakeEntryRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  // 🔴 2026-09-05 (kod auditi): `accountId` shu tenantga tegishli ekani
+  // tekshirilmasdi. FK tekshiruvi RLS'ni chetlab o'tadi, ya'ni begona
+  // tenantning hisob UUID'i bilan qator YOZILARDI, keyin hisobotlar
+  // `innerJoin account` qilgani uchun RLS uni chiqarib tashlar va yozuv
+  // kitoblardan jimgina yo'qolardi.
+  it("qator hisobi shu tenantda topilmasa yozuv rad etiladi", async () => {
+    const fakeLineRepo = { create: (d: unknown) => d };
+    const fakeEntryRepo: {
+      create: (data: unknown) => unknown;
+      save: jest.Mock;
+      manager: { getRepository: jest.Mock };
+    } = {
+      create: (d: unknown) => d,
+      save: jest.fn(),
+      manager: { getRepository: jest.fn() },
+    };
+    fakeEntryRepo.manager.getRepository.mockImplementation((e: unknown) =>
+      (e as { name?: string })?.name === 'JournalEntry' ? fakeEntryRepo : fakeLineRepo,
+    );
+    const accountRepo = {
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          // Ikkita ID so'ralgan, bazada faqat bittasi shu tenantniki.
+          count: jest.fn().mockResolvedValue(1),
+        }),
+      },
+    } as never;
+
+    const service = new AccountingService(
+      accountRepo,
+      fakeEntryRepo as never,
+      {} as never,
+    );
+
+    await expect(
+      service.postJournalEntry({
+        tenantId: 't1',
+        propertyId: 'p1',
+        description: 'Qo\'lda yozuv',
+        sourceModule: 'manual',
+        lines: [
+          { accountId: 'oz-hisobim', debit: '100.00' },
+          { accountId: 'begona-tenant-hisobi', credit: '100.00' },
+        ],
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(fakeEntryRepo.save).not.toHaveBeenCalled();
   });
 });

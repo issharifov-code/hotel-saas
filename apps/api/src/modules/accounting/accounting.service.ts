@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { Account, AccountDepartment, AccountType } from './entities/account.entity';
 import { JournalEntry, JournalEntrySourceModule } from './entities/journal-entry.entity';
 import { JournalEntryLine } from './entities/journal-entry-line.entity';
@@ -135,6 +135,22 @@ export class AccountingService {
     if (Math.abs(totalDebit - totalCredit) > 0.005) {
       throw new BadRequestException(
         `Jurnal yozuvi balanslanmagan: debet=${totalDebit.toFixed(2)}, kredit=${totalCredit.toFixed(2)}`,
+      );
+    }
+
+    // 🔴 2026-09-05 (audit): `accountId` shu tenantga tegishli ekani
+    // tekshirilmasdi. FK tekshiruvi RLS'ni chetlab o'tadi, ya'ni boshqa
+    // tenantning hisob UUID'i bilan qator YOZILARDI — keyin hisobotlar
+    // `innerJoin account` qilgani uchun RLS uni chiqarib tashlar va yozuv
+    // kitoblardan JIMGINA yo'qolardi (xato ham bermasdan).
+    const accountIds = [...new Set(normalizedLines.map((l) => l.accountId))];
+    const accountRepo = (input.manager ?? this.accountRepo.manager).getRepository(Account);
+    const found = await accountRepo.count({
+      where: { id: In(accountIds), tenantId: input.tenantId },
+    });
+    if (found !== accountIds.length) {
+      throw new BadRequestException(
+        "Jurnal qatoridagi hisob shu mehmonxonaning hisoblar rejasida topilmadi",
       );
     }
 
