@@ -78,4 +78,47 @@ describe('AgenciesService', () => {
     expect(result).toMatchObject({ isActive: false, name: 'ACME Travel' });
   });
 
+
+  // 🔬 PROFIL TURI TEKSHIRUVI (2026-09-05, mutatsion sinovda topilgan
+  // bo'shliq — CityLedger'dagi bir xil naqsh bilan birga).
+  //
+  // Agentlik FAQAT "Turagent" turidagi profilga bog'lanadi. Aks holda
+  // kompaniya yoki oddiy mehmon profilini agentlik sifatida ulab
+  // qo'yish mumkin bo'lardi — va o'sha profilga komissiya hisoblanib,
+  // to'lov majburiyati paydo bo'lardi.
+  describe('profil turi tekshiruvi', () => {
+    it.each([['guest'], ['company'], ['source'], ['group'], ['contact']])(
+      "'%s' turidagi profilga agentlik bog'lab bo'lmaydi",
+      async (profileType) => {
+        const { service, guestRepo, agencyRepo } = createService();
+        guestRepo.findOneBy.mockResolvedValue({ id: 'p1', profileType });
+
+        await expect(
+          service.create('t1', 'p1', { name: 'ACME', profileId: 'p1' } as never),
+        ).rejects.toThrow(/Turagent/);
+        expect(agencyRepo.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it("turagent profiliga bog'lash ishlaydi", async () => {
+      const { service, agencyRepo, guestRepo } = createService();
+
+      await service.create('t1', 'p1', { name: 'ACME', profileId: 'prof1' } as never);
+
+      expect(agencyRepo.save).toHaveBeenCalled();
+      // Mavjud profil ULANADI — yangisi ochilmaydi.
+      expect(guestRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("mavjud bo'lmagan profilga bog'lab bo'lmaydi", async () => {
+      const { service, guestRepo, agencyRepo } = createService();
+      guestRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.create('t1', 'p1', { name: 'ACME', profileId: 'yoq' } as never),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(agencyRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
 });
