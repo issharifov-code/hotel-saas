@@ -14,6 +14,7 @@ describe('AuthService', () => {
       email: string;
       fullName: string;
       isPlatformAdmin: boolean;
+      status: UserStatus;
     }>,
   ) {
     const tenantId: string | null =
@@ -26,7 +27,7 @@ describe('AuthService', () => {
       email: overrides.email ?? 'owner@example.com',
       passwordHash: 'hashed',
       fullName: overrides.fullName ?? 'Test User',
-      status: UserStatus.ACTIVE,
+      status: overrides.status ?? UserStatus.ACTIVE,
       isPlatformAdmin: overrides.isPlatformAdmin ?? false,
     };
   }
@@ -102,6 +103,50 @@ describe('AuthService', () => {
         accessToken: 'signed-jwt',
         user: { id: 'u1', tenantId: 't1', tenantSubdomain: 'demo' },
       });
+    });
+
+    // 🔴 2026-09-05 (audit): `User.status` login yo'lida umuman o'qilmasdi —
+    // bloklangan xodim eski paroli bilan cheksiz yangi token olib kiraverardi.
+    it("bloklangan (disabled) foydalanuvchi to'g'ri parol bilan ham kira olmaydi", async () => {
+      const user = makeUser({
+        id: 'u1',
+        tenantId: 't1',
+        status: UserStatus.DISABLED,
+      });
+      const { service } = createService({
+        tenantBySubdomain: { id: 't1', subdomain: 'demo', name: 'Demo Hotel' },
+        findByEmailAndTenantResult: user,
+        validPasswordForUserIds: ['u1'],
+      });
+
+      await expect(
+        service.login({
+          subdomain: 'demo',
+          email: user.email,
+          password: 'secret',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("hali faollashtirilmagan (invited) foydalanuvchi ham kira olmaydi", async () => {
+      const user = makeUser({
+        id: 'u1',
+        tenantId: 't1',
+        status: UserStatus.INVITED,
+      });
+      const { service } = createService({
+        tenantBySubdomain: { id: 't1', subdomain: 'demo', name: 'Demo Hotel' },
+        findByEmailAndTenantResult: user,
+        validPasswordForUserIds: ['u1'],
+      });
+
+      await expect(
+        service.login({
+          subdomain: 'demo',
+          email: user.email,
+          password: 'secret',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('subdomain topilmasa 401 beradi', async () => {
@@ -235,6 +280,52 @@ describe('AuthService', () => {
           isPlatformAdmin: true,
           tenantSubdomain: null,
         },
+      });
+    });
+  });
+
+  // 🔴 2026-09-05 (audit): subdomainsiz yo'lda ham bir xil qoida — bloklangan
+  // hisob mehmonxona tanlash ro'yxatida ham ko'rinmasligi kerak.
+  describe('login — bloklangan hisob (subdomainsiz yo\'l)', () => {
+    it('yagona nomzod bloklangan bo\'lsa 401 beradi', async () => {
+      const user = makeUser({
+        id: 'u1',
+        tenantId: 't1',
+        status: UserStatus.DISABLED,
+      });
+      const { service } = createService({
+        findAllByEmailResult: [user],
+        validPasswordForUserIds: ['u1'],
+        tenantsById: { t1: { id: 't1', subdomain: 'demo', name: 'Demo' } },
+      });
+
+      await expect(
+        service.login({ email: user.email, password: 'secret' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("ikkita nomzoddan biri bloklangan bo'lsa, faol hisobga to'g'ridan-to'g'ri kiritadi", async () => {
+      const faol = makeUser({ id: 'u1', tenantId: 't1' });
+      const blok = makeUser({
+        id: 'u2',
+        tenantId: 't2',
+        email: faol.email,
+        status: UserStatus.DISABLED,
+      });
+      const { service } = createService({
+        findAllByEmailResult: [faol, blok],
+        validPasswordForUserIds: ['u1', 'u2'],
+        tenantsById: {
+          t1: { id: 't1', subdomain: 'birinchi', name: 'Birinchi' },
+          t2: { id: 't2', subdomain: 'ikkinchi', name: 'Ikkinchi' },
+        },
+      });
+
+      const res = await service.login({ email: faol.email, password: 'secret' });
+      // Tanlov ro'yxati EMAS — bitta faol hisob qolgani uchun to'g'ridan-to'g'ri token.
+      expect(res).toMatchObject({
+        accessToken: 'signed-jwt',
+        user: { id: 'u1', tenantSubdomain: 'birinchi' },
       });
     });
   });

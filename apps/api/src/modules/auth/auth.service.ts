@@ -9,7 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { SystemRoleKey } from '../../common/enums/permission.enum';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserStatus } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -88,6 +88,32 @@ export class AuthService {
     };
   }
 
+  // 🔴 2026-09-05 (audit): `User.status` login yo'lida umuman o'qilmasdi.
+  // Ya'ni administrator xodimni "bloklangan" qilgach, interfeys buni
+  // tasdiqlardi, lekin o'sha odam eski paroli bilan cheksiz yangi token
+  // olib kiraverardi.
+  //
+  // Tekshiruv PAROL TASDIQLANGANDAN KEYIN turadi: shu tartibda "email
+  // mavjudmi" degan ma'lumot sizib chiqmaydi (noto'g'ri parolda har doim
+  // bir xil 401), lekin haqiqiy egasi nima uchun kira olmayotganini
+  // tushunadi.
+  //
+  // ESLATMA: bu faqat YANGI token olishni to'sadi. Allaqachon berilgan
+  // token amal qilish muddati tugagunicha (8 soat) ishlaydi — token
+  // bekor qilish ro'yxati hali yo'q.
+  private assertUserCanLogin(user: User): void {
+    if (user.status === UserStatus.DISABLED) {
+      throw new UnauthorizedException(
+        "Hisobingiz bloklangan — mehmonxona administratoriga murojaat qiling",
+      );
+    }
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(
+        "Hisobingiz hali faollashtirilmagan — administratoringizga murojaat qiling",
+      );
+    }
+  }
+
   async login(dto: LoginDto) {
     if (dto.subdomain) {
       const tenant = await this.tenantsService.findBySubdomain(dto.subdomain);
@@ -106,6 +132,7 @@ export class AuthService {
       );
       if (!valid) throw new UnauthorizedException("Email yoki parol noto'g'ri");
 
+      this.assertUserCanLogin(user);
       return this.buildLoginResponse(user, tenant);
     }
 
@@ -129,7 +156,7 @@ export class AuthService {
   //    so'rov yuboradi (yuqoridagi filial orqali).
   private async loginWithoutSubdomain(dto: LoginDto) {
     const candidates = await this.usersService.findAllByEmail(dto.email);
-    const validUsers: User[] = [];
+    let validUsers: User[] = [];
     for (const candidate of candidates) {
       if (await this.usersService.validatePassword(candidate, dto.password)) {
         validUsers.push(candidate);
@@ -139,6 +166,14 @@ export class AuthService {
     if (validUsers.length === 0) {
       throw new UnauthorizedException("Email yoki parol noto'g'ri");
     }
+
+    // Bloklangan hisoblar mehmonxona tanlash ro'yxatida ham ko'rinmasligi
+    // kerak. Agar HAMMA nomzod bloklangan bo'lsa — pastdagi
+    // `assertUserCanLogin` aniq sababni aytadi.
+    const activeUsers = validUsers.filter(
+      (u) => u.status === UserStatus.ACTIVE,
+    );
+    if (activeUsers.length > 0) validUsers = activeUsers;
 
     if (validUsers.length > 1) {
       const tenantUsers = validUsers.filter((u) => u.tenantId);
@@ -157,6 +192,7 @@ export class AuthService {
     }
 
     const user = validUsers.find((u) => u.tenantId) ?? validUsers[0];
+    this.assertUserCanLogin(user);
     const tenant = user.tenantId
       ? await this.tenantsService.findById(user.tenantId)
       : null;
