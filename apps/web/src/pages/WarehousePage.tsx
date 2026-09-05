@@ -160,6 +160,8 @@ export function WarehousePage() {
               <StockLevelsSection
                 levels={stockLevels}
                 canEdit={can('warehouse', 'edit') || can('warehouse', 'create')}
+                // (modal ichida har bir amal o'z huquqi bilan alohida
+                // tekshiriladi — pastdagi StockActionModal izohiga qarang)
                 onAction={(row) => setActionItem(row)}
               />
             </div>
@@ -256,6 +258,8 @@ export function WarehousePage() {
           propertyId={property.id}
           warehouseId={warehouseId}
           item={actionItem}
+          canIssue={can('warehouse', 'create')}
+          canAdjust={can('warehouse', 'edit')}
           onClose={() => setActionItem(null)}
           onDone={() => {
             setActionItem(null);
@@ -381,16 +385,28 @@ function StockActionModal({
   propertyId,
   warehouseId,
   item,
+  canIssue,
+  canAdjust,
   onClose,
   onDone,
 }: {
   propertyId: string;
   warehouseId: string;
   item: StockLevelDto;
+  // 🔴 2026-09-05 (audit): ilgari bitta `canEdit` ikkala amalni ham
+  // ochardi, backend esa ularni AJRATADI: chiqim `warehouse:create`,
+  // inventarizatsiya tuzatishi `warehouse:edit`. Natijada faqat bittasiga
+  // huquqi bor xodim ikkinchi tugmani ko'rib, bosgach 403 olardi.
+  canIssue: boolean;
+  canAdjust: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState<'issue' | 'adjust'>('issue');
+  const modes = [
+    ...(canIssue ? (['issue'] as const) : []),
+    ...(canAdjust ? (['adjust'] as const) : []),
+  ];
+  const [mode, setMode] = useState<'issue' | 'adjust'>(modes[0] ?? 'issue');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -423,7 +439,7 @@ function StockActionModal({
   return (
     <Modal title={`${item.name} — harakat`} onClose={onClose}>
       <div className="flex flex-wrap gap-2 mb-4">
-        {(['issue', 'adjust'] as const).map((m) => (
+        {modes.map((m) => (
           <button
             key={m}
             type="button"
