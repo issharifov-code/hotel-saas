@@ -286,6 +286,7 @@ function AttendanceRow({
         {editable ? (
           <input
             type="text"
+            maxLength={500}
             placeholder="Izoh (ixtiyoriy)"
             value={notes}
             onChange={(e) => {
@@ -583,6 +584,7 @@ function CreateLeaveRequestModal({
           <span className="block text-xs font-medium text-slate-600 mb-1">Sabab (ixtiyoriy)</span>
           <input
             type="text"
+            maxLength={500}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="input"

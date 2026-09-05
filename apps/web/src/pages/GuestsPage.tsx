@@ -755,6 +755,7 @@ function AdjustPointsForm({
           required
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          maxLength={255}
           placeholder="Sabab (masalan: kompensatsiya)"
           className="input"
         />

@@ -339,6 +339,7 @@ function NewJournalEntryModal({
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            maxLength={255}
             placeholder="Tavsif (masalan: oylik ijara to'lovi)"
             className="input"
           />
@@ -372,6 +373,7 @@ function NewJournalEntryModal({
               <input
                 value={line.description}
                 onChange={(e) => updateLine(idx, { description: e.target.value })}
+                maxLength={255}
                 placeholder="izoh (ixtiyoriy)"
                 className="input"
               />

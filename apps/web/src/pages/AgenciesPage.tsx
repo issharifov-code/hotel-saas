@@ -359,7 +359,7 @@ function PayCommissionsModal({
           <span className="block text-xs font-medium text-slate-600 mb-1">
             To'lov topshirig'i raqami (ixtiyoriy)
           </span>
-          <input value={reference} onChange={(e) => setReference(e.target.value)} className="input" />
+          <input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={200} className="input" />
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <p className="text-xs text-slate-500">
