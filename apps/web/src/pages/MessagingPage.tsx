@@ -286,6 +286,7 @@ function CreateTemplateModal({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={200}
             className="input"
             placeholder="Masalan: Bron tasdiqlash xati"
           />
@@ -314,7 +315,7 @@ function CreateTemplateModal({
         {channel === 'email' && (
           <label className="block">
             <span className="block text-xs font-medium text-slate-600 mb-1">Mavzu (ixtiyoriy)</span>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} className="input" placeholder="Salom, {{guestName}}!" />
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} className="input" placeholder="Salom, {{guestName}}!" />
           </label>
         )}
         <label className="block">
@@ -323,6 +324,7 @@ function CreateTemplateModal({
             required
             value={bodyTemplate}
             onChange={(e) => setBodyTemplate(e.target.value)}
+            maxLength={4000}
             className="input"
             rows={4}
             placeholder="{{propertyName}}ga xush kelibsiz, {{guestName}}! Sizning bron sanangiz: {{checkIn}} — {{checkOut}}, xona № {{roomNumber}}."
@@ -441,11 +443,11 @@ function SendMessageModal({
             </label>
             <label className="block">
               <span className="block text-xs font-medium text-slate-600 mb-1">Mavzu (ixtiyoriy)</span>
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} className="input" />
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} className="input" />
             </label>
             <label className="block">
               <span className="block text-xs font-medium text-slate-600 mb-1">Matn</span>
-              <textarea required value={body} onChange={(e) => setBody(e.target.value)} className="input" rows={4} />
+              <textarea required value={body} onChange={(e) => setBody(e.target.value)} maxLength={4000} className="input" rows={4} />
             </label>
           </>
         )}

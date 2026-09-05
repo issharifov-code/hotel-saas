@@ -704,6 +704,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
             <input
               required
               className={pillInputNoIcon}
+              maxLength={200}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
@@ -745,6 +746,7 @@ function DemoRequestForm({ onClose }: { onClose: () => void }) {
                 autoComplete="tel-national"
                 className="w-full rounded-r-full border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-900 placeholder-slate-500 transition-colors hover:border-slate-300 focus:border-brand-navy/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
                 placeholder="90 123 45 67"
+                maxLength={40}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />

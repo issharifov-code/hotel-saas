@@ -312,6 +312,7 @@ function InvoiceDetailModal({
               <input
                 value={lineDesc}
                 onChange={(e) => setLineDesc(e.target.value)}
+                maxLength={255}
                 placeholder="Tavsif (masalan: minibar)"
                 className="input"
               />

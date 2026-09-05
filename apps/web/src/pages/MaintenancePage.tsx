@@ -262,6 +262,7 @@ function CreateTicketModal({
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
             className="input"
             placeholder="Masalan: Konditsioner ishlamayapti"
           />
@@ -281,7 +282,7 @@ function CreateTicketModal({
         </label>
         <label className="block">
           <span className="block text-xs font-medium text-slate-600 mb-1">Tavsif (ixtiyoriy)</span>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={3} />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} className="input" rows={3} />
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">
@@ -332,6 +333,7 @@ function ResolveTicketModal({
           <textarea
             value={resolutionNotes}
             onChange={(e) => setResolutionNotes(e.target.value)}
+            maxLength={1000}
             className="input"
             rows={3}
             placeholder="Masalan: Konditsioner ustaxona tomonidan ta'mirlandi"
