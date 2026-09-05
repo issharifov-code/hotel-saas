@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PublicBookingService } from './public-booking.service';
 import { PublicTenantGuard } from './public-tenant.guard';
 import { PublicCreateBookingDto } from './dto/public-create-booking.dto';
@@ -45,7 +46,13 @@ export class PublicBookingController {
     );
   }
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Bu autentifikatsiyasiz YOZUV
+  // yo'li. Vidjetdan kelgan bron `PENDING` holatida yaratiladi, `PENDING`
+  // esa xona bandligini bloklaydi — ya'ni skript bilan mehmonxonaning
+  // butun inventarini bron qilib bo'lmaydigan holga keltirish mumkin edi.
+  // Soatiga 10 ta: haqiqiy mehmon bir-ikki marta bron qiladi.
   @Post('properties/:propertyId/bookings')
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
   createBooking(
     @CurrentUser() user: AuthenticatedUser,
     @Param('propertyId') propertyId: string,

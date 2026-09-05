@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
 import { LoginDto } from './dto/login.dto';
@@ -16,12 +17,25 @@ export class AuthController {
     private readonly tenantsService: TenantsService,
   ) {}
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Bu ikki yo'l ochiq va ilgari
+  // hech qanday chegarasi yo'q edi.
+  //
+  // Ro'yxatdan o'tish har chaqiruvda tenant + standart mulk + 6 ta rol +
+  // to'liq namunaviy dataset yaratadi (yuzlab insert) va subdomainni
+  // abadiy band qiladi — ya'ni skript bilan bazani ham to'ldirish, ham
+  // istalgan nomni egallab olish mumkin edi. Soatiga 3 ta yetarli:
+  // haqiqiy mehmonxona bir marta ro'yxatdan o'tadi.
   @Post('register-tenant')
+  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
   registerTenant(@Body() dto: RegisterTenantDto) {
     return this.authService.registerTenant(dto);
   }
 
+  // Login `subdomain`siz ishlaydi, ya'ni hujumchiga faqat email kerak edi —
+  // cheksiz parol tanlash (jumladan platforma admini uchun). 15 daqiqada
+  // 10 ta urinish odam uchun yetarli, skript uchun foydasiz.
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 900_000 } })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }

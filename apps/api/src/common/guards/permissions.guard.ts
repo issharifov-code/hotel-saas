@@ -42,9 +42,24 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
-    const propertyId: string | undefined =
-      (request.params?.propertyId as string | undefined) ||
-      (request.query?.propertyId as string | undefined);
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Ilgari bu yerda
+    // `|| request.query?.propertyId` ham bor edi. U 2026-09-05 da
+    // `getEffectivePermissions` ichida yopilgan teshikni QAYTA OCHARDI:
+    // tenant darajasidagi yo'llarda (/users, /roles, /guests ...) URL'da
+    // `propertyId` parametri yo'q, demak qaysi rol hisobga olinishini
+    // MIJOZ yuborgan query string hal qilardi. Faqat bitta filialga
+    // biriktirilgan xodim `?propertyId=<o'z filiali>` qo'shib, o'sha rolni
+    // tenant darajasidagi amalga ishlatib yuborardi — masalan
+    // `PATCH /users/<ega>/salary?propertyId=<filial>`.
+    //
+    // `ValidationPipe` bu yerda yordam bermaydi: u faqat DTO'ga bog'langan
+    // query'ni tekshiradi, bu yo'llar esa query DTO bog'lamaydi.
+    //
+    // Endi mulk konteksti FAQAT marshrut parametridan olinadi — ya'ni uni
+    // marshrutning o'zi belgilaydi, mijoz emas.
+    const propertyId: string | undefined = request.params?.propertyId as
+      | string
+      | undefined;
 
     const permissions = await this.rolesService.getEffectivePermissions(
       user.tenantId,

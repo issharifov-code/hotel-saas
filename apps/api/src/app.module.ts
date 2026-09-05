@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from './config/configuration';
@@ -171,6 +172,23 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
           : false,
       }),
     }),
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Ilgari ilovada hech qanday
+    // rate limiting yo'q edi: `POST /auth/login` cheksiz parol tanlashga,
+    // `POST /auth/register-tenant` cheksiz tenant yaratishga, ochiq bron
+    // vidjeti esa soxta bronlar bilan inventarni to'ldirishga ochiq edi.
+    //
+    // `default` — umumiy shift: SPA bitta sahifada 10-15 so'rov yuboradi,
+    // shuning uchun chegara keng, u faqat qo'pol suiiste'molni to'sadi.
+    // Nozik yo'llar o'z nomlangan chegarasini `@Throttle` bilan qo'shadi
+    // (`auth.controller.ts`, `public-booking.controller.ts`,
+    // `demo-request.controller.ts`).
+    //
+    // ESLATMA: hisoblagich xotirada (instansiyaga xos). Bugun bitta
+    // instansiya ishlaydi; ko'p nusxaga o'tilganda umumiy saqlagich
+    // (Redis) kerak bo'ladi.
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 300 },
+    ]),
     RlsContextModule,
     AuthModule,
     UsersModule,
@@ -205,6 +223,9 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
   controllers: [AppController],
   providers: [
     AppService,
+    // Global — ya'ni yangi marshrut qo'shilganda uni ulashni unutib
+    // bo'lmaydi (auditda aynan shunday "unutilgan" naqshlar topilgan).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: RlsTransactionInterceptor },
   ],
 })
