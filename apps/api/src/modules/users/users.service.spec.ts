@@ -251,4 +251,97 @@ describe('UsersService', () => {
       expect(getOne).toHaveBeenCalledTimes(2);
     });
   });
+
+  // 🔬 MAOSH VA PAYROLL RO'YXATI (2026-09-05).
+  //
+  // `listActiveWithSalary` — PayrollService.createRun uchun "kim maosh
+  // oladi" degan savolga javob beradigan YAGONA joy. Undagi filtr
+  // to'g'ridan-to'g'ri pulga aylanadi:
+  //
+  //   * bloklangan (ishdan bo'shagan) xodim ro'yxatda qolsa — unga
+  //     payslip yoziladi va to'lov majburiyati paydo bo'ladi;
+  //   * maoshi belgilanmagan xodim ro'yxatga tushsa — payslip'da
+  //     summa `null` bo'lib, hisob-kitob buziladi;
+  //   * haqiqiy xodim tushib qolsa — u shu oy maoshsiz qoladi va buni
+  //     faqat o'zi sezadi.
+  describe('maosh va payroll ro\'yxati', () => {
+    function withUsers(users: Array<Record<string, unknown>>) {
+      const repo = {
+        find: jest.fn().mockResolvedValue(users),
+        findOneBy: jest.fn().mockResolvedValue(users[0] ?? null),
+        save: jest.fn((e: unknown) => Promise.resolve(e)),
+      };
+      const manager = {
+        query: jest.fn().mockResolvedValue(undefined),
+        getRepository: jest.fn().mockReturnValue(repo),
+        transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+      };
+      (repo as Record<string, unknown>).manager = manager;
+      return { service: new UsersService(repo as never), repo };
+    }
+
+    const user = (over: Record<string, unknown> = {}) => ({
+      id: 'u1',
+      fullName: 'Xodim',
+      status: UserStatus.ACTIVE,
+      salaryType: 'monthly',
+      salaryAmount: '5000000.00',
+      ...over,
+    });
+
+    it("maoshi belgilanmagan xodim payroll ro'yxatiga tushmaydi", async () => {
+      const { service } = withUsers([
+        user({ id: 'bor' }),
+        user({ id: 'turi-yoq', salaryType: null }),
+        user({ id: 'summasi-yoq', salaryAmount: null }),
+      ]);
+
+      const list = await service.listActiveWithSalary('t1');
+
+      expect(list.map((u) => u.id)).toEqual(['bor']);
+    });
+
+    // Faol bo'lmagan xodimlarni bazaning O'ZI chiqarib tashlaydi
+    // (`where: { status: ACTIVE }`) — shart so'rovda ekanini
+    // tekshiramiz, aks holda filtr jimgina yo'qolib ketishi mumkin.
+    it("so'rov faqat faol xodimlarni oladi", async () => {
+      const { service, repo } = withUsers([user()]);
+
+      await service.listActiveWithSalary('t1');
+
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: UserStatus.ACTIVE }),
+        }),
+      );
+    });
+
+    it("maosh belgilanganda tur ham, summa ham saqlanadi", async () => {
+      const { service, repo } = withUsers([user({ salaryType: null, salaryAmount: null })]);
+
+      await service.setSalary('t1', 'u1', 'hourly' as never, '25000.00');
+
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ salaryType: 'hourly', salaryAmount: '25000.00' }),
+      );
+    });
+
+    it("boshqa tenantning xodimiga maosh belgilab bo'lmaydi", async () => {
+      const { service, repo } = withUsers([]);
+      repo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.setSalary('t1', 'begona', 'monthly' as never, '1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("mavjud bo'lmagan xodimning maoshini o'qib bo'lmaydi", async () => {
+      const { service, repo } = withUsers([]);
+      repo.findOneBy.mockResolvedValue(null);
+
+      await expect(service.getSalary('t1', 'yoq')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
 });
