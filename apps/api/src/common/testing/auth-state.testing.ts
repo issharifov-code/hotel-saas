@@ -2,7 +2,8 @@ import { UsersService } from '../../modules/users/users.service';
 import { UserStatus } from '../../modules/users/entities/user.entity';
 
 // `JwtStrategy` har so'rovda `UsersService.getAuthState()` ni chaqiradi —
-// token bekor qilish tekshiruvi (2026-09-05, `users.token_version`).
+// token bekor qilish tekshiruvi (2026-09-05, `users.token_version`) va
+// platforma-admin bayrog'ini bazadan o'qish (2026-09-05 xavfsizlik auditi).
 // Shu sababli guard/ruxsatlarni HTTP darajasida sinaydigan har bir
 // controller spec'ida `UsersService` mavjud bo'lishi kerak.
 //
@@ -17,13 +18,37 @@ import { UserStatus } from '../../modules/users/entities/user.entity';
 export const ACTIVE_AUTH_STATE = {
   status: UserStatus.ACTIVE,
   tokenVersion: 0,
+  isPlatformAdmin: false,
 };
 
-export function authStateTestProvider() {
+export const PLATFORM_ADMIN_AUTH_STATE = {
+  ...ACTIVE_AUTH_STATE,
+  isPlatformAdmin: true,
+};
+
+/**
+ * `platformAdmins` — `isPlatformAdmin: true` qaytariladigan userId'lar.
+ *
+ * ATAYLAB aniq ro'yxat: `isPlatformAdmin` endi TOKENDAN emas, BAZADAN
+ * o'qiladi (2026-09-05 auditi, Medium), shuning uchun platforma-admin
+ * yo'llarini sinaydigan spec o'sha userId'ni bu yerda ko'rsatishi kerak.
+ * Aks holda test tokeni admin desa ham, servis "admin emas" deb javob
+ * beradi — bu aynan yangi, to'g'ri xatti-harakat.
+ */
+export function authStateTestProvider(
+  options: { platformAdmins?: string[] } = {},
+) {
+  const platformAdmins = new Set(options.platformAdmins ?? []);
   return {
     provide: UsersService,
     useValue: {
-      getAuthState: jest.fn().mockResolvedValue(ACTIVE_AUTH_STATE),
+      getAuthState: jest.fn((userId: string) =>
+        Promise.resolve(
+          platformAdmins.has(userId)
+            ? PLATFORM_ADMIN_AUTH_STATE
+            : ACTIVE_AUTH_STATE,
+        ),
+      ),
     },
   };
 }

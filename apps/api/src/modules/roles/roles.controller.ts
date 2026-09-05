@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -11,6 +12,7 @@ import {
 import { RolesService } from './roles.service';
 import { PermissionsService } from './permissions.service';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -30,8 +32,16 @@ export class RolesController {
     private readonly permissionsService: PermissionsService,
   ) {}
 
-  // Barcha mavjud ruxsatlar ro'yxati (rol yaratish formasi uchun) — o'qish uchun maxsus ruxsat talab qilinmaydi.
+  // Barcha mavjud ruxsatlar ro'yxati (rol yaratish formasi uchun).
+  //
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low). Ilgari bu yerda hech qanday
+  // ruxsat talab qilinmasdi, ya'ni istalgan tizimga kirgan xodim (masalan
+  // POS ofitsianti) barcha 65 ta ruxsat UUID'sini olardi — aynan
+  // `POST /roles` uchun kerak bo'ladigan `permissionIds` ro'yxatini.
+  // O'z-o'zidan zarar emas, lekin rol eskalatsiyasining birinchi qadami
+  // edi. Endi rol boshqarish ruxsati talab qilinadi.
   @Get('permissions')
+  @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.VIEW)
   listPermissions() {
     return this.permissionsService.findAll();
   }
@@ -50,22 +60,31 @@ export class RolesController {
   ) {
     return this.rolesService.createCustomRole(
       user.tenantId!,
+      user.userId,
       dto.name,
       dto.permissionIds,
     );
   }
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Ilgari bu yerda
+  // `@Body('permissionIds') permissionIds: string[]` — xom primitiv edi.
+  // Global `ValidationPipe`ning `whitelist`/`forbidNonWhitelisted`
+  // sozlamalari FAQAT klass-DTO'ga ta'sir qiladi, ya'ni bu yo'l istalgan
+  // JSON shaklini qabul qilardi: `null` yuborilsa 500, string yuborilsa
+  // `.includes()` massiv emas SATR ustida ishlab, kutilmagan ruxsatlarni
+  // mos deb topardi.
   @Patch('roles/:id/permissions')
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
   updateRolePermissions(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') roleId: string,
-    @Body('permissionIds') permissionIds: string[],
+    @Param('id', ParseUUIDPipe) roleId: string,
+    @Body() dto: UpdateRolePermissionsDto,
   ) {
     return this.rolesService.updateRolePermissions(
       user.tenantId!,
+      user.userId,
       roleId,
-      permissionIds,
+      dto.permissionIds,
     );
   }
 
@@ -86,6 +105,9 @@ export class RolesController {
       dto.userId,
       dto.roleId,
       dto.propertyId ?? null,
+      // Chaqiruvchi — eskalatsiya tekshiruvlari uchun (o'ziga biriktirish
+      // va o'zida yo'q ruxsatni berish taqiqlanadi).
+      user.userId,
     );
   }
 

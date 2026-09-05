@@ -46,7 +46,7 @@ describe('AdminBillingController (HTTP)', () => {
       providers: [
         { provide: BillingService, useValue: billingService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
-        authStateTestProvider(),
+        authStateTestProvider({ platformAdmins: ['admin-1'] }),
         JwtStrategy,
         JwtAuthGuard,
         PlatformAdminGuard,

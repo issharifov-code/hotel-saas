@@ -22,10 +22,19 @@ async function bootstrap() {
   // rate limiting BARCHA foydalanuvchilarni bitta IP deb hisoblab, hammani
   // birdaniga bloklab qo'yardi.
   //
-  // `1` — faqat ENG YAQIN proksiga ishonish (Render'ning o'zi). Cheksiz
-  // ishonch (`true`) mijozga `X-Forwarded-For` ni soxtalashtirib rate
-  // limitingni chetlab o'tish imkonini berardi.
-  app.set('trust proxy', 1);
+  // Dastlab `1` qo'yilgandi, lekin ishlab chiqarishda tekshirilganda rate
+  // limiting umuman ishlamasligi aniqlandi: har so'rovda
+  // `x-ratelimit-remaining: 9` qaytardi, ya'ni hisoblagich kaliti har
+  // safar o'zgarardi. Render `X-Forwarded-For` ro'yxatining BIRINCHI
+  // yozuvini haqiqiy mijoz IP'siga o'rnatadi, `trust proxy: 1` esa
+  // o'ngdan bitta sakrab, Render'ning ORALIQ (aylanib turadigan)
+  // manzilini berardi.
+  //
+  // `true` — Express eng chapdagi (haqiqiy mijoz) manzilni beradi.
+  // Kelishuv: bu qiymatni mijozning o'zi ham yuborishi mumkin. Shu
+  // sababdan login chegarasi IP'ga emas, EMAILGA bog'langan —
+  // `AppThrottlerGuard` izohiga qarang.
+  app.set('trust proxy', true);
 
   // Xavfsizlik sarlavhalari (auditning M4 topilmasi): nosniff, frameguard,
   // referrer-policy, HSTS va h.k. CSP bu yerda o'chirilgan — API JSON

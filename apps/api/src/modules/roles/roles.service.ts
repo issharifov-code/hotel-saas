@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -101,16 +102,67 @@ export class RolesService {
     );
   }
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Rol boshqaruvida uchta
+  // mustaqil tekshiruv yo'q edi va ular birlashib TO'LIQ TENANT EGALLASHGA
+  // olib kelardi. `users_roles:create` + `users_roles:edit` ruxsatiga ega
+  // xodim (masalan yangi xodimlarni rasmiylashtirish uchun shu ruxsat
+  // berilgan menejer):
+  //
+  //   1. `GET /api/permissions` (o'sha paytda ruxsatsiz ochiq edi) bilan
+  //      barcha 65 ta ruxsat UUID'sini oladi;
+  //   2. `POST /roles` bilan HAMMA ruxsatga ega rol yaratadi — chunki
+  //      ruxsatlar global jadvaldan olinardi va yaratuvchining o'z
+  //      ruxsatlariga nisbatan hech qanday tekshiruv yo'q edi;
+  //   3. `POST /user-roles` bilan uni O'ZIGA biriktiradi — o'zini
+  //      tekshirish ham yo'q edi.
+  //
+  // Natijada `tenant_settings:delete`, `accounting:approve`, `payroll:edit`
+  // — ya'ni amalda Owner huquqlari. Alohida: `updateRolePermissions`
+  // `role.isSystem` ni umuman o'qimasdi (bayroq kodda hech qayerda
+  // o'qilmasdi), ya'ni Owner rolining ruxsatlarini bo'shatib, haqiqiy
+  // egani o'z mehmonxonasidan qulflab qo'yish mumkin edi.
+  //
+  // Qoida endi sanoat standarti bilan bir xil: O'ZINGDA YO'Q RUXSATNI
+  // BERA OLMAYSAN. Owner'da hamma ruxsat bor, shuning uchun uning
+  // ishiga ta'sir qilmaydi.
+  private async assertPermissionsWithinActorGrant(
+    tenantId: string,
+    actorUserId: string,
+    permissionIds: string[],
+  ): Promise<Permission[]> {
+    const all = await this.permissionsService.findAll();
+    const selected = all.filter((p) => permissionIds.includes(p.id));
+
+    const actorPermissions = await this.getEffectivePermissions(
+      tenantId,
+      actorUserId,
+    );
+    const beyond = selected.filter(
+      (p) => !actorPermissions.has(`${p.module}:${p.action}`),
+    );
+    if (beyond.length > 0) {
+      throw new ForbiddenException(
+        "O'zingizda yo'q ruxsatni rolga qo'sha olmaysiz: " +
+          beyond.map((p) => `${p.module}.${p.action}`).join(', '),
+      );
+    }
+    return selected;
+  }
+
   async createCustomRole(
     tenantId: string,
+    actorUserId: string,
     name: string,
     permissionIds: string[],
   ): Promise<Role> {
     if (!name?.trim()) {
       throw new BadRequestException("Rol nomi bo'sh bo'lishi mumkin emas");
     }
-    const permissions = await this.permissionsService.findAll();
-    const selected = permissions.filter((p) => permissionIds.includes(p.id));
+    const selected = await this.assertPermissionsWithinActorGrant(
+      tenantId,
+      actorUserId,
+      permissionIds,
+    );
     return this.withTenantContext(tenantId, (manager) => {
       const roleRepo = manager.getRepository(Role);
       const role = roleRepo.create({
@@ -125,10 +177,15 @@ export class RolesService {
 
   async updateRolePermissions(
     tenantId: string,
+    actorUserId: string,
     roleId: string,
     permissionIds: string[],
   ): Promise<Role> {
-    const permissions = await this.permissionsService.findAll();
+    const selected = await this.assertPermissionsWithinActorGrant(
+      tenantId,
+      actorUserId,
+      permissionIds,
+    );
     return this.withTenantContext(tenantId, async (manager) => {
       const roleRepo = manager.getRepository(Role);
       const role = await roleRepo.findOne({
@@ -137,9 +194,15 @@ export class RolesService {
       });
       if (!role) throw new NotFoundException('Rol topilmadi');
 
-      role.permissions = permissions.filter((p) =>
-        permissionIds.includes(p.id),
-      );
+      // Tizim rollari (Egasi, Buxgalter, ...) o'zgarmas: entity izohi ham
+      // shuni aytadi, lekin bayroq hech qayerda tekshirilmasdi.
+      if (role.isSystem) {
+        throw new ForbiddenException(
+          "Tizim rolining ruxsatlarini o'zgartirib bo'lmaydi — yangi maxsus rol yarating",
+        );
+      }
+
+      role.permissions = selected;
       return roleRepo.save(role);
     });
   }
@@ -149,7 +212,25 @@ export class RolesService {
     userId: string,
     roleId: string,
     propertyId: string | null = null,
+    // Ixtiyoriy: `registerTenant` oqimida chaqiruvchi hali yo'q (egasiga
+    // birinchi rolni tizimning o'zi biriktiradi). Berilgan holatda esa
+    // yuqoridagi eskalatsiya tekshiruvlari qo'llanadi.
+    actorUserId?: string,
   ): Promise<UserRole> {
+    if (actorUserId) {
+      if (actorUserId === userId) {
+        throw new ForbiddenException(
+          "O'zingizga rol biriktira olmaysiz — buni boshqa administrator qilishi kerak",
+        );
+      }
+      const role = await this.getRoleWithPermissions(tenantId, roleId);
+      await this.assertPermissionsWithinActorGrant(
+        tenantId,
+        actorUserId,
+        role.permissions.map((p) => p.id),
+      );
+    }
+
     return this.withTenantContext(tenantId, async (manager) => {
       const roleRepo = manager.getRepository(Role);
       const userRoleRepo = manager.getRepository(UserRole);
@@ -173,6 +254,53 @@ export class RolesService {
       });
       return userRoleRepo.save(userRole);
     });
+  }
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Tenant CHEGARASI to'g'ri
+  // edi (boshqa tenantning xodimiga tegib bo'lmaydi), lekin tenant ICHIDA
+  // hech qanday ierarxiya yo'q edi: `users_roles:edit` ruxsatiga ega
+  // menejer `PATCH /users/<ega>/reset-password` bilan Egasining parolini
+  // almashtirib, uning hisobiga kirib olardi. Bu ayniqsa samarali edi,
+  // chunki parol almashtirish `token_version` ni oshiradi — ya'ni haqiqiy
+  // ega o'sha zahoti tizimdan chiqib ketardi va nima bo'lganini
+  // tushunmasdan yangi parol so'rardi.
+  //
+  // Qoida: NISHONNING ruxsatlari CHAQIRUVCHINIKIDAN oshib ketmasligi
+  // kerak. Ega hamma ruxsatga ega, shuning uchun u hech kim tomonidan
+  // "boshqarib" bo'lmaydi, o'zi esa hammani boshqara oladi.
+  async assertActorOutranksTarget(
+    tenantId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    // O'z hisobiga tegish cheklanmaydi (masalan o'z parolini almashtirish).
+    if (actorUserId === targetUserId) return;
+
+    const [actorPermissions, targetPermissions] = await Promise.all([
+      this.getEffectivePermissions(tenantId, actorUserId),
+      this.getEffectivePermissions(tenantId, targetUserId),
+    ]);
+
+    const beyond = [...targetPermissions].filter((p) => !actorPermissions.has(p));
+    if (beyond.length > 0) {
+      throw new ForbiddenException(
+        "Bu xodimning ruxsatlari sizdan keng — uning hisobini o'zgartira olmaysiz",
+      );
+    }
+  }
+
+  private async getRoleWithPermissions(
+    tenantId: string,
+    roleId: string,
+  ): Promise<Role> {
+    const role = await this.withTenantContext(tenantId, (manager) =>
+      manager.getRepository(Role).findOne({
+        where: { id: roleId, tenantId },
+        relations: { permissions: true },
+      }),
+    );
+    if (!role) throw new NotFoundException('Rol topilmadi');
+    return role;
   }
 
   async removeRoleFromUser(

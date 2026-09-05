@@ -238,24 +238,51 @@ describe('RolesService', () => {
     });
   });
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Rol yaratish/o'zgartirish endi
+  // "o'zingda yo'q ruxsatni bera olmaysan" qoidasiga bo'ysunadi, shuning
+  // uchun testlarda chaqiruvchiga oldindan ruxsat berib qo'yish kerak.
+  const ACTOR = 'actor-1';
+
+  function grantActor(
+    saved: Record<string, Array<Record<string, unknown>>>,
+    permissions: Array<Record<string, unknown>>,
+  ) {
+    saved.Role.push({
+      id: 'actor-role',
+      tenantId: 't1',
+      name: 'Actor',
+      isSystem: false,
+      permissions,
+    });
+    saved.UserRole.push({
+      id: 'actor-ur',
+      tenantId: 't1',
+      userId: ACTOR,
+      roleId: 'actor-role',
+      propertyId: null,
+    });
+  }
+
   describe('createCustomRole', () => {
     it("bo'sh nom uchun BadRequestException tashlaydi va tranzaksiya ochilmaydi", async () => {
       const { service, roleRepo } = createService();
 
-      await expect(service.createCustomRole('t1', '   ', [])).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.createCustomRole('t1', ACTOR, '   ', []),
+      ).rejects.toThrow(BadRequestException);
       expect(roleRepo.manager.transaction).not.toHaveBeenCalled();
     });
 
     it('faqat tanlangan ruxsatlar bilan isSystem=false rol yaratadi', async () => {
-      const { service, permissionsService } = createService();
+      const { service, permissionsService, saved } = createService();
       const perms = allPermissionFixtures();
       permissionsService.findAll.mockResolvedValue(perms);
+      grantActor(saved, perms);
       const selectedIds = [perms[0].id, perms[1].id];
 
       const role = await service.createCustomRole(
         't1',
+        ACTOR,
         '  Maxsus rol  ',
         selectedIds,
       );
@@ -265,15 +292,34 @@ describe('RolesService', () => {
       expect(role.tenantId).toBe('t1');
       expect(role.permissions).toHaveLength(2);
     });
+
+    // Eskalatsiya zanjirining 1-bo'g'ini: ilgari ruxsatlar GLOBAL jadvaldan
+    // olinardi va yaratuvchining o'z ruxsatlariga solishtirilmasdi, ya'ni
+    // `users_roles:create` ega xodim HAMMA ruxsatli rol yasay olardi.
+    it("o'zida yo'q ruxsat bilan rol yaratishni rad etadi", async () => {
+      const { service, permissionsService, saved } = createService();
+      const perms = allPermissionFixtures();
+      permissionsService.findAll.mockResolvedValue(perms);
+      // Chaqiruvchida faqat BIRINCHI ruxsat bor.
+      grantActor(saved, [perms[0]]);
+
+      await expect(
+        service.createCustomRole('t1', ACTOR, 'Maxsus', [
+          perms[0].id,
+          perms[1].id,
+        ]),
+      ).rejects.toThrow(/ruxsatni rolga qo'sha olmaysiz/);
+    });
   });
 
   describe('updateRolePermissions', () => {
     it("mavjud bo'lmagan rol uchun NotFoundException tashlaydi", async () => {
-      const { service, permissionsService } = createService();
+      const { service, permissionsService, saved } = createService();
       permissionsService.findAll.mockResolvedValue(allPermissionFixtures());
+      grantActor(saved, allPermissionFixtures());
 
       await expect(
-        service.updateRolePermissions('t1', 'missing', []),
+        service.updateRolePermissions('t1', ACTOR, 'missing', []),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -281,6 +327,7 @@ describe('RolesService', () => {
       const { service, permissionsService, saved } = createService();
       const perms = allPermissionFixtures();
       permissionsService.findAll.mockResolvedValue(perms);
+      grantActor(saved, perms);
       saved.Role.push({
         id: 'r1',
         tenantId: 't1',
@@ -289,7 +336,7 @@ describe('RolesService', () => {
         permissions: [],
       });
 
-      const updated = await service.updateRolePermissions('t1', 'r1', [
+      const updated = await service.updateRolePermissions('t1', ACTOR, 'r1', [
         perms[0].id,
       ]);
 
@@ -302,6 +349,7 @@ describe('RolesService', () => {
     it("boshqa tenant'ning rolini topa olmaydi (tenant izolyatsiyasi)", async () => {
       const { service, permissionsService, saved } = createService();
       permissionsService.findAll.mockResolvedValue(allPermissionFixtures());
+      grantActor(saved, allPermissionFixtures());
       saved.Role.push({
         id: 'r1',
         tenantId: 't2',
@@ -311,8 +359,140 @@ describe('RolesService', () => {
       });
 
       await expect(
-        service.updateRolePermissions('t1', 'r1', []),
+        service.updateRolePermissions('t1', ACTOR, 'r1', []),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    // Eskalatsiya zanjirining 3-bo'g'ini: `isSystem` bayrog'i kodda hech
+    // qayerda o'qilmasdi, ya'ni Egasining rolidagi ruxsatlarni bo'shatib,
+    // haqiqiy egani o'z mehmonxonasidan qulflab qo'yish mumkin edi.
+    it("tizim rolini o'zgartirishni rad etadi", async () => {
+      const { service, permissionsService, saved } = createService();
+      const perms = allPermissionFixtures();
+      permissionsService.findAll.mockResolvedValue(perms);
+      grantActor(saved, perms);
+      saved.Role.push({
+        id: 'sys1',
+        tenantId: 't1',
+        name: 'Egasi',
+        isSystem: true,
+        permissions: perms,
+      });
+
+      await expect(
+        service.updateRolePermissions('t1', ACTOR, 'sys1', []),
+      ).rejects.toThrow(/Tizim rolining/);
+    });
+  });
+
+  // Eskalatsiya zanjirining 2-bo'g'ini + ierarxiya qoidasi.
+  describe('assignRoleToUser — eskalatsiya tekshiruvlari', () => {
+    it("o'ziga rol biriktirishni rad etadi", async () => {
+      const { service, permissionsService, saved } = createService();
+      const perms = allPermissionFixtures();
+      permissionsService.findAll.mockResolvedValue(perms);
+      grantActor(saved, perms);
+      saved.Role.push({
+        id: 'r1',
+        tenantId: 't1',
+        name: 'A',
+        isSystem: false,
+        permissions: perms,
+      });
+
+      await expect(
+        service.assignRoleToUser('t1', ACTOR, 'r1', null, ACTOR),
+      ).rejects.toThrow(/O'zingizga rol biriktira olmaysiz/);
+    });
+
+    it("o'zida yo'q ruxsatli rolni boshqaga biriktirishni rad etadi", async () => {
+      const { service, permissionsService, saved } = createService();
+      const perms = allPermissionFixtures();
+      permissionsService.findAll.mockResolvedValue(perms);
+      grantActor(saved, [perms[0]]);
+      saved.Role.push({
+        id: 'kuchli',
+        tenantId: 't1',
+        name: 'Kuchli',
+        isSystem: false,
+        permissions: perms,
+      });
+
+      await expect(
+        service.assignRoleToUser('t1', 'boshqa-user', 'kuchli', null, ACTOR),
+      ).rejects.toThrow(/ruxsatni rolga qo'sha olmaysiz/);
+    });
+
+    it("chaqiruvchi ko'rsatilmasa tekshiruvlar o'tkazilmaydi (registratsiya oqimi)", async () => {
+      const { service, saved } = createService();
+      saved.Role.push({
+        id: 'r1',
+        tenantId: 't1',
+        name: 'Egasi',
+        isSystem: true,
+        permissions: [],
+      });
+
+      // `registerTenant` egasiga birinchi rolni chaqiruvchisiz biriktiradi.
+      const ur = await service.assignRoleToUser('t1', 'yangi-ega', 'r1', null);
+      expect(ur.userId).toBe('yangi-ega');
+    });
+  });
+
+  describe('assertActorOutranksTarget', () => {
+    it("nishonning ruxsatlari kengroq bo'lsa rad etadi", async () => {
+      const { service, saved } = createService();
+      const perms = allPermissionFixtures();
+      grantActor(saved, [perms[0]]);
+      saved.Role.push({
+        id: 'ega-role',
+        tenantId: 't1',
+        name: 'Ega',
+        isSystem: true,
+        permissions: perms,
+      });
+      saved.UserRole.push({
+        id: 'ega-ur',
+        tenantId: 't1',
+        userId: 'ega',
+        roleId: 'ega-role',
+        propertyId: null,
+      });
+
+      await expect(
+        service.assertActorOutranksTarget('t1', ACTOR, 'ega'),
+      ).rejects.toThrow(/ruxsatlari sizdan keng/);
+    });
+
+    it("nishon torroq bo'lsa ruxsat beradi", async () => {
+      const { service, saved } = createService();
+      const perms = allPermissionFixtures();
+      grantActor(saved, perms);
+      saved.Role.push({
+        id: 'kichik',
+        tenantId: 't1',
+        name: 'Kichik',
+        isSystem: false,
+        permissions: [perms[0]],
+      });
+      saved.UserRole.push({
+        id: 'kichik-ur',
+        tenantId: 't1',
+        userId: 'xodim',
+        roleId: 'kichik',
+        propertyId: null,
+      });
+
+      await expect(
+        service.assertActorOutranksTarget('t1', ACTOR, 'xodim'),
+      ).resolves.toBeUndefined();
+    });
+
+    it("o'z hisobiga tegishga to'sqinlik qilmaydi", async () => {
+      const { service } = createService();
+      await expect(
+        service.assertActorOutranksTarget('t1', ACTOR, ACTOR),
+      ).resolves.toBeUndefined();
     });
   });
 

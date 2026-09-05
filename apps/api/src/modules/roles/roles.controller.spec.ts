@@ -95,7 +95,25 @@ describe('RolesController (HTTP)', () => {
       expect(permissionsService.findAll).not.toHaveBeenCalled();
     });
 
-    it("faqat JWT bilan (qo'shimcha ruxsatsiz) 200 qaytaradi — @RequirePermission yo'q", async () => {
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low). Ilgari bu yo'l HECH QANDAY
+    // ruxsat talab qilmasdi: istalgan tizimga kirgan xodim (POS ofitsianti
+    // ham) barcha ruxsat UUID'larini olardi — aynan `POST /roles` uchun
+    // kerak bo'ladigan ro'yxatni. Rol eskalatsiyasining birinchi qadami edi.
+    it("users_roles:view ruxsati yo'q bo'lsa 403 qaytaradi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(new Set());
+
+      await request(app.getHttpServer())
+        .get('/permissions')
+        .set('Authorization', `Bearer ${tokenFor()}`)
+        .expect(403);
+
+      expect(permissionsService.findAll).not.toHaveBeenCalled();
+    });
+
+    it("users_roles:view ruxsati bo'lsa 200 qaytaradi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['users_roles:view']),
+      );
       permissionsService.findAll.mockResolvedValue([
         { id: 'perm1', module: 'booking', action: 'view' },
       ]);
@@ -105,9 +123,6 @@ describe('RolesController (HTTP)', () => {
         .set('Authorization', `Bearer ${tokenFor()}`)
         .expect(200);
 
-      // Ruxsat tekshiruvi umuman chaqirilmasligi kerak — bu endpoint uchun
-      // hech qanday modul/action talab qilinmagan.
-      expect(rolesService.getEffectivePermissions).not.toHaveBeenCalled();
       expect(permissionsService.findAll).toHaveBeenCalled();
     });
   });
@@ -167,8 +182,11 @@ describe('RolesController (HTTP)', () => {
         .send({ name: 'Qabul xodimi', permissionIds: ['p1'] })
         .expect(201);
 
+      // `u1` — chaqiruvchi: "o'zingda yo'q ruxsatni bera olmaysan"
+      // tekshiruvi uchun servisga uzatiladi (2026-09-05 auditi).
       expect(rolesService.createCustomRole).toHaveBeenCalledWith(
         't1',
+        'u1',
         'Qabul xodimi',
         ['p1'],
       );
@@ -179,7 +197,7 @@ describe('RolesController (HTTP)', () => {
     it("users_roles:edit ruxsati yo'q bo'lsa 403 qaytaradi", async () => {
       rolesService.getEffectivePermissions.mockResolvedValue(new Set());
       await request(app.getHttpServer())
-        .patch('/roles/role1/permissions')
+        .patch('/roles/33333333-3333-4333-8333-333333333333/permissions')
         .set('Authorization', `Bearer ${tokenFor()}`)
         .send({ permissionIds: ['p1', 'p2'] })
         .expect(403);
@@ -190,17 +208,18 @@ describe('RolesController (HTTP)', () => {
       rolesService.getEffectivePermissions.mockResolvedValue(
         new Set(['users_roles:edit']),
       );
-      rolesService.updateRolePermissions.mockResolvedValue({ id: 'role1' });
+      rolesService.updateRolePermissions.mockResolvedValue({ id: '33333333-3333-4333-8333-333333333333' });
 
       await request(app.getHttpServer())
-        .patch('/roles/role1/permissions')
+        .patch('/roles/33333333-3333-4333-8333-333333333333/permissions')
         .set('Authorization', `Bearer ${tokenFor()}`)
         .send({ permissionIds: ['p1', 'p2'] })
         .expect(200);
 
       expect(rolesService.updateRolePermissions).toHaveBeenCalledWith(
         't1',
-        'role1',
+        'u1',
+        '33333333-3333-4333-8333-333333333333',
         ['p1', 'p2'],
       );
     });
@@ -259,6 +278,8 @@ describe('RolesController (HTTP)', () => {
         'u2',
         'role1',
         'p1',
+        // Chaqiruvchi — eskalatsiya tekshiruvlari uchun (2026-09-05 auditi).
+        'u1',
       );
     });
 
@@ -279,6 +300,7 @@ describe('RolesController (HTTP)', () => {
         'u2',
         'role1',
         null,
+        'u1',
       );
     });
   });

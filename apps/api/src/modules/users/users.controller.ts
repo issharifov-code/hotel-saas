@@ -4,11 +4,13 @@ import {
   ForbiddenException,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { RolesService } from '../roles/roles.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
@@ -28,7 +30,10 @@ import {
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly rolesService: RolesService,
+  ) {}
 
   @Get()
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.VIEW)
@@ -72,9 +77,17 @@ export class UsersController {
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
   async resetPassword(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ResetPasswordDto,
   ) {
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Tenant chegarasi bor edi,
+    // lekin tenant ICHIDA ierarxiya yo'q edi: `users_roles:edit` ruxsatli
+    // menejer Egasining parolini almashtirib, uning hisobiga kirib olardi.
+    await this.rolesService.assertActorOutranksTarget(
+      user.tenantId!,
+      user.userId,
+      id,
+    );
     await this.usersService.resetPassword(user.tenantId!, id, dto.newPassword);
     return { success: true };
   }
@@ -83,7 +96,7 @@ export class UsersController {
   @RequirePermission(PermissionModule.USERS_ROLES, PermissionAction.EDIT)
   async updateStatus(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserStatusDto,
   ) {
     if (id === user.userId) {
@@ -91,6 +104,13 @@ export class UsersController {
         "O'zingizning holatingizni o'zgartira olmaysiz",
       );
     }
+    // Bloklash ham ierarxiyaga bo'ysunadi — aks holda menejer Egasini
+    // bloklab, mehmonxonani o'z tizimidan qulflab qo'yardi.
+    await this.rolesService.assertActorOutranksTarget(
+      user.tenantId!,
+      user.userId,
+      id,
+    );
     const updated = await this.usersService.updateStatus(
       user.tenantId!,
       id,
@@ -106,7 +126,10 @@ export class UsersController {
   // hamkasblarining maoshi oshkor bo'lib qolmasligi kerak.
   @Get(':id/salary')
   @RequirePermission(PermissionModule.PAYROLL, PermissionAction.VIEW)
-  getSalary(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  getSalary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.usersService.getSalary(user.tenantId!, id);
   }
 
@@ -114,9 +137,19 @@ export class UsersController {
   @RequirePermission(PermissionModule.PAYROLL, PermissionAction.EDIT)
   async setSalary(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SetSalaryDto,
   ) {
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). `updateStatus` da o'zini
+    // tekshirish bor edi, bu yerda esa YO'Q edi. Buxgalter (`payroll:edit`
+    // + `payroll:approve` — standart Buxgalter roli ikkalasiga ham ega)
+    // o'z maoshini istalgan songa qo'yib, keyin payroll run qilib o'ziga
+    // to'lay olardi. Hech qanday log ham qolmasdi.
+    if (id === user.userId) {
+      throw new ForbiddenException(
+        "O'z maoshingizni o'zgartira olmaysiz — buni boshqa mas'ul xodim qilishi kerak",
+      );
+    }
     const updated = await this.usersService.setSalary(
       user.tenantId!,
       id,

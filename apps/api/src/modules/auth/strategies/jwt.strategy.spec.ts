@@ -12,10 +12,18 @@ describe('JwtStrategy.validate', () => {
   const configService = { get: () => 'test-secret' };
 
   function createStrategy(
-    authState: { status: UserStatus; tokenVersion: number } | null,
+    authState: {
+      status: UserStatus;
+      tokenVersion: number;
+      isPlatformAdmin?: boolean;
+    } | null,
   ) {
+    const state =
+      authState === null
+        ? null
+        : { isPlatformAdmin: false, ...authState };
     const usersService = {
-      getAuthState: jest.fn().mockResolvedValue(authState),
+      getAuthState: jest.fn().mockResolvedValue(state),
     };
     const strategy = new JwtStrategy(
       configService as never,
@@ -104,6 +112,32 @@ describe('JwtStrategy.validate', () => {
     await expect(strategy.validate(payload({ tv: 0 }))).rejects.toThrow(
       UnauthorizedException,
     );
+  });
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Ilgari `isPlatformAdmin`
+  // TOKENDAN olinardi — ya'ni platforma admin huquqi olib tashlansa ham
+  // mavjud token 8 soat davomida to'liq kuchda qolardi.
+  it('isPlatformAdmin bazadagi qiymatdan olinadi, tokendan emas', async () => {
+    const { strategy } = createStrategy({
+      status: UserStatus.ACTIVE,
+      tokenVersion: 0,
+      isPlatformAdmin: false,
+    });
+    // Token "men platforma adminiman" deydi — baza esa yo'q deydi.
+    await expect(
+      strategy.validate(payload({ tv: 0, isPlatformAdmin: true })),
+    ).resolves.toMatchObject({ isPlatformAdmin: false });
+  });
+
+  it('bazada admin bo\'lsa, tokenda bo\'lmasa ham admin qaytaradi', async () => {
+    const { strategy } = createStrategy({
+      status: UserStatus.ACTIVE,
+      tokenVersion: 0,
+      isPlatformAdmin: true,
+    });
+    await expect(
+      strategy.validate(payload({ tv: 0, isPlatformAdmin: false })),
+    ).resolves.toMatchObject({ isPlatformAdmin: true });
   });
 
   it('tekshiruvni tokendagi sub bo\'yicha qiladi', async () => {

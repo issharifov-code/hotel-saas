@@ -30,9 +30,13 @@ describe('UsersController (HTTP)', () => {
     createUser: jest.Mock;
     resetPassword: jest.Mock;
     updateStatus: jest.Mock;
+    setSalary: jest.Mock;
     getAuthState: jest.Mock;
   };
-  let rolesService: { getEffectivePermissions: jest.Mock };
+  let rolesService: {
+    getEffectivePermissions: jest.Mock;
+    assertActorOutranksTarget: jest.Mock;
+  };
 
   beforeAll(async () => {
     usersService = {
@@ -40,12 +44,18 @@ describe('UsersController (HTTP)', () => {
       createUser: jest.fn(),
       resetPassword: jest.fn(),
       updateStatus: jest.fn(),
+      setSalary: jest.fn(),
       // `JwtStrategy` har so'rovda chaqiradigan token bekor qilish
       // tekshiruvi (2026-09-05) — bu yerda "mavjud, faol, hisoblagich 0".
       getAuthState: jest.fn().mockResolvedValue(ACTIVE_AUTH_STATE),
     };
     rolesService = {
       getEffectivePermissions: jest.fn().mockResolvedValue(new Set()),
+      // 🔴 2026-09-05 auditi: parol tiklash va bloklash endi ierarxiyaga
+      // bo'ysunadi (nishonning ruxsatlari chaqiruvchinikidan oshmasligi
+      // kerak). Bu yerda tekshiruv o'tadigan qilib mock qilinadi;
+      // qoidaning O'ZI roles.service.spec.ts da sinaladi.
+      assertActorOutranksTarget: jest.fn().mockResolvedValue(undefined),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -187,18 +197,67 @@ describe('UsersController (HTTP)', () => {
     });
   });
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). `updateStatus` da o'zini
+  // tekshirish bor edi, `setSalary` da esa YO'Q edi: standart Buxgalter
+  // roli `payroll:edit` va `payroll:approve` ikkalasiga ham ega, ya'ni
+  // buxgalter o'z maoshini istalgan songa qo'yib, keyin payroll run qilib
+  // o'ziga to'lay olardi.
+  describe('PATCH /users/:id/salary', () => {
+    const SELF = '44444444-4444-4444-8444-444444444444';
+    const OTHER = '55555555-5555-4555-8555-555555555555';
+
+    it("o'z maoshini o'zgartirishga urinsa 403 qaytaradi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['payroll:edit']),
+      );
+      const token = tokenFor({
+        sub: SELF,
+        tenantId: 't1',
+        isPlatformAdmin: false,
+      });
+      await request(app.getHttpServer())
+        .patch(`/users/${SELF}/salary`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ salaryType: 'monthly', salaryAmount: '99999999' })
+        .expect(403);
+      expect(usersService.setSalary).not.toHaveBeenCalled();
+    });
+
+    it("boshqa xodimning maoshini ruxsat bilan o'zgartira oladi", async () => {
+      rolesService.getEffectivePermissions.mockResolvedValue(
+        new Set(['payroll:edit']),
+      );
+      usersService.setSalary.mockResolvedValue({
+        id: OTHER,
+        salaryType: 'monthly',
+        salaryAmount: '5000000',
+      });
+      const token = tokenFor({
+        sub: SELF,
+        tenantId: 't1',
+        isPlatformAdmin: false,
+      });
+      await request(app.getHttpServer())
+        .patch(`/users/${OTHER}/salary`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ salaryType: 'monthly', salaryAmount: '5000000' })
+        .expect(200);
+      expect(usersService.setSalary).toHaveBeenCalled();
+    });
+  });
+
   describe('PATCH /users/:id/status', () => {
     it("o'zining holatini o'zgartirishga urinsa 403 qaytaradi (ruxsat bor bo'lsa ham)", async () => {
       rolesService.getEffectivePermissions.mockResolvedValue(
         new Set(['users_roles:edit']),
       );
       const token = tokenFor({
-        sub: 'self-1',
+        sub: '44444444-4444-4444-8444-444444444444',
         tenantId: 't1',
         isPlatformAdmin: false,
       });
       await request(app.getHttpServer())
-        .patch('/users/self-1/status')
+        .patch('/users/44444444-4444-4444-8444-444444444444/status')
         .set('Authorization', `Bearer ${token}`)
         .send({ status: UserStatus.DISABLED })
         .expect(403);
@@ -210,37 +269,37 @@ describe('UsersController (HTTP)', () => {
         new Set(['users_roles:edit']),
       );
       usersService.updateStatus.mockResolvedValue({
-        id: 'other-1',
+        id: '55555555-5555-4555-8555-555555555555',
         status: UserStatus.DISABLED,
       });
       const token = tokenFor({
-        sub: 'admin-1',
+        sub: '66666666-6666-4666-8666-666666666666',
         tenantId: 't1',
         isPlatformAdmin: false,
       });
       const res = await request(app.getHttpServer())
-        .patch('/users/other-1/status')
+        .patch('/users/55555555-5555-4555-8555-555555555555/status')
         .set('Authorization', `Bearer ${token}`)
         .send({ status: UserStatus.DISABLED })
         .expect(200);
 
       expect(usersService.updateStatus).toHaveBeenCalledWith(
         't1',
-        'other-1',
+        '55555555-5555-4555-8555-555555555555',
         UserStatus.DISABLED,
       );
-      expect(res.body).toEqual({ id: 'other-1', status: UserStatus.DISABLED });
+      expect(res.body).toEqual({ id: '55555555-5555-4555-8555-555555555555', status: UserStatus.DISABLED });
     });
 
     it("users_roles:edit ruxsati yo'q bo'lsa 403 qaytaradi (o'z-o'zini tekshirishdan OLDIN)", async () => {
       rolesService.getEffectivePermissions.mockResolvedValue(new Set());
       const token = tokenFor({
-        sub: 'admin-1',
+        sub: '66666666-6666-4666-8666-666666666666',
         tenantId: 't1',
         isPlatformAdmin: false,
       });
       await request(app.getHttpServer())
-        .patch('/users/other-1/status')
+        .patch('/users/55555555-5555-4555-8555-555555555555/status')
         .set('Authorization', `Bearer ${token}`)
         .send({ status: UserStatus.DISABLED })
         .expect(403);

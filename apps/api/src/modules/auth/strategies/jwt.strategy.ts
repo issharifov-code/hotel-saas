@@ -60,7 +60,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       tenantId: payload.tenantId,
-      isPlatformAdmin: payload.isPlatformAdmin,
+      // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Ilgari bu qiymat
+      // TOKENDAN olinardi. Token 8 soat amal qiladi, ya'ni platforma
+      // admin huquqi olib tashlangan bo'lsa ham shuncha vaqt kuchda
+      // qolardi. Endi u ham `getAuthState` orqali BAZADAN keladi —
+      // ya'ni huquq bekor qilinishi bilan (kesh muddati ichida) kuchsiz
+      // bo'ladi, xuddi status va `token_version` kabi.
+      isPlatformAdmin: state.isPlatformAdmin,
     };
   }
 }

@@ -35,7 +35,7 @@ describe('AdminDemoRequestsController (HTTP)', () => {
       providers: [
         { provide: MarketingService, useValue: marketingService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
-        authStateTestProvider(),
+        authStateTestProvider({ platformAdmins: ['u1'] }),
         JwtStrategy,
         JwtAuthGuard,
         PlatformAdminGuard,

@@ -15,6 +15,12 @@ const SALT_ROUNDS = 12;
 export interface UserAuthState {
   status: UserStatus;
   tokenVersion: number;
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium). Ilgari `isPlatformAdmin`
+  // faqat TOKEN ichidan o'qilardi va bazadan hech qachon qayta
+  // tekshirilmasdi — ya'ni platforma admin huquqi olib tashlansa ham,
+  // mavjud token muddati tugagunicha (8 soat) to'liq kuchda qolardi.
+  // Endi u ham har so'rovda bazadan keladi.
+  isPlatformAdmin: boolean;
 }
 
 // Kesh muddati. Nima uchun umuman kesh kerak: `getAuthState` HAR BIR
@@ -201,13 +207,17 @@ export class UsersService {
         .createQueryBuilder('u')
         // `u.id` ataylab qo'shilgan: TypeORM entity'ni birlamchi kalitsiz
         // ham yig'adi, lekin bu xatti-harakatga tayanmaslik arzonroq.
-        .select(['u.id', 'u.status', 'u.tokenVersion'])
+        .select(['u.id', 'u.status', 'u.tokenVersion', 'u.isPlatformAdmin'])
         .where('u.id = :id', { id: userId })
         .getOne(),
     );
 
     const state: UserAuthState | null = row
-      ? { status: row.status, tokenVersion: row.tokenVersion }
+      ? {
+          status: row.status,
+          tokenVersion: row.tokenVersion,
+          isPlatformAdmin: row.isPlatformAdmin,
+        }
       : null;
 
     if (this.authStateCache.size >= AUTH_STATE_PRUNE_AT) {

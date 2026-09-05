@@ -41,7 +41,7 @@ describe('TenantsController (HTTP)', () => {
       providers: [
         { provide: TenantsService, useValue: tenantsService },
         { provide: ConfigService, useValue: { get: () => JWT_SECRET } },
-        authStateTestProvider(),
+        authStateTestProvider({ platformAdmins: ['admin-1'] }),
         JwtStrategy,
         JwtAuthGuard,
         PlatformAdminGuard,
@@ -91,7 +91,7 @@ describe('TenantsController (HTTP)', () => {
     it("platforma admin uchun 200 va barcha tenant ro'yxatini qaytaradi", async () => {
       tenantsService.listAll.mockResolvedValue([
         { id: 't1', name: 'Hotel A' },
-        { id: 't2', name: 'Hotel B' },
+        { id: '22222222-2222-4222-8222-222222222222', name: 'Hotel B' },
       ]);
       const token = tokenFor({
         sub: 'admin-1',
@@ -116,7 +116,7 @@ describe('TenantsController (HTTP)', () => {
         isPlatformAdmin: false,
       });
       await request(app.getHttpServer())
-        .patch('/admin/tenants/t2/status')
+        .patch('/admin/tenants/22222222-2222-4222-8222-222222222222/status')
         .set('Authorization', `Bearer ${token}`)
         .send({ status: TenantStatus.SUSPENDED })
         .expect(403);
@@ -125,7 +125,7 @@ describe('TenantsController (HTTP)', () => {
 
     it("platforma admin tenant holatini SUSPENDED ga o'zgartira oladi (masalan to'lov qilinmaganda)", async () => {
       tenantsService.updateStatus.mockResolvedValue({
-        id: 't2',
+        id: '22222222-2222-4222-8222-222222222222',
         status: TenantStatus.SUSPENDED,
       });
       const token = tokenFor({
@@ -134,16 +134,16 @@ describe('TenantsController (HTTP)', () => {
         isPlatformAdmin: true,
       });
       const res = await request(app.getHttpServer())
-        .patch('/admin/tenants/t2/status')
+        .patch('/admin/tenants/22222222-2222-4222-8222-222222222222/status')
         .set('Authorization', `Bearer ${token}`)
         .send({ status: TenantStatus.SUSPENDED })
         .expect(200);
 
       expect(tenantsService.updateStatus).toHaveBeenCalledWith(
-        't2',
+        '22222222-2222-4222-8222-222222222222',
         TenantStatus.SUSPENDED,
       );
-      expect(res.body).toEqual({ id: 't2', status: TenantStatus.SUSPENDED });
+      expect(res.body).toEqual({ id: '22222222-2222-4222-8222-222222222222', status: TenantStatus.SUSPENDED });
     });
   });
 });
