@@ -52,6 +52,36 @@ describe('RLS migratsiyalari', () => {
     expect(buzilganlar).toEqual([]);
   });
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Boshlang'ich RLS
+  // migratsiyasidagi `ALTER DEFAULT PRIVILEGES` har YANGI jadvalga
+  // avtomatik DML berardi, RLS siyosati esa alohida qo'lda qadam edi —
+  // ya'ni jadval qo'shish FAIL-OPEN: huquq o'z-o'zidan keladi, himoya
+  // esa kelmaydi. Aynan shu sababdan `subscription_invoices` (tenant_id
+  // ustuni bor, moliyaviy jadval) va `demo_requests` RLS'siz qolib
+  // ketgan edi.
+  //
+  // Migratsiya 1789600000000 o'sha avtomatik huquqni bekor qildi. Endi
+  // yangi jadval yaratgan migratsiya GRANT'ni ham o'zi berishi kerak —
+  // bu test buni unutib qo'yilmasligini ta'minlaydi.
+  const GRANT_FIX_TIMESTAMP = 1789600000000;
+
+  it("1789600000000 dan keyin CREATE TABLE qilgan migratsiya GRANT ham beradi", () => {
+    const after = readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith('.ts'))
+      .filter((f) => Number(f.split('-')[0]) > GRANT_FIX_TIMESTAMP);
+
+    const buzilganlar: string[] = [];
+    for (const file of after) {
+      const source = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
+      const createsTable = /CREATE TABLE/i.test(source);
+      if (!createsTable) continue;
+      const grants = /GRANT[\s\S]{0,200}?hotel_saas_app/i.test(source);
+      if (!grants) buzilganlar.push(file);
+    }
+
+    expect(buzilganlar).toEqual([]);
+  });
+
   it('tuzatuvchi migratsiyaning oʻzi mavjud va NULLIF ishlatadi', () => {
     const fix = readdirSync(MIGRATIONS_DIR).find((f) =>
       f.startsWith(String(FIX_TIMESTAMP)),

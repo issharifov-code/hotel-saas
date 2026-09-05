@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, In, Repository } from 'typeorm';
+import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 import { Tenant, TenantStatus } from '../tenants/entities/tenant.entity';
 import { SubscriptionInvoice, SubscriptionInvoiceStatus } from './entities/subscription-invoice.entity';
 import { PLAN_PRICING, listPlanPricing } from './constants/plan-pricing';
@@ -13,13 +13,56 @@ function isoToday(): string {
 // SaaS platformasi <-> tenant (mehmonxona) obuna to'lovlarini boshqaradi.
 // Hozircha haqiqiy to'lov shlyuzi ulanmagan — hisob-fakturalar platforma
 // admin tomonidan qo'lda yaratiladi va "to'landi" deb belgilanadi (mock
-// oqim). Bu jadval ATAYLAB RLS'siz — sabab: entity fayldagi izohga qarang.
+// oqim).
+//
+// 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). `subscription_invoices` da
+// `tenant_id` bor, lekin RLS umuman yoqilmagan edi — ya'ni bu tizimdagi
+// YAGONA per-tenant moliyaviy jadval baza darajasida hech qanday
+// izolyatsiyasiz turardi, `findInvoiceOrThrow` esa tenant filtrisiz
+// `findOneBy({ id })` qiladi. Migratsiya 1789600000000 RLS'ni yoqdi.
+//
+// Bu servis `UsersService` naqshini takrorlaydi: ambient so'rov
+// kontekstiga tayanmaydi (moduli `TypeOrmModule.forFeature` da qoladi),
+// balki HAR BIR metodda o'z tranzaksiyasini ochib, ichida `set_config`
+// qiladi:
+//   `withTenant`  — tenant o'z ma'lumotini ko'radi (himoyalangan yo'l);
+//   `withBypass`  — platforma admini barcha tenantlarni ko'rishi kerak
+//                   bo'lgan sanoqli joylar (aniq nomlangan bayroq).
 @Injectable()
 export class BillingService {
   constructor(
     @InjectRepository(SubscriptionInvoice) private readonly invoiceRepo: Repository<SubscriptionInvoice>,
     @InjectRepository(Tenant) private readonly tenantRepo: Repository<Tenant>,
   ) {}
+
+  private async withTenant<T>(
+    tenantId: string,
+    fn: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.invoiceRepo.manager.transaction(async (manager) => {
+      await manager.query('SELECT set_config($1, $2, true)', [
+        'app.tenant_id',
+        tenantId,
+      ]);
+      return fn(manager);
+    });
+  }
+
+  // Platforma admini (tenantId null) barcha tenantlarning obuna
+  // hisob-fakturalarini ko'rishi va boshqarishi kerak — bu uning yagona
+  // vazifasi. Chetlab o'tish ANIQ nomlangan (`app.billing_bypass`) va
+  // faqat shu tranzaksiya ichida amal qiladi.
+  private async withBypass<T>(
+    fn: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.invoiceRepo.manager.transaction(async (manager) => {
+      await manager.query('SELECT set_config($1, $2, true)', [
+        'app.billing_bypass',
+        'on',
+      ]);
+      return fn(manager);
+    });
+  }
 
   getPlans() {
     return listPlanPricing();
@@ -32,10 +75,12 @@ export class BillingService {
 
   async getMySubscription(tenantId: string) {
     const tenant = await this.findTenantOrThrow(tenantId);
-    const latestInvoice = await this.invoiceRepo.findOne({
-      where: { tenantId },
-      order: { issuedAt: 'DESC' },
-    });
+    const latestInvoice = await this.withTenant(tenantId, (m) =>
+      m.getRepository(SubscriptionInvoice).findOne({
+        where: { tenantId },
+        order: { issuedAt: 'DESC' },
+      }),
+    );
     return {
       plan: tenant.plan,
       status: tenant.status,
@@ -45,7 +90,11 @@ export class BillingService {
   }
 
   async listInvoicesForTenant(tenantId: string) {
-    const invoices = await this.invoiceRepo.find({ where: { tenantId }, order: { issuedAt: 'DESC' } });
+    const invoices = await this.withTenant(tenantId, (m) =>
+      m
+        .getRepository(SubscriptionInvoice)
+        .find({ where: { tenantId }, order: { issuedAt: 'DESC' } }),
+    );
     return invoices.map((inv) => this.withComputedFields(inv));
   }
 
@@ -54,7 +103,9 @@ export class BillingService {
     if (filters.tenantId) where.tenantId = filters.tenantId;
     if (filters.status) where.status = filters.status;
 
-    const invoices = await this.invoiceRepo.find({ where, order: { issuedAt: 'DESC' } });
+    const invoices = await this.withBypass((m) =>
+      m.getRepository(SubscriptionInvoice).find({ where, order: { issuedAt: 'DESC' } }),
+    );
     const tenantIds = [...new Set(invoices.map((inv) => inv.tenantId))];
     const tenants = tenantIds.length ? await this.tenantRepo.findBy({ id: In(tenantIds) }) : [];
     const tenantById = new Map(tenants.map((t) => [t.id, t]));
@@ -84,7 +135,9 @@ export class BillingService {
       issuedAt: new Date(),
       notes: dto.notes ?? null,
     });
-    return this.invoiceRepo.save(invoice);
+    return this.withBypass((m) =>
+      m.getRepository(SubscriptionInvoice).save(invoice),
+    );
   }
 
   async markPaid(invoiceId: string, adminUserId: string): Promise<SubscriptionInvoice> {
@@ -96,7 +149,9 @@ export class BillingService {
     invoice.status = SubscriptionInvoiceStatus.PAID;
     invoice.paidAt = new Date();
     invoice.markedPaidByUserId = adminUserId;
-    const saved = await this.invoiceRepo.save(invoice);
+    const saved = await this.withBypass((m) =>
+      m.getRepository(SubscriptionInvoice).save(invoice),
+    );
 
     // To'lov tasdiqlanganda muzlatilgan (suspended) yoki sinov (trial) tenant'ni
     // avtomatik faollashtiramiz — qo'lda qo'shimcha qadam shart emas.
@@ -115,7 +170,9 @@ export class BillingService {
       throw new BadRequestException("To'langan hisob-fakturani bekor qilib bo'lmaydi");
     }
     invoice.status = SubscriptionInvoiceStatus.CANCELLED;
-    return this.invoiceRepo.save(invoice);
+    return this.withBypass((m) =>
+      m.getRepository(SubscriptionInvoice).save(invoice),
+    );
   }
 
   private async findTenantOrThrow(tenantId: string): Promise<Tenant> {
@@ -124,8 +181,12 @@ export class BillingService {
     return tenant;
   }
 
+  // ATAYLAB bypass bilan: bu metod faqat platforma admin yo'llaridan
+  // chaqiriladi (`PlatformAdminGuard`), unda tenant konteksti yo'q.
   private async findInvoiceOrThrow(id: string): Promise<SubscriptionInvoice> {
-    const invoice = await this.invoiceRepo.findOneBy({ id });
+    const invoice = await this.withBypass((m) =>
+      m.getRepository(SubscriptionInvoice).findOneBy({ id }),
+    );
     if (!invoice) throw new NotFoundException('Hisob-faktura topilmadi');
     return invoice;
   }

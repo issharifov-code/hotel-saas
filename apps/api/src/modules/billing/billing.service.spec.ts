@@ -26,6 +26,16 @@ describe('BillingService', () => {
       findOne: jest.fn().mockResolvedValue(opts.invoice ?? null),
       find: jest.fn().mockResolvedValue(opts.invoice ? [opts.invoice] : []),
     };
+    // 🔴 2026-09-05 auditi (High): `subscription_invoices` da RLS yoqildi,
+    // shuning uchun servis har bir metodda o'z tranzaksiyasini ochib,
+    // ichida `set_config` qiladi (`UsersService` naqshi). Mock'da
+    // tranzaksiya shunchaki callback'ni o'sha repo bilan chaqiradi.
+    const manager = {
+      query: jest.fn().mockResolvedValue(undefined),
+      getRepository: jest.fn().mockReturnValue(invoiceRepo),
+      transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+    };
+    (invoiceRepo as Record<string, unknown>).manager = manager;
     const tenantRepo = {
       findOneBy: jest.fn().mockResolvedValue(opts.tenant ?? null),
       findBy: jest.fn().mockResolvedValue(opts.tenant ? [opts.tenant] : []),
