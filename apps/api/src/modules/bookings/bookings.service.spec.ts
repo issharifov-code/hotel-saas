@@ -64,6 +64,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
     const agenciesService = { findById: jest.fn() };
     const cityLedgerService = { findById: jest.fn() };
 
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -76,6 +77,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       invoicingService as never,
       bookingGroupRepo as never,
       agenciesService as never,
+      agencyCommissionsService as never,
       cityLedgerService as never,
     );
     return {
@@ -86,6 +88,7 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       ratePlanRestrictionsService,
       agenciesService,
       cityLedgerService,
+      guestsService,
     };
   }
 
@@ -293,6 +296,134 @@ describe("BookingsService.create — sana to'qnashuvi", () => {
       service.create('t1', 'p1', { ...dto, corporateAccountId: 'yoq-hisob' }),
     ).rejects.toThrow(NotFoundException);
   });
+
+  // --- Kontakt shaxs (2026-09-05) -------------------------------------
+  // Kontakt profili tashkilotga `parentProfileId` orqali bog'lanadi;
+  // agentlik/korporativ hisob esa o'z `profileId`siga ega. Tekshiruv aynan
+  // shu ikkisini taqqoslaydi.
+
+  function withContact(contact: Record<string, unknown> | null) {
+    const ctx = createService(null);
+    ctx.guestsService.findByType.mockImplementation(
+      (_t: string, id: string, type: string) => {
+        if (type === 'contact') {
+          if (!contact) throw new BadRequestException('Kontakt emas');
+          return Promise.resolve({ id, profileType: type, ...contact });
+        }
+        return Promise.resolve({ id, profileType: type });
+      },
+    );
+    return ctx;
+  }
+
+  it('kontakt tashkilot agentlik profiliga mos kelsa saqlanadi', async () => {
+    const { service, bookingRepo, agenciesService } = withContact({
+      fullName: 'Dilshod',
+      parentProfileId: 'prof-agentlik',
+    });
+    agenciesService.findById.mockResolvedValue({
+      id: 'ag1',
+      profileId: 'prof-agentlik',
+    });
+
+    await service.create('t1', 'p1', {
+      ...dto,
+      agencyId: 'ag1',
+      contactProfileId: 'kontakt-1',
+    });
+    expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBe('kontakt-1');
+  });
+
+  it("🔴 boshqa tashkilotning kontakti rad etiladi", async () => {
+    const { service, agenciesService } = withContact({
+      fullName: 'Aziza',
+      parentProfileId: 'prof-boshqa-kompaniya',
+    });
+    agenciesService.findById.mockResolvedValue({
+      id: 'ag1',
+      profileId: 'prof-agentlik',
+    });
+
+    await expect(
+      service.create('t1', 'p1', {
+        ...dto,
+        agencyId: 'ag1',
+        contactProfileId: 'kontakt-1',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('korporativ hisob profiliga mos kelsa ham saqlanadi', async () => {
+    const { service, bookingRepo, cityLedgerService } = withContact({
+      fullName: 'Sardor',
+      parentProfileId: 'prof-kompaniya',
+    });
+    cityLedgerService.findById.mockResolvedValue({
+      id: 'ca1',
+      profileId: 'prof-kompaniya',
+    });
+
+    await service.create('t1', 'p1', {
+      ...dto,
+      corporateAccountId: 'ca1',
+      contactProfileId: 'kontakt-1',
+    });
+    expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBe('kontakt-1');
+  });
+
+  it("mustaqil kontakt (tashkilotsiz) har qanday bronga ulanadi", async () => {
+    const { service, bookingRepo, agenciesService } = withContact({
+      fullName: "To'y tashkilotchisi",
+      parentProfileId: null,
+    });
+    agenciesService.findById.mockResolvedValue({
+      id: 'ag1',
+      profileId: 'prof-agentlik',
+    });
+
+    await service.create('t1', 'p1', {
+      ...dto,
+      agencyId: 'ag1',
+      contactProfileId: 'kontakt-1',
+    });
+    expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBe('kontakt-1');
+  });
+
+  it('tashkilotsiz bronda kontakt tekshirilmaydi', async () => {
+    const { service, bookingRepo } = withContact({
+      fullName: 'Dilshod',
+      parentProfileId: 'prof-agentlik',
+    });
+
+    await service.create('t1', 'p1', { ...dto, contactProfileId: 'kontakt-1' });
+    expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBe('kontakt-1');
+  });
+
+  it("kontakt berilmasa null yoziladi", async () => {
+    const { service, bookingRepo } = createService(null);
+    await service.create('t1', 'p1', dto);
+    expect(bookingRepo.create.mock.calls[0][0].contactProfileId).toBeNull();
+  });
+
+  it("🔴 kontakt o'rniga mehmon profili berilsa rad etiladi", async () => {
+    const { service, guestsService } = createService(null);
+    // Servis `findByType(..., CONTACT)` chaqiradi — turi mos kelmasa
+    // GuestsService o'zi BadRequest tashlaydi.
+    guestsService.findByType.mockImplementation(
+      (_t: string, id: string, type: string) => {
+        if (type === 'contact') {
+          return Promise.reject(
+            new BadRequestException('Bu profil "Kontakt" turida emas'),
+          );
+        }
+        return Promise.resolve({ id, profileType: type });
+      },
+    );
+
+    await expect(
+      service.create('t1', 'p1', { ...dto, contactProfileId: 'mehmon-1' }),
+    ).rejects.toThrow(BadRequestException);
+  });
 });
 
 // Bu testlar Booking Engine (jonli, autentifikatsiyasiz bron widget'i) uchun
@@ -388,6 +519,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
     const agenciesService = { findById: jest.fn() };
     const cityLedgerService = { findById: jest.fn() };
 
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -400,6 +532,7 @@ describe('BookingsService.createFromWebsite / confirm — Booking Engine', () =>
       invoicingService as never,
       bookingGroupRepo as never,
       agenciesService as never,
+      agencyCommissionsService as never,
       cityLedgerService as never,
     );
     return {
@@ -685,6 +818,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
     const agenciesService = { findById: jest.fn() };
     const cityLedgerService = { findById: jest.fn() };
 
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
     const service = new BookingsService(
       bookingRepo as never,
       roomRepo as never,
@@ -697,6 +831,7 @@ describe('BookingsService.createGroup / addRoomToGroup — Guruh bron', () => {
       invoicingService as never,
       bookingGroupRepo as never,
       agenciesService as never,
+      agencyCommissionsService as never,
       cityLedgerService as never,
     );
     return {
@@ -860,6 +995,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
     const invoicingService = {
       createFeeInvoice: jest.fn().mockResolvedValue({ id: 'inv-1' }),
     };
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
     const service = new BookingsService(
       bookingRepo as never,
       {} as never,
@@ -872,6 +1008,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       invoicingService as never,
       {} as never,
       {} as never,
+      agencyCommissionsService as never,
       {} as never,
     );
     return { service, bookingRepo, ratePlansService, invoicingService };
@@ -992,6 +1129,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
         getOne: jest.fn().mockResolvedValue(null),
       })),
     };
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
     const service = new BookingsService(
       bookingRepo as never,
       {} as never,
@@ -1004,6 +1142,7 @@ describe('BookingsService.cancel — bekor qilish jarimasi', () => {
       {} as never,
       {} as never,
       {} as never,
+      agencyCommissionsService as never,
       {} as never,
     );
     await expect(service.cancel('t1', 'p1', 'missing')).rejects.toThrow(

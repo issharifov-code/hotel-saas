@@ -32,6 +32,7 @@ import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { HousekeepingService } from '../housekeeping/housekeeping.service';
 import { InvoicingService } from '../invoicing/invoicing.service';
 import { AgenciesService } from '../agencies/agencies.service';
+import { AgencyCommissionsService } from '../agencies/agency-commissions.service';
 import { CityLedgerService } from '../city-ledger/city-ledger.service';
 
 // Booking'ni "band" deb hisoblaydigan holatlar — bekor qilingan yoki checkout
@@ -59,6 +60,7 @@ export class BookingsService {
     @InjectRepository(BookingGroup)
     private readonly bookingGroupRepo: Repository<BookingGroup>,
     private readonly agenciesService: AgenciesService,
+    private readonly agencyCommissionsService: AgencyCommissionsService,
     private readonly cityLedgerService: CityLedgerService,
   ) {}
 
@@ -120,6 +122,9 @@ export class BookingsService {
     // TRAVEL_AGENT deb belgilanadi (foydalanuvchi buni ustidan yozib
     // qo'yishi ham mumkin, masalan korporativ agentlik bo'lsa CORPORATE).
     let agencyId: string | null = null;
+    // Agentlikning PROFIL id'si — kontakt tekshiruvi uchun kerak (pastda).
+    // Shu yerda olib qo'yiladi: keyin qayta so'rov yuborish shart emas.
+    let agencyProfileId: string | null = null;
     if (dto.agencyId) {
       const agency = await this.agenciesService.findById(
         tenantId,
@@ -127,6 +132,7 @@ export class BookingsService {
         dto.agencyId,
       );
       agencyId = agency.id;
+      agencyProfileId = agency.profileId;
     }
 
     // Korporativ hisob (ixtiyoriy) — mavjudligi tekshiriladi (404 agar
@@ -134,6 +140,7 @@ export class BookingsService {
     // CORPORATE deb belgilanadi (agencyId'dan farqli ustuvorlik — bitta bron
     // ikkalasiga ham ega bo'lishi kamdan-kam, lekin texnik jihatdan mumkin).
     let corporateAccountId: string | null = null;
+    let corporateProfileId: string | null = null;
     if (dto.corporateAccountId) {
       const account = await this.cityLedgerService.findById(
         tenantId,
@@ -141,6 +148,7 @@ export class BookingsService {
         dto.corporateAccountId,
       );
       corporateAccountId = account.id;
+      corporateProfileId = account.profileId;
     }
 
     // Manba profili (ixtiyoriy) — MANBA turida ekani tekshiriladi.
@@ -153,6 +161,15 @@ export class BookingsService {
       );
       sourceProfileId = src.id;
     }
+
+    // Kontakt shaxs (ixtiyoriy) — KONTAKT turida ekani, va bron tashkilotga
+    // tegishli bo'lsa AYNAN o'sha tashkilotning odami ekani tekshiriladi.
+    const contactProfileId = await this.resolveContactProfile(
+      tenantId,
+      dto.contactProfileId,
+      agencyProfileId,
+      corporateProfileId,
+    );
 
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount =
@@ -179,6 +196,7 @@ export class BookingsService {
       agencyId,
       corporateAccountId,
       sourceProfileId,
+      contactProfileId,
       totalAmount,
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,
@@ -213,7 +231,10 @@ export class BookingsService {
   ): Promise<Booking> {
     const booking = await this.bookingRepo.findOne({
       where: { id, tenantId, propertyId },
-      relations: { room: true, guest: true },
+      // Kontakt profili birga olinadi — front-desk bron tafsilotida uning
+      // telefoni/emailini ko'radi. Ro'yxatda (listByProperty) olinmaydi:
+      // yuzlab bron uchun keraksiz JOIN bo'lardi.
+      relations: { room: true, guest: true, contactProfile: true },
     });
     if (!booking) throw new NotFoundException('Bron topilmadi');
     return booking;
@@ -275,6 +296,11 @@ export class BookingsService {
     // Folio'ni qat'iylashtiradi ("issued") — to'lov holatidan qat'i nazar
     // (biznes qoida — tasdiqlangan), to'lanmagan qoldiq keyin kuzatiladi.
     await this.invoicingService.issueFolio(tenantId, propertyId, saved.id);
+    // Turagent komissiyasi — aynan shu yerda, chunki xona daromadi ham
+    // butun turish uchun bir marta yoziladi: ikkalasi bir davrga tushadi.
+    // Bron agentliksiz bo'lsa yoki komissiya 0% bo'lsa jim o'tkazib
+    // yuboriladi (qarang: accrueForBooking).
+    await this.agencyCommissionsService.accrueForBooking(tenantId, propertyId, saved);
     return saved;
   }
 
@@ -975,6 +1001,50 @@ export class BookingsService {
       groupId,
     });
     return this.bookingRepo.save(booking);
+  }
+
+  // Bronning kontakt shaxsini tekshiradi va id'sini qaytaradi.
+  //
+  // Ikki bosqich: (1) profil KONTAKT turida ekani, (2) agar bron tashkilotga
+  // tegishli bo'lsa — kontakt AYNAN shu tashkilotning odami ekani.
+  //
+  // Ikkinchi tekshiruv nima uchun kerak: front-desk xodimi ro'yxatdan
+  // noto'g'ri "Aziza"ni tanlab qo'ysa, bron boshqa kompaniyaning xodimiga
+  // bog'lanib qolardi va buni keyin hech kim sezmasdi. Taqqoslash PROFIL
+  // id'lari bo'yicha, chunki agentlik/korporativ hisob mulk darajasida,
+  // profil esa tenant darajasida — kontakt ham profilga bog'langan.
+  private async resolveContactProfile(
+    tenantId: string,
+    contactProfileId: string | undefined,
+    agencyProfileId: string | null,
+    corporateProfileId: string | null,
+  ): Promise<string | null> {
+    if (!contactProfileId) return null;
+
+    const contact = await this.guestsService.findByType(
+      tenantId,
+      contactProfileId,
+      ProfileType.CONTACT,
+    );
+
+    // Mustaqil kontakt — hech qaysi tashkilotga bog'lanmagan odam (masalan
+    // to'y tashkilotchisi yoki mustaqil gid). Uni har qanday bronga ulash
+    // mumkin, chunki taqqoslaydigan tashkilot yo'q.
+    if (!contact.parentProfileId) return contact.id;
+
+    const organizationProfileIds = [agencyProfileId, corporateProfileId].filter(
+      (id): id is string => id !== null,
+    );
+    // Bron to'g'ridan-to'g'ri mehmonniki — tashkilot yo'q, tekshiruv ham yo'q.
+    if (organizationProfileIds.length === 0) return contact.id;
+
+    if (!organizationProfileIds.includes(contact.parentProfileId)) {
+      throw new BadRequestException(
+        `"${contact.fullName}" bron tegishli bo'lgan tashkilotning kontakti emas — ` +
+          "boshqa kontakt tanlang yoki uni Profillar sahifasida shu tashkilotga bog'lang",
+      );
+    }
+    return contact.id;
   }
 
   private diffNights(checkIn: string, checkOut: string): number {
