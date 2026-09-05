@@ -49,6 +49,13 @@ export class CreateBookingDto {
   @IsUUID('4')
   sourceProfileId?: string;
 
+  // Ixtiyoriy: bronni tashkil qilgan odam — KONTAKT turidagi profil.
+  // Bron agentlik/korporativ hisobga tegishli bo'lsa, kontakt shu
+  // tashkilotning odami bo'lishi shart (BookingsService tekshiradi).
+  @IsOptional()
+  @IsUUID('4')
+  contactProfileId?: string;
+
   // Berilmasa, xona turi bazaviy narxi (yoki ratePlanId berilgan bo'lsa, shu
   // rejaning narxi) * tunlar soni asosida avtomatik hisoblanadi.
   @IsOptional()
