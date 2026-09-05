@@ -159,7 +159,12 @@ jobs:
           DB_APP_PASSWORD: hotel_saas_app_dev
         run: |
           export PGPASSWORD=postgres
-          psql -h localhost -U postgres -q -c "CREATE ROLE hotel_saas LOGIN PASSWORD 'hotel_saas_dev'"
+          # `CREATEROLE` — `EnableRowLevelSecurity` migratsiyasi
+          # `hotel_saas_app` ROLINI O'ZI YARATADI. Busiz ish
+          # "permission denied to create role" bilan yiqiladi (birinchi
+          # ishga tushirishda aynan shunday bo'ldi: lokal muhitda rol
+          # allaqachon mavjud edi, toza CI'da esa yo'q).
+          psql -h localhost -U postgres -q -c "CREATE ROLE hotel_saas LOGIN CREATEROLE PASSWORD 'hotel_saas_dev'"
           psql -h localhost -U postgres -q -c 'CREATE DATABASE hotel_saas_test OWNER hotel_saas'
           psql -h localhost -U postgres -d hotel_saas_test -q -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
           pnpm --filter api test:int
