@@ -9,12 +9,18 @@ import { Modal } from './Modal';
 // mumkin. O'chirish BUTUN tenant uchun barcha tegishli yozuvlarni (nafaqat aslida
 // avtomatik yaratilganlarini) o'chiradi, shuning uchun ogohlantirish aniq bo'lishi kerak.
 export function SampleDataBanner() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, can } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!user?.hasSampleData) return null;
+  // 🔴 2026-09-05 (audit): bu tekshiruv yo'q edi. `hasSampleData` — TENANT
+  // bayrog'i, ya'ni yangi mehmonxonaning HAR BIR xodimi (front-desk, POS,
+  // farrosh) butun tenant ma'lumotini o'chiradigan tugmani ko'rardi va
+  // bosgach 403 olardi. Backend `tenant_settings:delete` talab qiladi —
+  // standart rollarda faqat Egasida bor.
+  if (!can('tenant_settings', 'delete')) return null;
 
   const remove = async () => {
     setRemoving(true);
