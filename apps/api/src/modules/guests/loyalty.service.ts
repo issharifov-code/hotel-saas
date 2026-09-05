@@ -43,7 +43,36 @@ export class LoyaltyService {
     reason: string,
     opts?: { relatedInvoiceId?: string; createdByUserId?: string },
   ): Promise<Guest> {
-    const guest = await this.guestRepo.findOneBy({ id: guestId, tenantId });
+    // 🔴 QATOR QULFI (2026-09-05, integratsion testda topilgan nuqson).
+    //
+    // Bu metod "o'qi — hisobla — mutlaq qiymatni yoz" naqshida ishlaydi.
+    // Qulfsiz ikki so'rov bir vaqtda BIR XIL boshlang'ich qiymatni
+    // o'qiydi va ikkinchisi birinchisining natijasini bosib ketadi
+    // ("lost update"). Bu ataylab sinaldi va oqibati og'ir edi:
+    //
+    //   * bir vaqtda 5 ta "+10" yuborilganda qoldiq 50 emas, 30 bo'ldi
+    //     (20 ball yo'qoldi — mehmon zarar ko'radi);
+    //   * qoldiq 100 bo'lganda bir vaqtda 5 ta "−80" yuborilganda
+    //     TO'RTTASI o'tib ketdi (mehmonxona 320 ball qiymatini berib,
+    //     atigi 80 ni ayirdi).
+    //
+    // `pessimistic_write` — bu qatorni o'zgartirmoqchi bo'lgan boshqa
+    // tranzaksiya shu tranzaksiya tugagunicha KUTADI, ya'ni bir mehmon
+    // uchun ball o'zgarishlari ketma-ket bajariladi. So'rov allaqachon
+    // RLS interceptor tranzaksiyasi ichida bo'lgani uchun qulf so'rov
+    // oxirigacha ushlab turiladi.
+    //
+    // NEGA ATOMIK `UPDATE ... SET points = points + :delta` EMAS.
+    // U faqat qoldiqni to'g'rilardi, lekin bu yerda `lifetimePoints`
+    // va undan hosil bo'ladigan `loyaltyTier` ham yangilanadi — daraja
+    // hisobi JS'da (`calculateTier`). Qulf ikkalasini ham bir yo'la
+    // himoya qiladi va mavjud mantiqni o'zgartirmaydi.
+    const guest = await this.guestRepo
+      .createQueryBuilder('guest')
+      .setLock('pessimistic_write')
+      .where('guest.id = :guestId', { guestId })
+      .andWhere('guest.tenant_id = :tenantId', { tenantId })
+      .getOne();
     if (!guest) throw new NotFoundException('Mehmon topilmadi');
 
     const newBalance = guest.loyaltyPoints + delta;

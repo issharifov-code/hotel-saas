@@ -23,15 +23,37 @@ describe('LoyaltyService', () => {
       loyaltyTier: initialGuest.loyaltyTier ?? LoyaltyTier.BRONZE,
     };
 
+    // 🔴 2026-09-05: xizmat endi mehmon qatorini QULF bilan o'qiydi
+    // (`setLock('pessimistic_write')`) — integratsion testda topilgan
+    // "yo'qolgan yangilanish" nuqsoni uchun. Shuning uchun mock ham
+    // `findOneBy` emas, query builder shaklida.
+    //
+    // `locks` massivi qulf HAQIQATAN so'ralganini yozib boradi: quyida
+    // shu tekshiriladi. Bu muhim — qulfsiz kod unit testda BEXATAR
+    // ko'rinardi va nuqson faqat parallel so'rovlarda ochilardi.
+    const locks: string[] = [];
+    const where: Record<string, unknown> = {};
+    const qb = {
+      setLock: (mode: string) => {
+        locks.push(mode);
+        return qb;
+      },
+      where: (_sql: string, params: Record<string, unknown>) => {
+        Object.assign(where, params);
+        return qb;
+      },
+      andWhere: (_sql: string, params: Record<string, unknown>) => {
+        Object.assign(where, params);
+        return qb;
+      },
+      getOne: () =>
+        where.guestId === guest.id && where.tenantId === guest.tenantId
+          ? Promise.resolve({ ...guest })
+          : Promise.resolve(null),
+    };
+
     const guestRepo = {
-      findOneBy: jest
-        .fn()
-        .mockImplementation(
-          ({ id, tenantId }: { id: string; tenantId: string }) =>
-            id === guest.id && tenantId === guest.tenantId
-              ? Promise.resolve({ ...guest })
-              : Promise.resolve(null),
-        ),
+      createQueryBuilder: jest.fn(() => qb),
       save: jest.fn().mockImplementation((g: typeof guest) => {
         Object.assign(guest, g);
         return Promise.resolve({ ...guest });
@@ -49,7 +71,7 @@ describe('LoyaltyService', () => {
     };
 
     const service = new LoyaltyService(guestRepo as never, txRepo as never);
-    return { service, guest, guestRepo, txRepo, savedTransactions };
+    return { service, guest, guestRepo, txRepo, savedTransactions, locks };
   }
 
   describe('calculateTier', () => {
@@ -80,7 +102,7 @@ describe('LoyaltyService', () => {
     it("guestId bo'lmasa hech narsa qilmaydi", async () => {
       const { service, guestRepo } = createService({});
       await service.awardPointsForPayment('t1', null, '500.00', 'inv1');
-      expect(guestRepo.findOneBy).not.toHaveBeenCalled();
+      expect(guestRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     it("to'lov ballarni qo'shadi, lifetimePoints va tier'ni yangilaydi, tranzaksiya yozadi", async () => {
@@ -107,6 +129,27 @@ describe('LoyaltyService', () => {
       await service.awardPointsForPayment('t1', 'g1', '5.00', 'inv1');
       expect(guest.loyaltyPoints).toBe(0);
       expect(savedTransactions).toHaveLength(0);
+    });
+  });
+
+  // 🔴 QO'RIQCHI (2026-09-05). Qulfsiz bu xizmat unit testda BEXATAR
+  // ko'rinardi — nuqson faqat parallel so'rovlarda ochilardi va u
+  // integratsion testda topildi: qoldiq 100 bo'lganda bir vaqtda
+  // beshta "−80" so'rovidan TO'RTTASI o'tib ketdi.
+  //
+  // Shuning uchun bu yerda MANTIQ emas, MEXANIZM tekshiriladi: har bir
+  // ball o'zgarishida qator qulf bilan o'qilishi SHART.
+  describe('qator qulfi', () => {
+    it("ball o'zgarishida pessimistic_write qulfi so'raladi", async () => {
+      const { service, locks } = createService({ loyaltyPoints: 100 });
+      await service.adjustPoints('t1', 'g1', -10, 'sinov', 'u1');
+      expect(locks).toEqual(['pessimistic_write']);
+    });
+
+    it("to'lovdan ball hisoblashda ham qulf so'raladi", async () => {
+      const { service, locks } = createService({});
+      await service.awardPointsForPayment('t1', 'g1', '100000', 'inv1', 'u1');
+      expect(locks).toEqual(['pessimistic_write']);
     });
   });
 
