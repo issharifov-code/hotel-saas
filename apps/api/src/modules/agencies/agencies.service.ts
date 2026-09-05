@@ -4,25 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Agency } from './entities/agency.entity';
 import { Guest, ProfileType } from '../guests/entities/guest.entity';
-import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
-
-export interface AgencySummary {
-  agencyId: string;
-  bookingCount: number;
-  totalRevenue: string;
-  commissionOwed: string;
-}
 
 @Injectable()
 export class AgenciesService {
   constructor(
     @InjectRepository(Agency) private readonly agencyRepo: Repository<Agency>,
-    @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
     // Agentlikning KIM ekani shu yerda (profil) — `GuestsService` emas,
     // to'g'ridan-to'g'ri repository: GuestsModule'ni import qilish aylanma
     // bog'liqlik yaratardi (Guests -> Bookings -> ... ), va bu yerda faqat
@@ -131,32 +122,4 @@ export class AgenciesService {
     return this.agencyRepo.save(agency);
   }
 
-  // Faqat-o'qish agregatsiya (ReportsService naqshiga o'xshab) — mavjud
-  // Booking.totalAmount yozuvlaridan hisoblanadi, hech qanday accounting
-  // provodkasi/yangi yozuv yaratilmaydi. Bekor qilingan bronlar hisobga
-  // olinmaydi (haqiqiy tushirilgan daromad emas).
-  async getSummary(tenantId: string, propertyId: string, agencyId: string): Promise<AgencySummary> {
-    await this.findById(tenantId, propertyId, agencyId); // 404 agar topilmasa
-
-    const bookings = await this.bookingRepo.find({
-      where: {
-        tenantId,
-        propertyId,
-        agencyId,
-        status: Not(BookingStatus.CANCELLED),
-      },
-    });
-
-    const agency = await this.agencyRepo.findOneBy({ id: agencyId, tenantId, propertyId });
-    const commissionPct = Number(agency?.commissionPct ?? 0);
-    const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
-    const commissionOwed = (totalRevenue * commissionPct) / 100;
-
-    return {
-      agencyId,
-      bookingCount: bookings.length,
-      totalRevenue: totalRevenue.toFixed(2),
-      commissionOwed: commissionOwed.toFixed(2),
-    };
-  }
 }

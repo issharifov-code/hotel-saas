@@ -1,5 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AgenciesService } from './agencies.service';
+import { AgencyCommissionsService } from './agency-commissions.service';
+import { AgencyCommissionStatus } from './entities/agency-commission.entity';
+import { PayAgencyCommissionsDto } from './dto/pay-agency-commissions.dto';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -16,7 +19,10 @@ import { PermissionAction, PermissionModule } from '../../common/enums/permissio
 @Controller('properties/:propertyId/agencies')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AgenciesController {
-  constructor(private readonly agenciesService: AgenciesService) {}
+  constructor(
+    private readonly agenciesService: AgenciesService,
+    private readonly commissionsService: AgencyCommissionsService,
+  ) {}
 
   @Get()
   @RequirePermission(PermissionModule.BOOKING, PermissionAction.VIEW)
@@ -41,7 +47,44 @@ export class AgenciesController {
     @Param('propertyId') propertyId: string,
     @Param('id') id: string,
   ) {
-    return this.agenciesService.getSummary(user.tenantId!, propertyId, id);
+    return this.commissionsService.getSummary(user.tenantId!, propertyId, id);
+  }
+
+  // Komissiya qatorlari — qaysi bron uchun qancha, to'landimi.
+  @Get(':id/commissions')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.VIEW)
+  listCommissions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+    @Query('status') status?: AgencyCommissionStatus,
+  ) {
+    return this.commissionsService.listByAgency(user.tenantId!, propertyId, id, status);
+  }
+
+  @Get(':id/commission-payments')
+  @RequirePermission(PermissionModule.BOOKING, PermissionAction.VIEW)
+  listPayments(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+  ) {
+    return this.commissionsService.listPayments(user.tenantId!, propertyId, id);
+  }
+
+  // 🔴 To'lov — bosh kitobga provodka yozadi (qarz kamayadi, kassa/bank
+  // kamayadi). Shuning uchun bu yerda BOOKING emas, ACCOUNTING/APPROVE
+  // huquqi talab qilinadi: agentlik kartochkasini tahrirlay oladigan
+  // administrator avtomatik ravishda pul chiqara olmasligi kerak.
+  @Post(':id/commission-payments')
+  @RequirePermission(PermissionModule.ACCOUNTING, PermissionAction.APPROVE)
+  pay(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('propertyId') propertyId: string,
+    @Param('id') id: string,
+    @Body() dto: PayAgencyCommissionsDto,
+  ) {
+    return this.commissionsService.pay(user.tenantId!, propertyId, id, dto, user.userId ?? null);
   }
 
   @Post()
