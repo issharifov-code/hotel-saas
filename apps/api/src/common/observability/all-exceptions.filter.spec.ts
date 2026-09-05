@@ -141,4 +141,79 @@ describe('AllExceptionsFilter', () => {
     };
     expect(body.message).toContain("so'rov raqamini");
   });
+
+  // 🔴 BAZA CHEKLOVI POYGADA USHLAGANDA — BU AVARIYA EMAS (2026-09-05).
+  //
+  // Ikkita bir vaqtdagi so'rovdan biri unikal indeksga yoki bron
+  // kesishuvi cheklovi (`EXCLUDE`) ga urilishi NORMAL holat: baza
+  // aynan shuning uchun qo'yilgan. Ilgari u 500 bo'lib chiqardi —
+  // foydalanuvchi "kutilmagan xatolik" ko'rardi va Telegram
+  // ogohlantirishi qo'zg'alardi.
+  describe('baza cheklovi buzilishi', () => {
+    /** TypeORM `QueryFailedError` shakli: asl xato `driverError` ichida. */
+    function queryFailed(code: string, constraint: string) {
+      const driverError = Object.assign(new Error(`duplicate key value`), {
+        code,
+        constraint,
+      });
+      return Object.assign(new Error('QueryFailedError'), { driverError });
+    }
+
+    it("takrorlanish (23505) 409 bo'lib qaytadi", () => {
+      const { filter } = createFilter();
+      const { host, status, json } = createHost();
+
+      filter.catch(queryFailed('23505', 'UQ_rooms_property_number'), host as never);
+
+      expect(status).toHaveBeenCalledWith(409);
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({ statusCode: 409, message: "Bu ma'lumot allaqachon mavjud" }),
+      );
+    });
+
+    it("oraliq kesishuvi (23P01) 409 bo'lib qaytadi", () => {
+      const { filter } = createFilter();
+      const { host, status, json } = createHost();
+
+      filter.catch(queryFailed('23P01', 'bookings_no_overlap'), host as never);
+
+      expect(status).toHaveBeenCalledWith(409);
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Bu vaqt oralig'i allaqachon band" }),
+      );
+    });
+
+    // 🔴 CHEKLOV NOMI MIJOZGA CHIQMASLIGI KERAK — u jadval va indeks
+    // nomlarini oshkor qiladi.
+    it('javobda cheklov yoki jadval nomi yo\'q', () => {
+      const { filter } = createFilter();
+      const { host, json } = createHost();
+
+      filter.catch(queryFailed('23505', 'UQ_secret_table_name'), host as never);
+
+      expect(JSON.stringify(json.mock.calls[0][0])).not.toContain('UQ_secret_table_name');
+    });
+
+    it('409 xato jurnaliga yozilmaydi (u 5xx emas)', () => {
+      const { filter, errorEvents } = createFilter();
+      const { host } = createHost();
+
+      filter.catch(queryFailed('23505', 'UQ_x'), host as never);
+
+      expect(errorEvents.record).not.toHaveBeenCalled();
+    });
+
+    // Boshqa baza xatolari HAQIQATAN nuqson — ular 500 bo'lib qolishi
+    // va jurnalga tushishi kerak. 23503: mavjud bo'lmagan yozuvga havola.
+    it("boshqa baza xatolari 500 bo'lib qoladi va jurnalga tushadi", () => {
+      const { filter, errorEvents } = createFilter();
+      const { host, status } = createHost();
+
+      filter.catch(queryFailed('23503', 'FK_bookings_room'), host as never);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(errorEvents.record).toHaveBeenCalled();
+    });
+  });
+
 });

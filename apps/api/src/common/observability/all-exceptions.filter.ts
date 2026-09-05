@@ -45,6 +45,50 @@ interface ErrorResponseBody {
   requestId: string;
 }
 
+// 🔴 BAZA CHEKLOVI BUZILISHI — 500 EMAS, 409 (2026-09-05).
+//
+// MUAMMO. Bazadagi cheklovlar (unikal indeks, `EXCLUDE` bilan
+// qo'yilgan bron kesishuvi) ilovaning eng ishonchli qo'riqchisi: ular
+// ikkita bir vaqtdagi so'rov poygada uchrashganda ham ushlab qoladi.
+// Lekin ushlaganda drayver xatosi ko'tariladi va u shu paytgacha
+// oddiy 500 bo'lib chiqardi:
+//
+//   * foydalanuvchi "Serverda kutilmagan xatolik" degan matnni ko'rardi
+//     — aslida hech qanday xatolik yo'q, shunchaki kimdir undan bir
+//     lahza oldin ulgurgan;
+//   * yozuv `error_events` ga tushardi va Telegram ogohlantirishini
+//     qo'zg'atardi — ya'ni normal raqobat holati "avariya" sifatida
+//     xabar qilinardi.
+//
+// Endi bunday xato 409 (Conflict) bo'lib qaytadi. Cheklov NOMI
+// mijozga BERILMAYDI (jadval/indeks nomlari — ichki tafsilot), lekin
+// serverda `warn` bilan yoziladi: agar bu haqiqatan ilova mantiqidagi
+// nuqson bo'lsa, u logda ko'rinadi.
+//
+// Bu ATAYLAB TOR: faqat "allaqachon mavjud" (23505) va "oraliq band"
+// (23P01). Boshqa baza xatolari (masalan 23503 — mavjud bo'lmagan
+// yozuvga havola) haqiqatan nuqson bo'lgani uchun 500 bo'lib qoladi.
+const DB_CONFLICT_MESSAGES: Record<string, string> = {
+  '23505': 'Bu ma\'lumot allaqachon mavjud',
+  '23P01': "Bu vaqt oralig'i allaqachon band",
+};
+
+/** PostgreSQL xato kodini (agar bo'lsa) qaytaradi. */
+function pgErrorCode(exception: unknown): string | null {
+  if (!exception || typeof exception !== 'object') return null;
+  const driver = (exception as { driverError?: unknown }).driverError;
+  const source = (driver ?? exception) as { code?: unknown };
+  return typeof source.code === 'string' ? source.code : null;
+}
+
+/** Buzilgan cheklov nomi — faqat server logi uchun. */
+function pgConstraintName(exception: unknown): string | null {
+  if (!exception || typeof exception !== 'object') return null;
+  const driver = (exception as { driverError?: unknown }).driverError;
+  const source = (driver ?? exception) as { constraint?: unknown };
+  return typeof source.constraint === 'string' ? source.constraint : null;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('Exception');
@@ -56,10 +100,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<RequestWithUser & { requestId?: string }>();
     const response = ctx.getResponse<Response>();
 
+    const dbConflictMessage = DB_CONFLICT_MESSAGES[pgErrorCode(exception) ?? ''];
+
     const status: number =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : dbConflictMessage
+          ? HttpStatus.CONFLICT
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const requestId = request.requestId ?? 'unknown';
     const context = {
@@ -95,8 +143,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // 404 ataylab chiqarib tashlangan: u eng ko'p uchraydigan va eng
       // kam ma'noli qator (skanerlar, eski havolalar).
       this.logger.warn(
-        JSON.stringify({ ...context, status, name, message: rawMessage }),
+        JSON.stringify({
+          ...context,
+          status,
+          name,
+          // Cheklov nomi FAQAT logda — javobga chiqmaydi. Agar 409
+          // aslida ilova mantiqidagi nuqson bo'lsa, izlash shu yerdan
+          // boshlanadi.
+          ...(dbConflictMessage
+            ? { constraint: pgConstraintName(exception) }
+            : {}),
+          message: rawMessage,
+        }),
       );
+    }
+
+    if (dbConflictMessage) {
+      response.status(status).json({
+        statusCode: status,
+        message: dbConflictMessage,
+        error: 'Conflict',
+        requestId,
+      });
+      return;
     }
 
     response.status(status).json(this.buildBody(exception, status, requestId));
