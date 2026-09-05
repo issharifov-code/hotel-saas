@@ -1,0 +1,71 @@
+# Folio One — GitHub tomonidagi ogohlantirishni sinash (2026-09-05).
+#
+# NIMA UCHUN BU KERAK.
+# Zaxira va CI ishlari yiqilganda Telegram'ga xabar yuboradi. Lekin
+# o'sha yo'l HECH QACHON sinalmaydi: u faqat nosozlik kunida
+# ishlaydi. Ya'ni sirlar noto'g'ri qo'yilgani yoki `curl` buyrug'i
+# buzilganini aynan eng yomon kuni bilib olardik.
+#
+# Bu sessiyada shu saboq uch marta takrorlandi (rate limiting,
+# `INSERT ... RETURNING` + RLS, `pg_wrapper`): yashil test yoki
+# muvaffaqiyatli o'rnatish HAQIQIY muhitda ishlashini anglatmaydi.
+# Shuning uchun bu yerda o'sha yo'lni qo'lda ishga tushirish mumkin.
+#
+# ISHLATISH: Actions -> "Ogohlantirishni sinash" -> Run workflow.
+# Telegram'ga xabar kelsa — sirlar to'g'ri va yo'l ishlaydi.
+#
+# Jadval YO'Q: bu ish faqat qo'lda ishga tushiriladi, ya'ni hech
+# qanday xarajat yoki shovqin qo'shmaydi.
+
+name: Ogohlantirishni sinash
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sinov:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Telegram'ga sinov xabari
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # 🔴 Bu yerda ish ATAYLAB QIZIL bo'ladi (`exit 1`): sirlar
+          # yo'qligi — bu sinovning MUVAFFAQIYATSIZLIGI. Zaxira va CI
+          # ishlarida esa aksincha: u yerda sirsiz qadam jimgina o'tadi,
+          # chunki ogohlantirish zaxiraning o'zini to'sib qo'ymasligi
+          # kerak.
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "XATO: TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHAT_ID topilmadi." >&2
+            echo "Settings -> Secrets and variables -> Actions da tekshiring." >&2
+            exit 1
+          fi
+
+          text="$(printf '%s\n\n%s\n%s' \
+            "✅ Folio One — GitHub ogohlantirishi ishlayapti." \
+            "Bu sinov xabari. Zaxira yoki CI yiqilganda xabar aynan shu yo'l bilan keladi." \
+            "${RUN_URL}")"
+
+          # `-w` bilan HTTP kodini olamiz: `curl` o'zi 200 bo'lmagan
+          # javobda ham muvaffaqiyat qaytaradi, ya'ni tekshiruvsiz bu
+          # qadam yashil bo'lib, xabar esa kelmasligi mumkin edi —
+          # aynan shu naqsh sinamoqchi bo'lgan nuqsonimiz.
+          code="$(curl -sS -o /tmp/tg.json -w '%{http_code}' -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=${text}")"
+
+          if [ "$code" != "200" ]; then
+            echo "XATO: Telegram HTTP ${code} qaytardi." >&2
+            # Javobda token YO'Q (u faqat URL'da edi), shuning uchun
+            # sababni ko'rsatish xavfsiz: "chat not found",
+            # "bot was blocked by the user" va hokazo.
+            cat /tmp/tg.json >&2 || true
+            exit 1
+          fi
+          echo "Xabar yuborildi. Telegram'ni tekshiring."
