@@ -205,3 +205,95 @@ describe("PosOrdersService.pay — qulf ostidagi holat tekshiruvi", () => {
     );
   });
 });
+
+// 🔬 TO'LOV CHEGARALARI (2026-09-05, mutatsion sinovda topilgan bo'shliqlar).
+//
+// Ikkita qo'riqchi hech qanday test bilan qoplanmagan edi:
+//
+//   1. BO'SH BUYURTMANI TO'LAB BO'LMAYDI. Aks holda 0 so'mlik "to'lov"
+//      yoziladi va folio'da mazmunsiz qator paydo bo'ladi.
+//   2. XONA HISOBIGA YOZISH UCHUN BRON TANLANISHI SHART. Bronsiz
+//      "xona hisobi" degani — pul kimdan olinishi noma'lum: buyurtma
+//      to'langan deb belgilanadi-yu, hech kimning folio'siga tushmaydi.
+//      Ya'ni restoranda taom berilgan, lekin puli yo'qolgan.
+describe("PosOrdersService.pay — to'lov chegaralari", () => {
+  function createService(order: Record<string, unknown>) {
+    const orderRepo = {
+      findOne: jest.fn().mockResolvedValue(order),
+      save: jest.fn((o: unknown) => Promise.resolve(o)),
+      createQueryBuilder: jest.fn(() => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(order),
+      })),
+    };
+    const invoicingService = { chargeToFolioByBooking: jest.fn() };
+    const accountingService = { postSimpleEntry: jest.fn() };
+    const service = new PosOrdersService(
+      orderRepo as never,
+      { create: jest.fn() } as never,
+      { find: jest.fn() } as never,
+      { findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }) } as never,
+      invoicingService as never,
+      accountingService as never,
+    );
+    return { service, orderRepo, invoicingService, accountingService };
+  }
+
+  const openOrder = (over: Record<string, unknown> = {}) => ({
+    id: 'o1',
+    tenantId: 't1',
+    propertyId: 'p1',
+    status: PosOrderStatus.OPEN,
+    totalAmount: '250000.00',
+    tableNumber: '5',
+    items: [{ id: 'i1' }],
+    ...over,
+  });
+
+  it("bo'sh buyurtmani to'lab bo'lmaydi", async () => {
+    const { service, accountingService, orderRepo } = createService(
+      openOrder({ items: [] }),
+    );
+
+    await expect(
+      service.pay('t1', 'p1', 'o1', { paymentMethod: PosPaymentMethod.CASH } as never),
+    ).rejects.toThrow(/Bo'sh buyurtmani/);
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+    expect(orderRepo.save).not.toHaveBeenCalled();
+  });
+
+  // 🔴 ENG QIMMATLISI. Bronsiz "xona hisobiga" yozish — taom berilgan,
+  // lekin puli hech kimning hisobiga tushmagan degani.
+  it("xona hisobiga yozishda bron ko'rsatilmasa rad etiladi", async () => {
+    const { service, invoicingService, orderRepo } = createService(openOrder());
+
+    await expect(
+      service.pay('t1', 'p1', 'o1', {
+        paymentMethod: PosPaymentMethod.ROOM_ACCOUNT,
+      } as never),
+    ).rejects.toThrow(/bron tanlanishi shart/);
+    expect(invoicingService.chargeToFolioByBooking).not.toHaveBeenCalled();
+    expect(orderRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("bron ko'rsatilsa folio'ga yoziladi va buyurtmaga bog'lanadi", async () => {
+    const { service, invoicingService } = createService(openOrder());
+
+    const paid = (await service.pay('t1', 'p1', 'o1', {
+      paymentMethod: PosPaymentMethod.ROOM_ACCOUNT,
+      bookingId: 'b1',
+    } as never)) as unknown as { bookingId: string; status: string };
+
+    expect(invoicingService.chargeToFolioByBooking).toHaveBeenCalledWith(
+      't1',
+      'p1',
+      'b1',
+      expect.any(String),
+      '250000.00',
+      'o1',
+    );
+    expect(paid.bookingId).toBe('b1');
+    expect(paid.status).toBe(PosOrderStatus.PAID);
+  });
+});

@@ -148,13 +148,23 @@ describe('AuthService', () => {
         validPasswordForUserIds: ['u1'],
       });
 
+      // 📌 XABAR MATNI ATAYLAB TEKSHIRILADI (2026-09-05, mutatsion sinov).
+      // Faqat `UnauthorizedException` turini tekshirish yetarli emas edi:
+      // `DISABLED` sharti butunlay olib tashlansa, keyingi qator
+      // (`status !== ACTIVE`) uni baribir ushlab, XUDDI SHU turdagi
+      // xatoni tashlardi — test yashil qolaverardi. Ya'ni "bloklangan
+      // xodim kira olmaydi" degan kafolat aslida tekshirilmasdi.
+      //
+      // Xabarlar ham ataylab farq qiladi: bloklangan odam
+      // "administratorga murojaat qiling" ni ko'rishi, hali
+      // faollashtirilmagani esa boshqa matnni ko'rishi kerak.
       await expect(
         service.login({
           subdomain: 'demo',
           email: user.email,
           password: 'secret',
         }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toThrow(/bloklangan/);
     });
 
     it('hali faollashtirilmagan (invited) foydalanuvchi ham kira olmaydi', async () => {
@@ -175,7 +185,7 @@ describe('AuthService', () => {
           email: user.email,
           password: 'secret',
         }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toThrow(/faollashtirilmagan/);
     });
 
     it('subdomain topilmasa 401 beradi', async () => {

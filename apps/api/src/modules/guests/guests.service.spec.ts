@@ -1,6 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GuestsService } from './guests.service';
-import { CommunicationPreference, LoyaltyTier } from './entities/guest.entity';
+import {
+  CommunicationPreference,
+  LoyaltyTier,
+  ProfileType,
+} from './entities/guest.entity';
 import { LoyaltyService } from './loyalty.service';
 
 // Bu testlar GuestsService'ning ikkita yangi qobiliyatini tekshiradi:
@@ -313,4 +317,52 @@ describe('GuestsService', () => {
       expect(guests.filter((g) => g.tenantId === 't1')).toHaveLength(1);
     });
   });
+
+  // 🔬 PROFIL TURI SHARTNOMASI (2026-09-05, mutatsion sinovda topilgan
+  // bo'shliq).
+  //
+  // `findByType` — boshqa modullar ("bu haqiqatan MANBA profilimi?")
+  // uchun yagona tekshiruv nuqtasi. Kod izohida aynan shunday
+  // yozilgan: "turni har bir chaqiruvchi o'zi tekshirsa, biri unutib
+  // qo'yishi muqarrar edi". Lekin tekshiruvning O'ZI hech qanday test
+  // bilan qoplanmagan edi.
+  //
+  // Buzilsa oqibati: bron mehmon profilini "manba" sifatida, yoki
+  // turagentni "kompaniya" sifatida qabul qilaverardi — hisobotlar
+  // (segment/kanal samaradorligi, turagent komissiyasi) jimgina
+  // aralashib ketardi.
+  describe('findByType — profil turi tekshiruvi', () => {
+    const guest = {
+      id: 'g1',
+      tenantId: 't1',
+      fullName: 'Mehmon',
+      profileType: ProfileType.GUEST,
+    };
+
+    it("kutilgan turdagi profil qaytariladi", async () => {
+      const { service } = createService([guest]);
+      const found = await service.findByType('t1', 'g1', ProfileType.GUEST);
+      expect(found.id).toBe('g1');
+    });
+
+    it.each([
+      [ProfileType.SOURCE],
+      [ProfileType.COMPANY],
+      [ProfileType.TRAVEL_AGENT],
+      [ProfileType.GROUP],
+    ])("boshqa tur (%s) kutilganda rad etiladi", async (expected) => {
+      const { service } = createService([guest]);
+      await expect(service.findByType('t1', 'g1', expected)).rejects.toThrow(
+        /turida emas/,
+      );
+    });
+
+    it("mavjud bo'lmagan profil uchun NotFoundException", async () => {
+      const { service } = createService([]);
+      await expect(
+        service.findByType('t1', 'yoq', ProfileType.GUEST),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
 });

@@ -164,4 +164,59 @@ describe('FunctionSpacesService', () => {
     });
     expect(bookingRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
+
+  // 🔬 TAHRIRLASH YO'LI ALOHIDA QO'RIQLANISHI KERAK (2026-09-05,
+  // mutatsion sinovda topilgan bo'shliq).
+  //
+  // Vaqt tekshiruvi IKKI JOYDA yozilgan: `createBooking` va
+  // `updateBooking`. Yuqoridagi test faqat BIRINCHISINI qoplaydi —
+  // ikkinchisi butunlay olib tashlansa ham hech narsa yiqilmasdi.
+  //
+  // Amalda tahrirlash yo'li xavfliroq ham: zal allaqachon band
+  // qilingan, mijoz kelmoqda, va vaqt "tasodifan" teskari yozilsa
+  // bron ro'yxatdan yo'qoladi (chunki barcha ko'rinishlar
+  // `start <= x < end` bo'yicha filtrlaydi).
+  describe('updateBooking — vaqt oralig\'i', () => {
+    const mavjud = {
+      id: 'b1',
+      functionSpaceId: 's1',
+      startTime: new Date('2026-09-01T10:00:00.000Z'),
+      endTime: new Date('2026-09-01T14:00:00.000Z'),
+      status: FunctionSpaceBookingStatus.CONFIRMED,
+    };
+
+    it("tugash vaqti boshlanishdan oldin bo'lsa rad etiladi", async () => {
+      const { service, bookingRepo } = createService([mavjud]);
+
+      await expect(
+        service.updateBooking('t1', 'p1', 'b1', {
+          endTime: '2026-09-01T09:00:00.000Z',
+        } as never),
+      ).rejects.toThrow(/keyin bo'lishi kerak/);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("boshlanish va tugash bir xil bo'lsa ham rad etiladi", async () => {
+      const { service, bookingRepo } = createService([mavjud]);
+
+      await expect(
+        service.updateBooking('t1', 'p1', 'b1', {
+          startTime: '2026-09-01T12:00:00.000Z',
+          endTime: '2026-09-01T12:00:00.000Z',
+        } as never),
+      ).rejects.toThrow(/keyin bo'lishi kerak/);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("to'g'ri oraliqda tahrirlash o'tadi", async () => {
+      const { service, bookingRepo } = createService([mavjud]);
+
+      await service.updateBooking('t1', 'p1', 'b1', {
+        endTime: '2026-09-01T16:00:00.000Z',
+      } as never);
+
+      expect(bookingRepo.save).toHaveBeenCalled();
+    });
+  });
+
 });
