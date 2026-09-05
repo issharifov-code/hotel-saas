@@ -242,10 +242,17 @@ function HamburgerIcon() {
 
 // Hamburger bilan ALMASHADI, shuning uchun o'lchami ham u bilan bir xil
 // (24px) — aks holda panel ochilganda tugma ichidagi belgi sakrab ketardi.
-function CloseIcon() {
+//
+// 🔴 2026-09-05 (foydalanuvchi fikri): ilgari bu "X" edi. "X" — "yopish"
+// degan umumiy belgi, lekin bu yerda hech narsa yopilmaydi: panel chapga
+// SURILIB kirib ketadi va istalgan payt qaytadi. Chapga qaragan chevron
+// aynan shu harakatni oldindan aytadi — tugma bosilishidan oldin
+// foydalanuvchi natijani biladi.
+function CollapseIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
+    <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 5.5L10 10l4.5 4.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 5.5L5 10l4.5 4.5" />
     </svg>
   );
 }
@@ -536,7 +543,13 @@ export function AppLayout({
             aria-controls="app-drawer"
             className="flex w-[60.96px] shrink-0 items-center justify-center rounded-full py-1.5 text-white/90 hover:bg-white/10 hover:text-white transition-colors"
           >
-            {drawerOpen ? <CloseIcon /> : <HamburgerIcon />}
+            {/* 🔴 2026-09-05 (foydalanuvchi fikri): "< ichkarida bo'lsin".
+                Yig'ish tugmasi endi panelning O'ZIDA (o'ng chetida), shuning
+                uchun bu yerda ikonka ALMASHMAYDI — har doim hamburger.
+                Sabab: chevron "panelni chapga yig'aman" degani, va u
+                panelning chetida turgani mantiqli; header'dagi tugma esa
+                oddiy "menyu" almashtirgichi bo'lib qoladi. */}
+            <HamburgerIcon />
           </button>
           {/* 🔴 2026-09-05 (foydalanuvchi fikri): mehmonxona logotipi pastdagi
               "Mijozlar" bilan BIR VERTIKALDA boshlanishi kerak. Pastdagi
@@ -1017,15 +1030,43 @@ export function AppLayout({
             qoplaydi va undagi hamburgerga yetib bo'lmaydi. `lg:`+ da kontent
             o'ngga surilgani uchun header'dagi tugma ko'rinib turadi va yagona
             almashtirgich bo'lib qoladi. */}
-        <div className="flex h-[53.34px] shrink-0 items-center border-b border-slate-200 pl-3 pr-3 pt-[7.62px]">
+        <div className="flex h-[53.34px] shrink-0 items-center gap-1 border-b border-slate-200 pl-3 pr-3 pt-[7.62px]">
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): panel tepasidagi band
+              ilgari BO'SH edi. Endi u yerda mahsulot brendi turadi —
+              "bu qanday tizim?" degan savolga javob beradigan yagona joy,
+              chunki yuqoridagi navy panelda MEHMONXONANING o'z nomi va
+              logotipi ko'rsatiladi (u yerda Folio One atayin yo'q).
+              Bosilganda Bosh sahifaga olib boradi. */}
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): "F1 logosi ham kerak emas,
+              faqat Folio One yozuvi, o'sha pastdagi footerdagi kabi, aynisi".
+              Shuning uchun uslub footer'dagi bilan bir xil:
+              `text-xs font-semibold text-slate-500`. Belgi olib tashlandi —
+              u pastdagi modul panelida allaqachon bor.
+              Havola bo'lib qoladi (Bosh sahifaga), lekin ko'rinishi
+              footer'dagidan farq qilmaydi. */}
+          <Link
+            to="/dashboard"
+            onClick={closeDrawer}
+            className="min-w-0 truncate py-1 text-xs font-semibold text-slate-500 transition-opacity hover:opacity-70"
+          >
+            Folio One
+          </Link>
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): "< ichkarida bo'lsin".
+              Yig'ish tugmasi endi panelning ICHIDA, o'ng chetida — ya'ni
+              u yig'iladigan narsaning o'zida turadi va chevron qaysi
+              tomonga ketishini ko'rsatadi. Ilgari u header'da edi
+              (hamburger o'rniga "X" bo'lib almashardi) va panelning
+              tashqarisida turardi.
+              Endi HAR DOIM ko'rinadi (avvalgi `lg:hidden` olib tashlandi):
+              keng ekranda ham panelni yig'ishning eng tabiiy joyi shu. */}
           <button
             type="button"
             onClick={closeDrawer}
-            aria-label="Menyuni yopish"
-            title="Menyuni yopish"
-            className="flex w-[60.96px] shrink-0 items-center justify-center rounded-full py-1.5 text-brand-navy transition-colors hover:bg-brand-navy-light lg:hidden"
+            aria-label="Menyuni yig'ish"
+            title="Menyuni yig'ish"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-brand-navy-light"
           >
-            <CloseIcon />
+            <CollapseIcon />
           </button>
         </div>
 
@@ -1079,13 +1120,26 @@ export function AppLayout({
           ))}
           </div>
 
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): "Folio One yozuvi tagida
+              2 ta ajratuvchi chiziq turibdi, bittasini qoldir".
+              Sabab: bu blokning `border-t` si modullar ro'yxatidan
+              ajratish uchun qo'yilgan — lekin modullar `lg:hidden`, ya'ni
+              KENG ekranda ular umuman yo'q va chiziq to'g'ridan-to'g'ri
+              panel sarlavhasining `border-b` si ostiga tushib, ikkita
+              chiziq yonma-yon qolardi.
+              Endi u faqat modullar HAQIQATAN ko'rinadigan tor ekranda
+              chiqadi (`lg:border-t-0`), keng ekranda esa sarlavha
+              chizig'ining o'zi yetarli. */}
           {hasAdminMenu && (
-            <div className="mt-1 border-t border-slate-200 pt-2">
+            <div className="mt-1 border-t border-slate-200 pt-2 lg:mt-0 lg:border-t-0 lg:pt-0">
               {visibleAdminItems.length > 0 && (
                 <>
-                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Administratsiya
-                  </p>
+                  {/* 🔴 2026-09-05 (foydalanuvchi fikri): "ADMINISTRATSIYA"
+                      sarlavhasi olib tashlandi. Ro'yxatning o'zi (Mehmonxona
+                      sozlamalari, Obuna va to'lovlar, ...) nima ekanini
+                      aytib turibdi, ustidagi ajratuvchi chiziq esa uni
+                      yuqoridagi modullardan allaqachon ajratadi — yorliq
+                      uchinchi bo'lib takrorlanardi. */}
                   <div className="space-y-0.5">
                     {visibleAdminItems.map((item) => (
                       <NavLink
@@ -1112,7 +1166,20 @@ export function AppLayout({
             </div>
           )}
 
-          <div className="mt-1 border-t border-slate-200 pt-2">
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri, ikkinchi chiziq). Bu blok
+              ichida ikkita element bor va IKKALASI HAM shartli:
+                * "Yordam"  — faqat tor ekranda (`lg:hidden`);
+                * "Platforma boshqaruvi" — faqat platforma admini uchun.
+              Ya'ni keng ekrandagi ODDIY foydalanuvchi uchun blok BO'SH
+              qoladi, lekin `border-t` baribir chizilardi — natijada panel
+              sarlavhasining chizig'i ostiga ikkinchi, "osilgan" chiziq
+              tushardi. Endi chiziq faqat blokda haqiqatan ko'rinadigan
+              narsa bo'lganda chiqadi. */}
+          <div
+            className={`mt-1 border-t border-slate-200 pt-2 ${
+              user?.isPlatformAdmin ? '' : 'lg:mt-0 lg:border-t-0 lg:pt-0'
+            }`}
+          >
             {/* Yordam ham faqat tor ekranda: `lg:`+ da "?" belgisi modul
                 qatorining o'ng chetida turibdi, bu yerdagisi takror bo'lardi. */}
             <Link to="/help" onClick={closeDrawer} className={`${drawerLinkClass(false)} lg:hidden`}>

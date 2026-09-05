@@ -271,7 +271,7 @@ export function RegisterTenantPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col md:h-[100dvh] md:overflow-hidden">
       <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
-        <div className="hidden md:flex md:w-1/2 md:overflow-hidden flex-col bg-gradient-to-br from-[#f7f2e8] to-[#eee4d2] p-12 text-slate-900">
+        <div className="hidden md:flex md:w-1/2 md:overflow-hidden flex-col bg-gradient-to-br from-[#fcfaf6] to-[#f9f5ec] p-12 text-slate-900">
           <div className="flex flex-1 items-center justify-center">
             <LoginCarousel slides={SLIDES} />
           </div>
