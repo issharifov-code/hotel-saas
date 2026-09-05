@@ -70,8 +70,18 @@ export class RlsContextService {
     // (guard rad etdi, so'rov uzildi, timeout) ulanish qaytariladi. Agar
     // interceptor allaqachon commit/rollback qilgan bo'lsa, `queryRunner`
     // null bo'ladi va bu no-op.
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L10). `void this.rollback()`
+    // `.catch` siz edi: mijoz so'rovni yarmida uzsa yoki `close` hodisasi
+    // `commitTransaction()` bilan `release()` orasidagi oynaga tushsa,
+    // `rollbackTransaction()` faol bo'lmagan tranzaksiyada xato tashlardi
+    // va bu ushlanmagan promise rejection bo'lardi — Node >= 15 da butun
+    // jarayonni tugatadi. Ya'ni bitta uzilgan so'rov API'ni yiqitishi
+    // mumkin edi.
     this.request.res?.once?.('close', () => {
-      void this.rollback();
+      void this.rollback().catch(() => {
+        // Ataylab jim: bu yerda qila oladigan ish yo'q va bu yo'l
+        // faqat tranzaksiya allaqachon yopilgan holatda ishlaydi.
+      });
     });
 
     return queryRunner.manager;
@@ -107,7 +117,10 @@ export class RlsContextService {
     const manager = await this.getManager();
     const tenantId = this.request.user?.tenantId ?? null;
     if (tenantId) {
-      await manager.query('SELECT set_config($1, $2, true)', ['app.tenant_id', tenantId]);
+      await manager.query('SELECT set_config($1, $2, true)', [
+        'app.tenant_id',
+        tenantId,
+      ]);
     }
     // tenantId bo'lmasa (masalan platforma admin yoki hali autentifikatsiya
     // qilinmagan holat), `app.tenant_id` o'rnatilmay qoladi — RLS siyosati
@@ -117,23 +130,29 @@ export class RlsContextService {
     this.tenantContextApplied = true;
   }
 
+  // `queryRunner` maydoni AWAIT'dan OLDIN tozalanadi: aks holda
+  // `commitTransaction()` kutilayotgan paytda kelgan `close` hodisasi
+  // `rollback()` ni ishga tushirib, o'sha tranzaksiyani ikkinchi marta
+  // yopishga urinardi (L10).
   async commit(): Promise<void> {
-    if (!this.queryRunner) return;
+    const runner = this.queryRunner;
+    if (!runner) return;
+    this.queryRunner = null;
     try {
-      await this.queryRunner.commitTransaction();
+      await runner.commitTransaction();
     } finally {
-      await this.queryRunner.release();
-      this.queryRunner = null;
+      await runner.release();
     }
   }
 
   async rollback(): Promise<void> {
-    if (!this.queryRunner) return;
+    const runner = this.queryRunner;
+    if (!runner) return;
+    this.queryRunner = null;
     try {
-      await this.queryRunner.rollbackTransaction();
+      await runner.rollbackTransaction();
     } finally {
-      await this.queryRunner.release();
-      this.queryRunner = null;
+      await runner.release();
     }
   }
 }

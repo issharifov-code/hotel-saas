@@ -21,6 +21,18 @@ export class DemoRequest {
   @Column({ length: 50 })
   phone: string;
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M13). Takroriy murojaatlarni
+  // aniqlash uchun normallashtirilgan shakl (faqat raqamlar, mamlakat
+  // kodisiz). Ko'rsatishda hamon asl `phone` ishlatiladi — foydalanuvchi
+  // qanday kiritgan bo'lsa, admin shundayligicha ko'radi.
+  //
+  // Indeks (`phone_normalized`, `created_at DESC`) migratsiyada
+  // yaratiladi — bu yerda `@Index` qo'yilmaydi, aks holda entity bir
+  // ustunli, migratsiya esa ikki ustunli indeksni e'lon qilib, ikkisi
+  // bir-biriga zid ta'rif bo'lib qolardi.
+  @Column({ name: 'phone_normalized', length: 50, default: '' })
+  phoneNormalized: string;
+
   // `string | null` union tip bilan reflect-metadata dizayn-vaqtida `Object`
   // deb aniqlaydi (TypeORM'ning maʼlum cheklovi), shuning uchun `type: 'varchar'`
   // aniq ko'rsatilishi shart — aks holda `DataTypeNotSupportedError` bilan

@@ -423,11 +423,14 @@ function InviteUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
           <input
             type="password"
             required
-            minLength={8}
+            minLength={10}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input"
           />
+          <span className="mt-1 block text-xs text-slate-500">
+            Kamida 10 belgi, harf va raqam aralash. Oddiy parollar (masalan `parol123`) qabul qilinmaydi.
+          </span>
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">
@@ -552,11 +555,14 @@ function ResetPasswordModal({
           <input
             type="password"
             required
-            minLength={8}
+            minLength={10}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="input"
           />
+          <span className="mt-1 block text-xs text-slate-500">
+            Kamida 10 belgi, harf va raqam aralash. Oddiy parollar (masalan `parol123`) qabul qilinmaydi.
+          </span>
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button type="submit" disabled={submitting} className="btn-primary w-full">

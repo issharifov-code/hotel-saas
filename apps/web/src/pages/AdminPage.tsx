@@ -4,6 +4,7 @@ import { apiFetch, ApiError } from '../lib/api';
 import type {
   AdminSubscriptionInvoiceDto,
   DemoRequestDto,
+  PaginatedResult,
   PlanPricingDto,
   TenantDto,
   TenantStatus,
@@ -42,6 +43,8 @@ function addMonthIso(iso: string) {
 
 type Tab = 'tenants' | 'billing' | 'demo-requests';
 
+const DEMO_PAGE_SIZE = 50;
+
 export function AdminPage() {
   useEffect(() => {
     document.title = 'Folio One | Platforma boshqaruvi';
@@ -53,6 +56,8 @@ export function AdminPage() {
   const [invoices, setInvoices] = useState<AdminSubscriptionInvoiceDto[]>([]);
   const [plans, setPlans] = useState<PlanPricingDto[]>([]);
   const [demoRequests, setDemoRequests] = useState<DemoRequestDto[]>([]);
+  const [demoPage, setDemoPage] = useState(1);
+  const [demoTotal, setDemoTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const [filterTenantId, setFilterTenantId] = useState('');
@@ -87,15 +92,23 @@ export function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, filterTenantId, filterStatus]);
 
-  const loadDemoRequests = () =>
-    apiFetch<DemoRequestDto[]>('/admin/demo-requests')
-      .then(setDemoRequests)
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M13). Endpoint endi sahifalangan javob
+  // qaytaradi — ilgari BUTUN jadval bir so'rovda kelardi, va demo so'rovlari
+  // ochiq yo'ldan to'lgani uchun hajmni tashqi tomon belgilardi.
+  const loadDemoRequests = (nextPage = demoPage) =>
+    apiFetch<PaginatedResult<DemoRequestDto>>(
+      `/admin/demo-requests?page=${nextPage}&pageSize=${DEMO_PAGE_SIZE}`,
+    )
+      .then((res) => {
+        setDemoRequests(res.items);
+        setDemoTotal(res.total);
+      })
       .catch(() => setError("Demo so'rovlarni yuklashda xatolik"));
 
   useEffect(() => {
     if (tab === 'demo-requests') loadDemoRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, demoPage]);
 
   const toggleContacted = async (req: DemoRequestDto) => {
     setError(null);
@@ -373,6 +386,30 @@ export function AdminPage() {
             ))}
             {demoRequests.length === 0 && (
               <p className="p-4 text-sm text-slate-500">Demo so'rovlar mavjud emas</p>
+            )}
+            {demoTotal > DEMO_PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-3 p-4 text-sm">
+                <span className="text-slate-500">
+                  {(demoPage - 1) * DEMO_PAGE_SIZE + 1}–
+                  {Math.min(demoPage * DEMO_PAGE_SIZE, demoTotal)} / {demoTotal}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDemoPage((p) => Math.max(1, p - 1))}
+                    disabled={demoPage <= 1}
+                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    Oldingi
+                  </button>
+                  <button
+                    onClick={() => setDemoPage((p) => p + 1)}
+                    disabled={demoPage * DEMO_PAGE_SIZE >= demoTotal}
+                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    Keyingi
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

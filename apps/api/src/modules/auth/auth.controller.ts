@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
@@ -38,6 +45,22 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 900_000 } })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L9). Ilgari "chiqish"
+  // faqat frontend amali edi — token localStorage'dan o'chirilardi,
+  // serverda esa 8 soat amal qilaverardi. Endi chiqish `token_version`
+  // ni oshiradi, ya'ni o'sha foydalanuvchining barcha tokenlari
+  // (boshqa qurilmalardagi ham) darhol kuchini yo'qotadi. Batafsil
+  // izoh — `UsersService.revokeSessions`.
+  //
+  // `HttpCode(204)`: javobda qaytariladigan hech narsa yo'q va
+  // frontend natijani kutmasdan ham chiqib ketishi mumkin.
+  @Post('logout')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.usersService.revokeSessions(user.userId);
   }
 
   @Get('me')

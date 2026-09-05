@@ -177,7 +177,13 @@ export class BookingsService {
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount =
       dto.totalAmount ??
-      (await this.calcNightlyTotal(room.roomTypeId, ratePlan, nights));
+      (await this.calcNightlyTotal(
+        tenantId,
+        propertyId,
+        room.roomTypeId,
+        ratePlan,
+        nights,
+      ));
 
     const booking = this.bookingRepo.create({
       tenantId,
@@ -201,7 +207,8 @@ export class BookingsService {
       sourceProfileId,
       contactProfileId,
       totalAmount,
-      currency: dto.currency ?? (await this.propertyCurrency(tenantId, propertyId)),
+      currency:
+        dto.currency ?? (await this.propertyCurrency(tenantId, propertyId)),
       notes: dto.notes ?? null,
     });
     return this.bookingRepo.save(booking);
@@ -303,7 +310,11 @@ export class BookingsService {
     // butun turish uchun bir marta yoziladi: ikkalasi bir davrga tushadi.
     // Bron agentliksiz bo'lsa yoki komissiya 0% bo'lsa jim o'tkazib
     // yuboriladi (qarang: accrueForBooking).
-    await this.agencyCommissionsService.accrueForBooking(tenantId, propertyId, saved);
+    await this.agencyCommissionsService.accrueForBooking(
+      tenantId,
+      propertyId,
+      saved,
+    );
     return saved;
   }
 
@@ -370,6 +381,8 @@ export class BookingsService {
 
     const nights = this.diffNights(booking.checkIn, booking.checkOut);
     const newTotal = await this.calcNightlyTotal(
+      tenantId,
+      propertyId,
       newRoom.roomTypeId,
       nextRatePlan,
       nights,
@@ -464,7 +477,13 @@ export class BookingsService {
       : null;
     const roomTypeId = booking.room?.roomTypeId;
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
-    const newTotal = await this.calcNightlyTotal(roomTypeId, ratePlan, nights);
+    const newTotal = await this.calcNightlyTotal(
+      tenantId,
+      propertyId,
+      roomTypeId,
+      ratePlan,
+      nights,
+    );
     const diff = (Number(newTotal) - Number(booking.totalAmount)).toFixed(2);
     const oldCheckIn = booking.checkIn;
     const oldCheckOut = booking.checkOut;
@@ -811,6 +830,8 @@ export class BookingsService {
     }
 
     const totalAmount = await this.calcNightlyTotal(
+      tenantId,
+      propertyId,
       dto.roomTypeId,
       ratePlan,
       nights,
@@ -995,6 +1016,8 @@ export class BookingsService {
 
     const nights = this.diffNights(dto.checkIn, dto.checkOut);
     const totalAmount = await this.calcNightlyTotal(
+      tenantId,
+      propertyId,
       dto.roomTypeId,
       ratePlan,
       nights,
@@ -1085,7 +1108,20 @@ export class BookingsService {
 
   // Narx rejasi berilgan bo'lsa shu rejaning kechalik narxidan, aks holda
   // xona turining bazaviy narxidan (RoomType.basePrice) jami summani hisoblaydi.
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L11). Ilgari bu yerda
+  // `roomTypeRepo.findOneBy({ id: roomTypeId })` edi — tenant/mulk
+  // filtri YO'Q. Amalda ekspluatatsiya qilish qiyin edi (chaqiruv
+  // joylarining aksariyati `room.roomTypeId` ni beradi, `dto.roomTypeId`
+  // esa `listAvailableRoomsOfType` orqali bilvosita tekshirilardi),
+  // lekin naqshning o'zi noto'g'ri: kelajakdagi bir chaqiruv joyi
+  // begona tenant xona turining NARXI bo'yicha bron summasini hisoblab
+  // yuborishi mumkin edi (narx sizishi + noto'g'ri moliya).
+  //
+  // `roomType!` (non-null assertion) ham olib tashlandi: topilmasa endi
+  // aniq 404 chiqadi, `Number(undefined) => NaN` emas.
   private async calcNightlyTotal(
+    tenantId: string,
+    propertyId: string,
     roomTypeId: string,
     ratePlan: RatePlan | null,
     nights: number,
@@ -1093,7 +1129,14 @@ export class BookingsService {
     if (ratePlan) {
       return (Number(ratePlan.nightlyPrice) * nights).toFixed(2);
     }
-    const roomType = await this.roomTypeRepo.findOneBy({ id: roomTypeId });
-    return (Number(roomType!.basePrice) * nights).toFixed(2);
+    const roomType = await this.roomTypeRepo.findOneBy({
+      id: roomTypeId,
+      tenantId,
+      propertyId,
+    });
+    if (!roomType) {
+      throw new NotFoundException('Xona turi topilmadi');
+    }
+    return (Number(roomType.basePrice) * nights).toFixed(2);
   }
 }

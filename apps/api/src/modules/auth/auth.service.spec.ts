@@ -63,6 +63,9 @@ describe('AuthService', () => {
             (opts.validPasswordForUserIds ?? []).includes(user.id),
           ),
         ),
+      // 🔴 XAVFSIZLIK AUDITI (2026-09-05, L12) — vaqt bo'yicha
+      // foydalanuvchi ro'yxatlashning oldini oluvchi "bo'sh" bcrypt.
+      burnPasswordComparison: jest.fn().mockResolvedValue(undefined),
     };
     const tenantsService = {
       findBySubdomain: jest
@@ -112,7 +115,7 @@ describe('AuthService', () => {
     // uni 0 deb hisoblaydi va hisoblagichi oshgan foydalanuvchi umuman
     // kira olmaydi — ya'ni bu maydonning yo'qolishi jimgina buzilish
     // bo'lardi.
-    it("tokenga foydalanuvchining token_version qiymatini yozadi", async () => {
+    it('tokenga foydalanuvchining token_version qiymatini yozadi', async () => {
       const user = makeUser({ id: 'u1', tenantId: 't1', tokenVersion: 7 });
       const { service, jwtService } = createService({
         tenantBySubdomain: { id: 't1', subdomain: 'demo', name: 'Demo Hotel' },
@@ -154,7 +157,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("hali faollashtirilmagan (invited) foydalanuvchi ham kira olmaydi", async () => {
+    it('hali faollashtirilmagan (invited) foydalanuvchi ham kira olmaydi', async () => {
       const user = makeUser({
         id: 'u1',
         tenantId: 't1',
@@ -312,8 +315,8 @@ describe('AuthService', () => {
 
   // 🔴 2026-09-05 (audit): subdomainsiz yo'lda ham bir xil qoida — bloklangan
   // hisob mehmonxona tanlash ro'yxatida ham ko'rinmasligi kerak.
-  describe('login — bloklangan hisob (subdomainsiz yo\'l)', () => {
-    it('yagona nomzod bloklangan bo\'lsa 401 beradi', async () => {
+  describe("login — bloklangan hisob (subdomainsiz yo'l)", () => {
+    it("yagona nomzod bloklangan bo'lsa 401 beradi", async () => {
       const user = makeUser({
         id: 'u1',
         tenantId: 't1',
@@ -347,12 +350,88 @@ describe('AuthService', () => {
         },
       });
 
-      const res = await service.login({ email: faol.email, password: 'secret' });
+      const res = await service.login({
+        email: faol.email,
+        password: 'secret',
+      });
       // Tanlov ro'yxati EMAS — bitta faol hisob qolgani uchun to'g'ridan-to'g'ri token.
       expect(res).toMatchObject({
         accessToken: 'signed-jwt',
         user: { id: 'u1', tenantSubdomain: 'birinchi' },
       });
+    });
+  });
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L12). Login javob VAQTI
+  // foydalanuvchi bor-yo'qligini oshkor qilmasligi kerak: email
+  // topilmaganda ham xuddi shu narxdagi bitta bcrypt solishtiruvi
+  // bajariladi. Aks holda xabar bir xil bo'lsa ham, sekundomer bilan
+  // qaysi emaillar tizimda borligini ro'yxatlash mumkin edi.
+  describe("login — vaqt bo'yicha foydalanuvchi ro'yxatlashdan himoya", () => {
+    it('email topilmaganda ham bitta bcrypt solishtiruvi bajaradi (subdomainsiz)', async () => {
+      const { service, usersService } = createService({
+        findAllByEmailResult: [],
+      });
+
+      await expect(
+        service.login({ email: 'yoq@hotel.uz', password: 'Parol-123456' }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.burnPasswordComparison).toHaveBeenCalledWith(
+        'Parol-123456',
+      );
+    });
+
+    it('email topilmaganda ham bitta bcrypt solishtiruvi bajaradi (subdomain bilan)', async () => {
+      const { service, usersService } = createService({
+        tenantBySubdomain: { id: 't1', subdomain: 'demo', name: 'Demo' },
+        findByEmailAndTenantResult: null,
+      });
+
+      await expect(
+        service.login({
+          email: 'yoq@hotel.uz',
+          password: 'Parol-123456',
+          subdomain: 'demo',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.burnPasswordComparison).toHaveBeenCalledWith(
+        'Parol-123456',
+      );
+    });
+
+    it("email topilgan, lekin parol noto'g'ri bo'lsa qo'shimcha solishtiruv qilmaydi", async () => {
+      // Bu holatda haqiqiy bcrypt allaqachon bajarilgan — yana bittasi
+      // javobni ikki barobar sekinlashtirardi (va yangi signal berardi).
+      const user = makeUser({ id: 'u1', tenantId: 't1' });
+      const { service, usersService } = createService({
+        findAllByEmailResult: [user],
+        validPasswordForUserIds: [],
+      });
+
+      await expect(
+        service.login({ email: 'a@hotel.uz', password: 'notogri-parol' }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.burnPasswordComparison).not.toHaveBeenCalled();
+    });
+
+    it('nomzodlar sonini cheklaydi (asimmetrik DoS)', async () => {
+      // Bir xil email bilan ko'p tenant ochib, keyin login yuborish
+      // bitta so'rovda o'nlab bcrypt hisoblashiga sabab bo'lardi.
+      const many = Array.from({ length: 20 }, (_, i) =>
+        makeUser({ id: `u${i}`, tenantId: `t${i}` }),
+      );
+      const { service, usersService } = createService({
+        findAllByEmailResult: many,
+        validPasswordForUserIds: [],
+      });
+
+      await expect(
+        service.login({ email: 'a@hotel.uz', password: 'notogri-parol' }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.validatePassword).toHaveBeenCalledTimes(5);
     });
   });
 });

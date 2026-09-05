@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import configuration from './config/configuration';
 import { RlsContextModule } from './common/rls/rls-context.module';
 import { RlsTransactionInterceptor } from './common/rls/rls-transaction.interceptor';
+import { buildDbSsl } from './common/utils/db-ssl.util';
 
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { Property } from './modules/properties/entities/property.entity';
@@ -168,9 +169,13 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
         // sxema o'zgarishlarining oldini olish uchun migratsiya yagona yo'l bo'lishi kerak.
         synchronize: false,
         logging: config.get<string>('nodeEnv') === 'development',
-        ssl: config.get<boolean>('database.ssl')
-          ? { rejectUnauthorized: false }
-          : false,
+        // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M8) — izoh
+        // `common/utils/db-ssl.util.ts` da.
+        ssl: buildDbSsl({
+          enabled: Boolean(config.get<boolean>('database.ssl')),
+          ca: config.get<string | null>('database.sslCa'),
+          isProduction: config.get<string>('nodeEnv') === 'production',
+        }),
       }),
     }),
     // 🔴 XAVFSIZLIK AUDITI (2026-09-05, High). Ilgari ilovada hech qanday
@@ -187,9 +192,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
     // ESLATMA: hisoblagich xotirada (instansiyaga xos). Bugun bitta
     // instansiya ishlaydi; ko'p nusxaga o'tilganda umumiy saqlagich
     // (Redis) kerak bo'ladi.
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60_000, limit: 300 },
-    ]),
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     RlsContextModule,
     AuthModule,
     UsersModule,

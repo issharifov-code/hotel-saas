@@ -38,10 +38,14 @@ export class PublicTenantGuard implements CanActivate {
     // (to'lov qilinmagan) yoki CANCELLED tenant'lar uchun widget yopiq
     // (xuddi login qilib bo'lmaydigan holat kabi, lekin xodim emas, mehmon
     // uchun neytral "topilmadi" xabari bilan — ichki holat oshkor qilinmaydi).
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L6). Bu yerda BOSHQA xabar
+    // turardi ("hozircha jonli bron qabul qilmayapti"), noma'lum
+    // subdomain uchun esa "Mehmonxona topilmadi". Ikki xil javob
+    // subdomainlarni sanab chiqish va qaysi mehmonxona to'lovni
+    // kechiktirganini aniqlash imkonini berardi. Endi ikkalasi ham
+    // AYNAN bir xil.
     if (![TenantStatus.TRIAL, TenantStatus.ACTIVE].includes(tenant.status)) {
-      throw new NotFoundException(
-        'Mehmonxona hozircha jonli bron qabul qilmayapti',
-      );
+      throw new NotFoundException('Mehmonxona topilmadi');
     }
 
     request.user = {

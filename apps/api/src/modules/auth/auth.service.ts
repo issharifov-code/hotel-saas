@@ -105,12 +105,12 @@ export class AuthService {
   private assertUserCanLogin(user: User): void {
     if (user.status === UserStatus.DISABLED) {
       throw new UnauthorizedException(
-        "Hisobingiz bloklangan — mehmonxona administratoriga murojaat qiling",
+        'Hisobingiz bloklangan — mehmonxona administratoriga murojaat qiling',
       );
     }
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException(
-        "Hisobingiz hali faollashtirilmagan — administratoringizga murojaat qiling",
+        'Hisobingiz hali faollashtirilmagan — administratoringizga murojaat qiling',
       );
     }
   }
@@ -125,7 +125,13 @@ export class AuthService {
         dto.email,
         tenant.id,
       );
-      if (!user) throw new UnauthorizedException("Email yoki parol noto'g'ri");
+      if (!user) {
+        // 🔴 XAVFSIZLIK AUDITI (2026-09-05, L12) — vaqt bo'yicha
+        // foydalanuvchi ro'yxatlashning oldini olish. Izoh
+        // `UsersService.burnPasswordComparison` da.
+        await this.usersService.burnPasswordComparison(dto.password);
+        throw new UnauthorizedException("Email yoki parol noto'g'ri");
+      }
 
       const valid = await this.usersService.validatePassword(
         user,
@@ -157,14 +163,33 @@ export class AuthService {
   //    so'rov yuboradi (yuqoridagi filial orqali).
   private async loginWithoutSubdomain(dto: LoginDto) {
     const candidates = await this.usersService.findAllByEmail(dto.email);
+
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L12). Bu sikl bcrypt
+    // (cost=12, ~250 ms) ni HAR BIR nomzod uchun bajaradi. Bitta email
+    // nechta tenant'da bo'lsa, bitta so'rov shuncha marta hisoblaydi —
+    // ya'ni ochiq ro'yxatdan o'tish orqali bir xil email bilan ko'p
+    // tenant yaratib, keyin o'sha email bilan login yuborish serverni
+    // arzon narxda band qilib qo'yardi (asimmetrik DoS).
+    //
+    // Amaliy chegara: bir odamning bir nechta mehmonxonada hisobi
+    // bo'lishi normal, lekin 5 tadan ortig'i real emas. Chegaradan
+    // oshsa qolganlari e'tiborsiz qoldiriladi — bu holatda foydalanuvchi
+    // `subdomain` bilan aniq login qilishi mumkin (yuqoridagi filial).
+    const MAX_LOGIN_CANDIDATES = 5;
     let validUsers: User[] = [];
-    for (const candidate of candidates) {
+    for (const candidate of candidates.slice(0, MAX_LOGIN_CANDIDATES)) {
       if (await this.usersService.validatePassword(candidate, dto.password)) {
         validUsers.push(candidate);
       }
     }
 
     if (validUsers.length === 0) {
+      // Nomzod umuman topilmagan bo'lsa hech qanday bcrypt bajarilmagan
+      // bo'lardi — javob vaqti "email mavjud emas" deb baqirardi.
+      // Izoh: `UsersService.burnPasswordComparison`.
+      if (candidates.length === 0) {
+        await this.usersService.burnPasswordComparison(dto.password);
+      }
       throw new UnauthorizedException("Email yoki parol noto'g'ri");
     }
 

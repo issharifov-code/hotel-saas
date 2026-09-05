@@ -51,6 +51,7 @@ import { AttendanceRecord } from '../modules/attendance/entities/attendance-reco
 import { Budget } from '../modules/budgets/entities/budget.entity';
 import { LeaveRequest } from '../modules/attendance/entities/leave-request.entity';
 import { InsightDismissal } from '../modules/reports/entities/insight-dismissal.entity';
+import { buildDbSsl } from '../common/utils/db-ssl.util';
 
 // Migratsiya CLI (typeorm migration:generate/run) shu DataSource'dan foydalanadi.
 // Runtime uchun esa app.module.ts'dagi TypeOrmModule.forRootAsync ishlatiladi.
@@ -119,7 +120,10 @@ export const AppDataSource = new DataSource({
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
-  // Render/boshqa boshqariladigan Postgres xizmatlari uchun (o'z-o'ziga imzolangan
-  // sertifikat bilan ham ishlashi uchun rejectUnauthorized: false).
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M8) — izoh `common/utils/db-ssl.util.ts` da.
+  ssl: buildDbSsl({
+    enabled: process.env.DB_SSL === 'true',
+    ca: process.env.DB_SSL_CA,
+    isProduction: process.env.NODE_ENV === 'production',
+  }),
 });

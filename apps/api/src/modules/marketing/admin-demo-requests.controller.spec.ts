@@ -89,21 +89,31 @@ describe('AdminDemoRequestsController (HTTP)', () => {
     });
 
     it("platforma admin bo'lsa ro'yxatni qaytaradi", async () => {
-      marketingService.listDemoRequests.mockResolvedValue([{ id: 'dr1' }]);
+      marketingService.listDemoRequests.mockResolvedValue({
+        items: [{ id: '8b1a5f2c-3d4e-4a6b-9c8d-0e1f2a3b4c5d' }],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      });
 
       await request(app.getHttpServer())
         .get('/admin/demo-requests')
         .set('Authorization', `Bearer ${tokenFor()}`)
         .expect(200);
 
-      expect(marketingService.listDemoRequests).toHaveBeenCalledWith();
+      expect(marketingService.listDemoRequests).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+      );
     });
   });
 
   describe('PATCH /admin/demo-requests/:id/contacted', () => {
     it("platforma admin bo'lmasa 403 qaytaradi", async () => {
       await request(app.getHttpServer())
-        .patch('/admin/demo-requests/dr1/contacted')
+        .patch(
+          '/admin/demo-requests/8b1a5f2c-3d4e-4a6b-9c8d-0e1f2a3b4c5d/contacted',
+        )
         .set(
           'Authorization',
           `Bearer ${tokenFor({ sub: 'u2', tenantId: 't1', isPlatformAdmin: false })}`,
@@ -115,17 +125,22 @@ describe('AdminDemoRequestsController (HTTP)', () => {
 
     it("platforma admin bo'lsa contacted holatini yangilaydi", async () => {
       marketingService.markContacted.mockResolvedValue({
-        id: 'dr1',
+        id: '8b1a5f2c-3d4e-4a6b-9c8d-0e1f2a3b4c5d',
         contacted: true,
       });
 
       await request(app.getHttpServer())
-        .patch('/admin/demo-requests/dr1/contacted')
+        .patch(
+          '/admin/demo-requests/8b1a5f2c-3d4e-4a6b-9c8d-0e1f2a3b4c5d/contacted',
+        )
         .set('Authorization', `Bearer ${tokenFor()}`)
         .send({ contacted: true })
         .expect(200);
 
-      expect(marketingService.markContacted).toHaveBeenCalledWith('dr1', true);
+      expect(marketingService.markContacted).toHaveBeenCalledWith(
+        '8b1a5f2c-3d4e-4a6b-9c8d-0e1f2a3b4c5d',
+        true,
+      );
     });
   });
 });

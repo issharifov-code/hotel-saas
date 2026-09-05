@@ -118,6 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, L9). Ilgari chiqish faqat shu yerda —
+    // brauzerda — bo'lardi: token o'chirilardi, lekin serverda hamon 8 soat
+    // amal qilaverardi. Endi server ham xabardor qilinadi (`/auth/logout` ->
+    // token_version +1), ya'ni o'sha token darhol kuchini yo'qotadi.
+    //
+    // Ataylab `await` qilinmaydi va xatosi yutiladi: chiqish har qanday holatda
+    // (tarmoq yo'q, token allaqachon eskirgan) darhol va to'liq ishlashi kerak.
+    void apiFetch<void>('/auth/logout', { method: 'POST' }).catch(() => {});
     clearToken();
     setUser(null);
     setProperty(null);

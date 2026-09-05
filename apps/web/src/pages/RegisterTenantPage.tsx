@@ -408,8 +408,8 @@ export function RegisterTenantPage() {
                         id="reg-password"
                         type={showPassword ? 'text' : 'password'}
                         required
-                        minLength={8}
-                        placeholder="Parol yarating"
+                        minLength={10}
+                        placeholder="Kamida 10 belgi"
                         aria-invalid={!!error}
                         className={pillInputClass({ hasError: !!error, trailingIcon: true })}
                         value={form.ownerPassword}

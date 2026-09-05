@@ -173,7 +173,9 @@ export class UsersService {
   // tekshiruvi orqali aniqlaydi.
   async findAllByEmail(email: string): Promise<User[]> {
     return this.withBypass((m) =>
-      m.getRepository(User).find({ where: { email: email.trim().toLowerCase() } }),
+      m
+        .getRepository(User)
+        .find({ where: { email: email.trim().toLowerCase() } }),
     );
   }
 
@@ -188,6 +190,25 @@ export class UsersService {
 
   async validatePassword(user: User, password: string): Promise<boolean> {
     return bcrypt.compare(password, user.passwordHash);
+  }
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L12). Login javob VAQTI
+  // foydalanuvchi bor-yo'qligini oshkor qilardi: email topilmasa
+  // `bcrypt.compare` UMUMAN chaqirilmasdi (javob ~2 ms), topilsa esa
+  // cost=12 hash solishtiruvi bo'lardi (~250 ms). Ya'ni xabar bir xil
+  // ("Email yoki parol noto'g'ri") bo'lsa ham, sekundomer bilan
+  // qaysi emaillar tizimda borligini ro'yxatlash mumkin edi — bu
+  // maqsadli fishing va parol tanlash uchun tayyor ro'yxat.
+  //
+  // Yechim: nomzod topilmaganda ham xuddi shu narxdagi bitta
+  // solishtiruv bajariladi. Hash qiymati sir emas (u hech qachon
+  // to'g'ri kelmaydigan tasodifiy satrdan olingan) — muhimi cost
+  // omili haqiqiy parollarniki bilan bir xil (12).
+  private static readonly DUMMY_PASSWORD_HASH =
+    '$2b$12$SdQs5TyWIFKvOBxUYCrmPuIzPexkx6q1hHUmpXfTAfOYqXXOMT28u';
+
+  async burnPasswordComparison(password: string): Promise<void> {
+    await bcrypt.compare(password, UsersService.DUMMY_PASSWORD_HASH);
   }
 
   // 🔴 Token bekor qilish (2026-09-05). HAR BIR autentifikatsiyalangan
@@ -238,6 +259,30 @@ export class UsersService {
   // chaqirishi SHART, aks holda o'zgarish 15 soniyagacha ko'rinmaydi.
   private invalidateAuthState(userId: string): void {
     this.authStateCache.delete(userId);
+  }
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L9). Tizimda "chiqish"
+  // faqat FRONTEND amali edi: token localStorage'dan o'chirilardi,
+  // lekin serverda hamon 8 soat amal qilardi. Umumiy kompyuterdan
+  // chiqqan xodimning tokeni brauzer tarixidan/keshidan olinsa yoki
+  // xodim tokeni allaqachon o'g'irlangan bo'lsa — "chiqdim" degani
+  // hech narsani anglatmasdi.
+  //
+  // `token_version` mexanizmi allaqachon mavjud (parol almashtirish va
+  // bloklashda ishlatiladi) — chiqish ham shuni oshiradi, ya'ni o'sha
+  // foydalanuvchining BARCHA tokenlari (boshqa qurilmalardagisi ham)
+  // darhol kuchini yo'qotadi. "Barcha qurilmalardan chiqish" alohida
+  // funksiya sifatida kerak emas: chiqish allaqachon shunday ishlaydi
+  // — bu ataylab tanlangan, xavfsizroq standart.
+  //
+  // Bypass shart: chaqiruv `/auth/logout` dan, ya'ni tenant konteksti
+  // o'rnatilmagan holatda ham bo'lishi mumkin (platforma admini
+  // `tenant_id IS NULL` — hech qanday tenant siyosatiga tushmaydi).
+  async revokeSessions(userId: string): Promise<void> {
+    await this.withBypass(async (m) => {
+      await m.getRepository(User).increment({ id: userId }, 'tokenVersion', 1);
+    });
+    this.invalidateAuthState(userId);
   }
 
   async listByTenant(tenantId: string): Promise<User[]> {

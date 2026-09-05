@@ -8,8 +8,7 @@ import { Repository } from 'typeorm';
 import { Tenant, TenantPlan, TenantStatus } from './entities/tenant.entity';
 import { Property } from '../properties/entities/property.entity';
 import { AccountingService } from '../accounting/accounting.service';
-
-const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+import { checkSubdomain } from '../../common/validators/subdomain.validator';
 
 @Injectable()
 export class TenantsService {
@@ -28,10 +27,14 @@ export class TenantsService {
     roomsCountHint?: string;
   }): Promise<{ tenant: Tenant; property: Property }> {
     const subdomain = params.subdomain.trim().toLowerCase();
-    if (!SUBDOMAIN_REGEX.test(subdomain)) {
-      throw new ConflictException(
-        "Subdomain faqat kichik lotin harflari, raqamlar va tire (-) dan iborat bo'lishi kerak",
-      );
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M10). Tekshiruv `checkSubdomain`
+    // ga ko'chirildi: format bilan birga BAND QILINGAN xizmat nomlari
+    // (`www`, `api`, `admin`, `mail` ...) ham rad etiladi. Bu yerda ham
+    // (nafaqat DTO'da) — chunki yozuvning yagona yo'li shu metod, va
+    // uni DTO'siz chaqiradigan kelajakdagi kod ham himoyalangan bo'lsin.
+    const subdomainCheck = checkSubdomain(subdomain);
+    if (!subdomainCheck.ok) {
+      throw new ConflictException(subdomainCheck.message);
     }
 
     const existing = await this.tenantRepo.findOneBy({ subdomain });

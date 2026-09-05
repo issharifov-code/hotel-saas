@@ -67,7 +67,8 @@ export class AgencyCommissionsService {
     @InjectRepository(AgencyCommissionPayment)
     private readonly paymentRepo: Repository<AgencyCommissionPayment>,
     @InjectRepository(Agency) private readonly agencyRepo: Repository<Agency>,
-    @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
     private readonly accountingService: AccountingService,
   ) {}
 
@@ -88,10 +89,18 @@ export class AgencyCommissionsService {
     const commissionRepo = manager
       ? manager.getRepository(AgencyCommission)
       : this.commissionRepo;
-    const agencyRepo = manager ? manager.getRepository(Agency) : this.agencyRepo;
+    const agencyRepo = manager
+      ? manager.getRepository(Agency)
+      : this.agencyRepo;
 
+    // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L11). Ilgari bu qidiruv
+    // faqat `bookingId` bo'yicha edi — tenant/mulk filtri yo'q. RLS
+    // ambient kontekst bilan buni baribir to'sardi, lekin bu metod
+    // `manager` (tashqi tranzaksiya) bilan ham chaqiriladi, ya'ni
+    // himoya chaqiruvchining kontekstiga bog'liq bo'lib qolardi.
+    // Filtr endi so'rovning o'zida — ikkinchi qatlam sifatida.
     const existing = await commissionRepo.findOne({
-      where: { bookingId: booking.id },
+      where: { bookingId: booking.id, tenantId, propertyId },
     });
     if (existing) return existing;
 

@@ -23,7 +23,7 @@ describe('AuthController (HTTP)', () => {
   let app: INestApplication;
   let jwtService: JwtService;
   let authService: { registerTenant: jest.Mock; login: jest.Mock };
-  let usersService: { findById: jest.Mock };
+  let usersService: { findById: jest.Mock; revokeSessions: jest.Mock };
   let tenantsService: { findById: jest.Mock };
 
   beforeAll(async () => {
@@ -36,6 +36,7 @@ describe('AuthController (HTTP)', () => {
     // holati beriladi; bekor qilishning o'zi jwt.strategy.spec.ts da.
     usersService = {
       findById: jest.fn(),
+      revokeSessions: jest.fn().mockResolvedValue(undefined),
       getAuthState: jest.fn().mockResolvedValue(ACTIVE_AUTH_STATE),
     };
     tenantsService = { findById: jest.fn() };
@@ -104,6 +105,30 @@ describe('AuthController (HTTP)', () => {
       expect(authService.login).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'a@b.com' }),
       );
+    });
+  });
+
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, L9). Chiqish endi serverda ham
+  // ta'sir qiladi — `token_version` oshiriladi.
+  describe('POST /auth/logout', () => {
+    it("Authorization header bo'lmasa 401 qaytaradi", async () => {
+      await request(app.getHttpServer()).post('/auth/logout').expect(401);
+      expect(usersService.revokeSessions).not.toHaveBeenCalled();
+    });
+
+    it("to'g'ri token bilan sessiyalarni bekor qiladi va 204 qaytaradi", async () => {
+      const token = jwtService.sign({
+        sub: 'u1',
+        tenantId: 't1',
+        isPlatformAdmin: false,
+      });
+
+      await request(app.getHttpServer())
+        .post('/auth/logout')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(204);
+
+      expect(usersService.revokeSessions).toHaveBeenCalledWith('u1');
     });
   });
 

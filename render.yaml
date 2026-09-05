@@ -12,14 +12,34 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
+    # 🔴 XAVFSIZLIK AUDITI (2026-09-05, Medium — M1). Migratsiya va seed
+    # ilgari `buildCommand` ichida ishlardi. Bu ikki muammoni bergan:
+    #
+    #  1. Sxema YANGI KOD JONLI BO'LISHIDAN OLDIN o'zgarardi. Build
+    #     muvaffaqiyatli, lekin servis ko'tarilmasa — baza oldinga
+    #     migratsiya qilingan, eski kod esa xizmat qilishda davom etardi,
+    #     va Render'da oldingi deploy'ga qaytish kodni tiklaydi, sxemani
+    #     emas.
+    #  2. Build muhiti ishlab chiqarish baza kredensiallariga va
+    #     platforma-admin sirlariga ega bo'lardi — ya'ni bog'liqlik
+    #     daraxtidagi zararli `postinstall` skripti to'liq DB-egasi
+    #     huquqi bilan ishga tushardi.
+    #
+    # `preDeployCommand` build'dan KEYIN, trafik yangi versiyaga
+    # o'tishidan OLDIN ishlaydi va yiqilsa deploy toza to'xtaydi.
     buildCommand: >-
       npm install -g pnpm@9.15.0 &&
       pnpm install --frozen-lockfile --prod=false &&
-      pnpm --filter api build &&
+      pnpm --filter api build
+    preDeployCommand: >-
       cd apps/api &&
       pnpm exec typeorm migration:run -d dist/database/data-source.js &&
       node dist/database/seed.js
     startCommand: node apps/api/dist/main.js
+    # `GET /api/version` ataylab autentifikatsiyasiz va yengil (kommit
+    # SHA + sxema timestamp). Render endi ko'tarilgan-u ishlamayotgan
+    # instansiyani aniqlay oladi.
+    healthCheckPath: /api/version
     envVars:
       - key: NODE_ENV
         value: production
@@ -55,9 +75,19 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN_SECONDS
         value: '28800'
-      # folioone.uz frontend'idan kelgan so'rovlarga ruxsat berish uchun.
+      # 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L3). Bu yerda
+      # `folioone.uz` turardi, sayt esa `usali.uz` da ishlaydi — ya'ni
+      # repo'dagi blueprint deploy qilingan holatga MOS EMAS edi
+      # (dashboard'da qo'lda o'zgartirilgan). Blueprint qayta
+      # qo'llanganda bu jimgina ishlab chiqarish sozlamasini buzardi.
+      #
+      # ESLATMA: SPA `/api/*` ni Render rewrite orqali chaqiradi, ya'ni
+      # so'rovlar same-origin va CORS ularga tegishli emas. Bu ro'yxat
+      # to'g'ridan-to'g'ri API'ga murojaat qiladigan boshqa manbalar
+      # uchun. Production'da bo'sh qoldirib bo'lmaydi — `main.ts`
+      # ishga tushishni to'xtatadi.
       - key: CORS_ORIGIN
-        value: https://folioone.uz,https://www.folioone.uz
+        value: https://usali.uz,https://www.usali.uz
       # Birinchi deploy'dan oldin Render dashboard'da qo'lda kiriting
       # (sync: false — qiymat repo'ga yozilmaydi).
       - key: PLATFORM_ADMIN_EMAIL

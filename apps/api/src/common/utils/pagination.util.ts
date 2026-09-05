@@ -19,13 +19,23 @@ export interface PaginationParams {
   take: number;
 }
 
+// Amaliy yuqori chegara: 10 000-sahifadan narisi haqiqiy foydalanish
+// emas (u yerga yetish uchun keyset pagination kerak bo'lardi).
+const MAX_PAGE = 10_000;
+
 export function parsePagination(
   page: string | undefined,
   pageSize: string | undefined,
   defaultPageSize = 50,
   maxPageSize = 200,
 ): PaginationParams {
-  const parsedPage = Math.max(1, parseInt(page ?? '1', 10) || 1);
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, Low — L8). `pageSize` cheklangan
+  // edi, `page` esa YO'Q: `?page=999999999` yuz milliardlab OFFSET beradi
+  // va PostgreSQL o'sha nuqtagacha skanerlaydi — arzon DoS.
+  const parsedPage = Math.min(
+    MAX_PAGE,
+    Math.max(1, parseInt(page ?? '1', 10) || 1),
+  );
   const parsedPageSize = Math.min(
     maxPageSize,
     Math.max(

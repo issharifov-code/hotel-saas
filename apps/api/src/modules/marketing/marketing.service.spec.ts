@@ -1,7 +1,12 @@
-import { MarketingService } from './marketing.service';
+import { MarketingService, normalizePhone } from './marketing.service';
 
 describe('MarketingService', () => {
-  function createService(opts: { existing?: Record<string, unknown> } = {}) {
+  function createService(
+    opts: {
+      existing?: Record<string, unknown>;
+      recentDuplicate?: Record<string, unknown> | null;
+    } = {},
+  ) {
     const saved: Record<string, unknown>[] = [];
     const repo = {
       create: jest.fn().mockImplementation((data: Record<string, unknown>) => ({
@@ -12,11 +17,14 @@ describe('MarketingService', () => {
         saved.push(entity);
         return Promise.resolve(entity);
       }),
-      find: jest
+      findAndCount: jest
         .fn()
         .mockResolvedValue([
-          { id: 'req-1', fullName: 'Ali', contacted: false },
+          [{ id: 'req-1', fullName: 'Ali', contacted: false }],
+          1,
         ]),
+      // Dedup qidiruvi — standart holatda takror yo'q.
+      findOne: jest.fn().mockResolvedValue(opts.recentDuplicate ?? null),
       update: jest.fn().mockResolvedValue(undefined),
       findOneBy: jest
         .fn()
@@ -36,6 +44,7 @@ describe('MarketingService', () => {
     expect(repo.create).toHaveBeenCalledWith({
       fullName: 'Ali Valiyev',
       phone: '+998901234567',
+      phoneNormalized: '901234567',
       email: null,
       note: null,
     });
@@ -54,17 +63,48 @@ describe('MarketingService', () => {
     expect(repo.create).toHaveBeenCalledWith({
       fullName: 'Nodira',
       phone: '901112233',
+      phoneNormalized: '901112233',
       email: 'nodira@example.com',
       note: "Ertaga qo'ng'iroq qiling",
     });
   });
 
-  it("barcha so'rovlarni yaratilgan vaqti bo'yicha kamayish tartibida qaytaradi", async () => {
-    const { service, repo } = createService();
-    const result = await service.listDemoRequests();
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M13)
+  it('24 soat ichidagi takroriy murojaatda yangi qator ochmaydi', async () => {
+    const existingRow = { id: 'req-old', fullName: 'Ali', contacted: false };
+    const { service, repo } = createService({ recentDuplicate: existingRow });
 
-    expect(repo.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' } });
-    expect(result).toHaveLength(1);
+    const result = await service.createDemoRequest({
+      fullName: 'Ali Valiyev',
+      phone: '+998 90 123 45 67',
+    });
+
+    // Xato EMAS — mavjud qator jimgina qaytariladi, aks holda xato
+    // xabari foydalanuvchini qayta-qayta yuborishga undardi.
+    expect(result).toBe(existingRow);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ phoneNormalized: '901234567' }),
+      }),
+    );
+  });
+
+  it("so'rovlarni sahifalab qaytaradi", async () => {
+    const { service, repo } = createService();
+    const result = await service.listDemoRequests('2', '25');
+
+    expect(repo.findAndCount).toHaveBeenCalledWith({
+      order: { createdAt: 'DESC' },
+      skip: 25,
+      take: 25,
+    });
+    expect(result).toEqual({
+      items: [{ id: 'req-1', fullName: 'Ali', contacted: false }],
+      total: 1,
+      page: 2,
+      pageSize: 25,
+    });
   });
 
   it('markContacted holatni yangilaydi va yangilangan yozuvni qaytaradi', async () => {
@@ -78,5 +118,22 @@ describe('MarketingService', () => {
       { contacted: true },
     );
     expect(result.contacted).toBe(true);
+  });
+});
+
+describe('normalizePhone', () => {
+  it('bir xil raqamning turli yozuvlarini bitta kalitga keltiradi', () => {
+    for (const variant of [
+      '+998901234567',
+      '998 90 123 45 67',
+      '(90) 123-45-67',
+      '901234567',
+    ]) {
+      expect(normalizePhone(variant)).toBe('901234567');
+    }
+  });
+
+  it('boshqa raqamlarni birlashtirib yubormaydi', () => {
+    expect(normalizePhone('901234567')).not.toBe(normalizePhone('901234568'));
   });
 });

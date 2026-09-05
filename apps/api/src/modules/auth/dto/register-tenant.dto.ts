@@ -2,21 +2,23 @@ import {
   IsEmail,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { IsStrongPassword } from '../../../common/validators/password.validator';
+import { IsAvailableSubdomain } from '../../../common/validators/subdomain.validator';
 
 export class RegisterTenantDto {
   @IsString()
   @MinLength(2)
   tenantName: string;
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M10). Ilgari faqat format
+  // tekshirilardi — `www`, `api`, `admin` kabi xizmat nomlarini ochiq
+  // ro'yxatdan o'tish orqali band qilib olish mumkin edi. Sabablar
+  // `common/validators/subdomain.validator.ts` da.
   @IsString()
-  @Matches(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, {
-    message:
-      "subdomain faqat kichik lotin harflari, raqamlar va tire (-) dan iborat bo'lishi kerak",
-  })
+  @IsAvailableSubdomain()
   subdomain: string;
 
   @IsOptional()
@@ -26,8 +28,12 @@ export class RegisterTenantDto {
   @IsEmail()
   ownerEmail: string;
 
+  // 🔴 XAVFSIZLIK AUDITI (2026-09-05, M10). Bu tizimdagi ENG NOZIK
+  // parol: tenant egasi butun mehmonxona ma'lumotiga, moliyaga va
+  // xodimlarga to'liq kirish huquqiga ega. Ilgari `@MinLength(8)`
+  // yagona to'siq edi.
   @IsString()
-  @MinLength(8, { message: "Parol kamida 8 belgidan iborat bo'lishi kerak" })
+  @IsStrongPassword()
   ownerPassword: string;
 
   @IsString()
