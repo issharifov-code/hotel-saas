@@ -216,3 +216,119 @@ describe('AccountingService.postJournalEntry', () => {
     expect(fakeEntryRepo.save).not.toHaveBeenCalled();
   });
 });
+
+// 🔬 `postSimpleEntry` — IKKI QATORLI YOZUVNING YO'NALISHI (2026-09-05).
+//
+// NIMA UCHUN QO'SHILDI. Qoplama o'lchovida `accounting.service.ts`
+// 46% edi va qoplanmagan qismning eng qimmatli bo'lagi shu metod:
+// butun tizimdagi HAR BIR moliyaviy harakat (to'lov, xona narxi,
+// POS buyurtmasi, ombor chiqimi, maosh) oxir-oqibat shu yerdan
+// o'tadi.
+//
+// Ikki nozik qoida bor va ikkalasi ham test bilan qo'riqlanmagan edi:
+//
+//   1. NOLGA YAQIN SUMMA — yozuv umuman yozilmaydi (`null`). Bepul
+//      namuna yoki 0-narxli tuzatish uchun bo'sh provodka ochish
+//      kitobni faqat ifloslantiradi.
+//
+//   2. MANFIY SUMMA — debet va kredit ALMASHADI. Masalan xona narxi
+//      keyin kamaytirilsa, tuzatish "teskari" yo'nalishda yozilishi
+//      kerak. Almashish bo'lmasa daromad kamayish o'rniga OSHARDI.
+describe('AccountingService.postSimpleEntry — yo\'nalish va nol summa', () => {
+  function createService() {
+    const accounts: Record<string, { id: string }> = {
+      guest_ledger_ar: { id: 'acc-ar' },
+      room_revenue: { id: 'acc-revenue' },
+    };
+    const accountRepo = {
+      findOne: jest.fn(({ where }: { where: { systemKey: string } }) =>
+        Promise.resolve(accounts[where.systemKey] ?? null),
+      ),
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          count: jest.fn().mockImplementation(({ where }) =>
+            Promise.resolve((where.id?._value ?? []).length),
+          ),
+        }),
+      },
+    };
+    const fakeLineRepo = { create: (l: unknown) => l };
+    const fakeEntryRepo: Record<string, unknown> = {
+      create: (data: unknown) => data,
+      save: jest.fn((entry: unknown) => Promise.resolve(entry)),
+    };
+    fakeEntryRepo.manager = {
+      getRepository: jest.fn((entity: unknown) =>
+        (entity as { name?: string })?.name === 'JournalEntry' ? fakeEntryRepo : fakeLineRepo,
+      ),
+    };
+    const service = new AccountingService(
+      accountRepo as never,
+      fakeEntryRepo as never,
+      {} as never,
+    );
+    return { service, fakeEntryRepo, accountRepo };
+  }
+
+  const base = {
+    tenantId: 't1',
+    propertyId: 'p1',
+    description: 'Xona narxi',
+    sourceModule: 'invoicing' as const,
+    debitSystemKey: 'guest_ledger_ar',
+    creditSystemKey: 'room_revenue',
+  };
+
+  it("musbat summada debet va kredit berilgan tartibda yoziladi", async () => {
+    const { service } = createService();
+    const entry = (await service.postSimpleEntry({ ...base, amount: '150000' })) as unknown as {
+      lines: { accountId: string; debit: string; credit: string }[];
+    };
+
+    expect(entry.lines).toEqual([
+      expect.objectContaining({ accountId: 'acc-ar', debit: '150000.00', credit: '0.00' }),
+      expect.objectContaining({ accountId: 'acc-revenue', debit: '0.00', credit: '150000.00' }),
+    ]);
+  });
+
+  // 🔴 MANFIY SUMMA — YO'NALISH TESKARI. Almashish bo'lmasa,
+  // narx kamaytirilganda daromad kamayish o'rniga oshib ketardi.
+  it('manfiy summada debet va kredit almashadi', async () => {
+    const { service } = createService();
+    const entry = (await service.postSimpleEntry({ ...base, amount: '-40000' })) as unknown as {
+      lines: { accountId: string; debit: string; credit: string }[];
+    };
+
+    expect(entry.lines).toEqual([
+      expect.objectContaining({ accountId: 'acc-revenue', debit: '40000.00', credit: '0.00' }),
+      expect.objectContaining({ accountId: 'acc-ar', debit: '0.00', credit: '40000.00' }),
+    ]);
+  });
+
+  it.each(['0', '0.004', '-0.004'])(
+    "nolga yaqin summa (%s) uchun umuman yozuv ochilmaydi",
+    async (amount) => {
+      const { service, fakeEntryRepo } = createService();
+      const result = await service.postSimpleEntry({ ...base, amount });
+      expect(result).toBeNull();
+      expect(fakeEntryRepo.save).not.toHaveBeenCalled();
+    },
+  );
+
+  // Chegaraning narigi tomoni: bir tiyin ham yozilishi kerak.
+  it("bir tiyinlik summa ham yoziladi", async () => {
+    const { service, fakeEntryRepo } = createService();
+    await service.postSimpleEntry({ ...base, amount: '0.01' });
+    expect(fakeEntryRepo.save).toHaveBeenCalled();
+  });
+
+  // Hisoblar rejasida tizim hisobi topilmasa — bu sozlash xatosi,
+  // va u JIM O'TMASLIGI kerak: aks holda operatsiya "muvaffaqiyatli"
+  // ko'rinadi, lekin kitobda izi qolmaydi.
+  it("tizim hisobi topilmasa aniq xato beriladi", async () => {
+    const { service } = createService();
+    await expect(
+      service.postSimpleEntry({ ...base, creditSystemKey: 'yoq_hisob', amount: '100' }),
+    ).rejects.toThrow(/topilmadi/);
+  });
+});

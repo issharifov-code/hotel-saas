@@ -1246,3 +1246,164 @@ describe('BookingsService.cancel — no-show bronni bekor qilib bolmaydi', () =>
     expect(bookingRepo.save).not.toHaveBeenCalled();
   });
 });
+
+// 🔬 CHECK-IN / CHECK-OUT — HOLAT O'TISHLARI VA YON TA'SIRLAR (2026-09-05).
+//
+// NIMA UCHUN QO'SHILDI. Bu ikki metod front-desk ishining o'zagi va
+// ularning har biri TO'RTTA boshqa narsani harakatga keltiradi:
+// bronning holati, XONANING holati, mehmon folio'si va (check-out'da)
+// tozalash navbati hamda turagent komissiyasi.
+//
+// Xavf shundaki, bu yon ta'sirlar bir-biridan mustaqil chaqiriladi —
+// biri tushib qolsa boshqalari baribir bajariladi va tizim ZID
+// holatga tushadi:
+//
+//   * folio ochilmasa — mehmon turadi, lekin hisobi yo'q, check-out'da
+//     to'lov undirilmaydi;
+//   * xona holati yangilanmasa — bo'sh xona "band" bo'lib ko'rinadi
+//     (yoki bandi "bo'sh") va ikkinchi bron kiritiladi;
+//   * check-out'da tozalash navbatga qo'yilmasa — xona iflos holicha
+//     keyingi mehmonga beriladi.
+//
+// Integratsion "kunlik oqim" testi baxtli yo'lni tekshiradi; bu yerda
+// esa RAD ETISH shoxlari va yon ta'sirlarning aynan qaysi holatda
+// chaqirilishi (va chaqirilMASLIGI) qo'riqlanadi.
+describe('BookingsService — check-in va check-out', () => {
+  function createService(booking: Record<string, unknown>) {
+    const bookingRepo = {
+      findOne: jest.fn().mockResolvedValue(booking),
+      save: jest.fn((b: unknown) => Promise.resolve(b)),
+      createQueryBuilder: jest.fn(() => ({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      })),
+    };
+    const roomRepo = { update: jest.fn() };
+    const housekeepingService = {
+      assertRoomCleanForCheckIn: jest.fn().mockResolvedValue(undefined),
+      markDirtyAndQueueTask: jest.fn().mockResolvedValue(undefined),
+    };
+    const invoicingService = {
+      openFolio: jest.fn().mockResolvedValue({ id: 'inv1' }),
+      issueFolio: jest.fn().mockResolvedValue({ id: 'inv1' }),
+    };
+    const agencyCommissionsService = { accrueForBooking: jest.fn() };
+    const service = new BookingsService(
+      bookingRepo as never,
+      roomRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      housekeepingService as never,
+      invoicingService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      agencyCommissionsService as never,
+      {} as never,
+    );
+    return {
+      service,
+      bookingRepo,
+      roomRepo,
+      housekeepingService,
+      invoicingService,
+      agencyCommissionsService,
+    };
+  }
+
+  const booking = (status: BookingStatus) => ({
+    id: 'b1',
+    roomId: 'r1',
+    status,
+    checkIn: '2026-09-05',
+    checkOut: '2026-09-07',
+    totalAmount: '1000000.00',
+  });
+
+  describe('check-in', () => {
+    it("tasdiqlangan bronda xona band bo'ladi va folio ochiladi", async () => {
+      const { service, roomRepo, invoicingService } = createService(
+        booking(BookingStatus.CONFIRMED),
+      );
+
+      const saved = await service.checkIn('t1', 'p1', 'b1');
+
+      expect((saved as unknown as { status: string }).status).toBe(BookingStatus.CHECKED_IN);
+      expect(roomRepo.update).toHaveBeenCalledWith({ id: 'r1' }, { status: RoomStatus.OCCUPIED });
+      expect(invoicingService.openFolio).toHaveBeenCalled();
+    });
+
+    it.each([
+      [BookingStatus.PENDING],
+      [BookingStatus.CHECKED_IN],
+      [BookingStatus.CHECKED_OUT],
+      [BookingStatus.CANCELLED],
+      [BookingStatus.NO_SHOW],
+    ])("%s holatidagi bronni check-in qilib bo'lmaydi", async (status) => {
+      const { service, roomRepo, invoicingService } = createService(booking(status));
+
+      await expect(service.checkIn('t1', 'p1', 'b1')).rejects.toBeInstanceOf(ConflictException);
+      // Rad etilganda HECH QANDAY yon ta'sir bo'lmasligi kerak.
+      expect(roomRepo.update).not.toHaveBeenCalled();
+      expect(invoicingService.openFolio).not.toHaveBeenCalled();
+    });
+
+    // 🔴 TOZALANMAGAN XONA CHECK-IN'NI TO'XTATADI — va to'xtatish
+    // XONA HOLATI O'ZGARTIRILISHIDAN OLDIN bo'lishi kerak, aks holda
+    // xona "band" bo'lib qolib, bron esa hamon "confirmed" bo'lardi.
+    it("tozalanmagan xonada check-in to'xtaydi va hech narsa o'zgarmaydi", async () => {
+      const { service, roomRepo, invoicingService, housekeepingService } = createService(
+        booking(BookingStatus.CONFIRMED),
+      );
+      housekeepingService.assertRoomCleanForCheckIn.mockRejectedValue(
+        new ConflictException('Xona hali tozalanmagan'),
+      );
+
+      await expect(service.checkIn('t1', 'p1', 'b1')).rejects.toBeInstanceOf(ConflictException);
+      expect(roomRepo.update).not.toHaveBeenCalled();
+      expect(invoicingService.openFolio).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('check-out', () => {
+    it("xona bo'shaydi, iflos deb belgilanadi va folio qat'iylashadi", async () => {
+      const { service, roomRepo, housekeepingService, invoicingService, agencyCommissionsService } =
+        createService(booking(BookingStatus.CHECKED_IN));
+
+      const saved = await service.checkOut('t1', 'p1', 'b1');
+
+      expect((saved as unknown as { status: string }).status).toBe(BookingStatus.CHECKED_OUT);
+      expect(roomRepo.update).toHaveBeenCalledWith({ id: 'r1' }, { status: RoomStatus.AVAILABLE });
+      expect(housekeepingService.markDirtyAndQueueTask).toHaveBeenCalledWith('t1', 'p1', 'r1');
+      expect(invoicingService.issueFolio).toHaveBeenCalled();
+      // Turagent komissiyasi ham aynan shu yerda hisoblanadi — xona
+      // daromadi bilan bir davrga tushishi uchun.
+      expect(agencyCommissionsService.accrueForBooking).toHaveBeenCalled();
+    });
+
+    it.each([
+      [BookingStatus.PENDING],
+      [BookingStatus.CONFIRMED],
+      [BookingStatus.CHECKED_OUT],
+      [BookingStatus.CANCELLED],
+    ])("%s holatidagi bronni check-out qilib bo'lmaydi", async (status) => {
+      const { service, roomRepo, invoicingService, agencyCommissionsService } =
+        createService(booking(status));
+
+      await expect(service.checkOut('t1', 'p1', 'b1')).rejects.toBeInstanceOf(ConflictException);
+      expect(roomRepo.update).not.toHaveBeenCalled();
+      expect(invoicingService.issueFolio).not.toHaveBeenCalled();
+      expect(agencyCommissionsService.accrueForBooking).not.toHaveBeenCalled();
+    });
+  });
+
+  it("mavjud bo'lmagan bron uchun aniq xato beriladi", async () => {
+    const { service, bookingRepo } = createService(booking(BookingStatus.CONFIRMED));
+    bookingRepo.findOne.mockResolvedValue(null);
+    await expect(service.checkIn('t1', 'p1', 'yoq')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
