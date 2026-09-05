@@ -153,7 +153,7 @@ export class FunctionSpacesService {
       notes: dto.notes ?? null,
       createdByUserId,
     });
-    return this.bookingRepo.save(booking);
+    return this.saveWithOverlapGuard(booking);
   }
 
   async updateBooking(
@@ -215,7 +215,42 @@ export class FunctionSpacesService {
     if (dto.totalAmount !== undefined) booking.totalAmount = dto.totalAmount;
     if (dto.notes !== undefined) booking.notes = dto.notes;
 
-    return this.bookingRepo.save(booking);
+    return this.saveWithOverlapGuard(booking);
+  }
+
+
+  /**
+   * 🔴 IKKI KARRA ZAL BRONIDAN HIMOYA — IKKINCHI QATLAM (2026-09-05).
+   *
+   * `assertSpaceAvailable` bandlikni SELECT bilan tekshiradi, lekin
+   * SELECT bilan INSERT orasida boshqa so'rov o'sha zalni yozib
+   * ulgurishi mumkin (READ COMMITTED). Integratsion testda bu ataylab
+   * takrorlandi: bir vaqtda yuborilgan, qisman ustma-ust ikkita
+   * tadbir ikkalasi ham yozildi.
+   *
+   * Haqiqiy kafolatni baza beradi —
+   * `function_space_bookings_no_overlap` cheklovi (migratsiya
+   * 1790100000000). Bu yerdagi vazifa faqat baza xatosini
+   * foydalanuvchi tushunadigan xabarga aylantirish, aks holda xodim
+   * 500 va "Ichki xatolik" ko'rardi.
+   */
+  private async saveWithOverlapGuard(
+    booking: FunctionSpaceBooking,
+  ): Promise<FunctionSpaceBooking> {
+    try {
+      return await this.bookingRepo.save(booking);
+    } catch (err) {
+      const e = err as { code?: string; constraint?: string } | null;
+      if (
+        e?.code === '23P01' &&
+        e?.constraint === 'function_space_bookings_no_overlap'
+      ) {
+        throw new ConflictException(
+          "Zal shu vaqt oralig'ida band (boshqa tadbir shu payt yaratildi)",
+        );
+      }
+      throw err;
+    }
   }
 
   // Vaqt oralig'i to'qnashuvi: mavjud.start < yangi.end VA mavjud.end > yangi.start
