@@ -151,20 +151,54 @@ const NAV_SECTIONS: NavSection[] = [
 //
 // Obuna va to'lovlar shu yerda qoldi: u mehmonxonaning moliyaviy
 // hisobotlari emas, tenant'ning O'Z SaaS obunasi — ya'ni hisob boshqaruvi.
-const ADMIN_ITEMS: LeafNavItem[] = [
+// 🔴 2026-09-05 (foydalanuvchi fikri): ro'yxat GURUHLARGA bo'lindi.
+//
+// Ilgari bu yerda beshta havola bir tekis turardi va ular orasidagi
+// mantiqiy farq ko'rinmasdi: "Mehmonxona sozlamalari" bilan "Kanal
+// menejeri" bir xil og'irlikda ko'rinardi, holbuki biri tizimni bir
+// marta sozlash, ikkinchisi esa sotuv kanali.
+//
+// Guruh sarlavhalari ATAYLAB kichik va kulrang — ular yo'l ko'rsatadi,
+// lekin havolalarning o'zidan diqqatni tortib olmaydi.
+//
+// 🔴 FAQAT MAVJUD SAHIFALAR. Foydalanuvchi so'ragan ro'yxatda hali
+// qurilmagan bo'limlar ham bor edi (Integratsiyalar, Soliqlar,
+// Website Builder, Price Monitor, Rate Match va h.k.). Ular ataylab
+// QO'SHILMADI: bosilganda hech qayerga olib bormaydigan havola —
+// menyudagi eng yomon narsa. Sahifa qurilganda shu yerga qo'shiladi.
+//
+// Shu sababdan "Revenue" guruhi ham hozircha yo'q: uning ikkala
+// bo'limi (Narxlar monitoringi, Narxlarni taqqoslash) hali mavjud
+// emas, ya'ni guruh bo'sh qolardi.
+interface AdminGroup {
+  key: string;
+  label: string;
+  items: LeafNavItem[];
+}
+
+const ADMIN_GROUPS: AdminGroup[] = [
   {
-    to: '/property-settings',
-    label: 'Mehmonxona sozlamalari',
-    moduleKey: 'tenant_settings',
+    key: 'sozlamalar',
+    label: 'Sozlamalar',
+    items: [
+      { to: '/property-settings', label: 'Mehmonxona', moduleKey: 'tenant_settings' },
+      { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
+      { to: '/rooms', label: 'Xonalar va xona turlari', moduleKey: 'booking' },
+      { to: '/staff?tab=roles', label: 'Foydalanuvchilar va rollar', moduleKey: 'users_roles' },
+      // 2026-09-04 (foydalanuvchi fikri): "Xabarlar" — mehmonlarga
+      // yuboriladigan xabar shablonlari va jo'natish tarixi, ya'ni
+      // KUNDALIK ish emas, bir marta sozlab qo'yiladigan narsa.
+      { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
+    ],
   },
-  { to: '/billing', label: "Obuna va to'lovlar", moduleKey: 'billing' },
-  // 2026-09-04 (foydalanuvchi fikri): "Xabarlar" — mehmonlarga yuboriladigan
-  // xabar shablonlari va jo'natish tarixi, ya'ni KUNDALIK ish emas, bir marta
-  // sozlab qo'yiladigan narsa. Shuning uchun "Profillar" ro'yxatidan chiqib,
-  // shu sozlamalar menyusiga o'tdi.
-  { to: '/messaging', label: 'Xabarlar', moduleKey: 'guest_crm' },
+  {
+    key: 'kanallar',
+    label: 'Sotuv kanallari',
+    items: [
+      { to: '/channel-manager', label: 'Kanal menejeri', moduleKey: 'booking' },
+    ],
+  },
 ];
-const ROLES_ITEM: LeafNavItem = { to: '/staff?tab=roles', label: 'Rollarni boshqarish', moduleKey: 'users_roles' };
 
 // Dropdown-guruh tugmasi uchun pastga qaragan strelka — ochiq holatda 180°
 // aylanib, yuqoriga qaraydi (odatiy "dropdown ochiq" ishorasi).
@@ -369,12 +403,18 @@ export function AppLayout({
   // "Xodimlar" moduleKey'siz — StaffPage'ning o'zi (avvalgi Sozlamalar/gear
   // tugmasidagi kabi) barcha tizimga kirgan foydalanuvchilarga ochiq, faqat
   // tahrirlash amallari `can('users_roles', ...)` bilan cheklangan.
-  const visibleAdminItems = ADMIN_ITEMS.filter((item) => !item.moduleKey || can(item.moduleKey, 'view'));
-  const showRolesItem = !ROLES_ITEM.moduleKey || can(ROLES_ITEM.moduleKey, 'view');
-  const hasAdminMenu = visibleAdminItems.length > 0 || showRolesItem;
-  const adminMenuActive =
-    visibleAdminItems.some((item) => isRouteActive(location.pathname, item.to)) ||
-    (showRolesItem && isRouteActive(location.pathname, ROLES_ITEM.to));
+  // Guruhlar ruxsatlar bo'yicha filtrlanadi va BO'SH QOLGANI butunlay
+  // tushib qoladi — aks holda faqat sarlavhasi qolgan "boshi kesilgan"
+  // guruh ko'rinardi (masalan `booking` ruxsati yo'q xodimda "Sotuv
+  // kanallari" yolg'iz sarlavha bo'lib turardi).
+  const visibleAdminGroups = ADMIN_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.moduleKey || can(item.moduleKey, 'view')),
+  })).filter((group) => group.items.length > 0);
+  const hasAdminMenu = visibleAdminGroups.length > 0;
+  const adminMenuActive = visibleAdminGroups.some((group) =>
+    group.items.some((item) => isRouteActive(location.pathname, item.to)),
+  );
 
   // Breadcrumb (2026-09, foydalanuvchi fikri — OPERA Cloud'dagi
   // "Dashboard / Client Relations / Profiles / Manage Profile" +
@@ -1030,7 +1070,23 @@ export function AppLayout({
             qoplaydi va undagi hamburgerga yetib bo'lmaydi. `lg:`+ da kontent
             o'ngga surilgani uchun header'dagi tugma ko'rinib turadi va yagona
             almashtirgich bo'lib qoladi. */}
-        <div className="flex h-[53.34px] shrink-0 items-center gap-1 border-b border-slate-200 pl-3 pr-3 pt-[7.62px]">
+        <div className="relative z-10 flex h-[53.34px] shrink-0 items-center gap-1 border-b border-slate-200 bg-slate-100 pl-3 pr-3 pt-[7.62px] shadow-[0_2px_5px_rgba(15,23,42,0.07)]">
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): band ichida, tepadan
+              7.62px pastda ajratuvchi chiziq.
+              
+              NIMA UCHUN AYNAN 7.62px. Sahifaning oltin chizig'i shu
+              balandlikda va uning ostidan navy panel boshlanadi. Panel
+              ochilganda u sahifaning chap qismini qoplaydi, ya'ni oltin
+              chiziq ko'rinmay qoladi — bu chiziq esa aynan o'sha
+              chegarada turadi va ikki tomon bir sathda davom etayotgandek
+              ko'rinadi.
+              
+              `absolute` — band flex konteyner, oddiy `border-t` esa
+              uning eng chetiga (y=0) tushardi va bu tekislikni buzardi. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-[7.62px] border-t border-slate-200"
+            aria-hidden="true"
+          />
           {/* 🔴 2026-09-05 (foydalanuvchi fikri): panel tepasidagi band
               ilgari BO'SH edi. Endi u yerda mahsulot brendi turadi —
               "bu qanday tizim?" degan savolga javob beradigan yagona joy,
@@ -1132,16 +1188,24 @@ export function AppLayout({
               chizig'ining o'zi yetarli. */}
           {hasAdminMenu && (
             <div className="mt-1 border-t border-slate-200 pt-2 lg:mt-0 lg:border-t-0 lg:pt-0">
-              {visibleAdminItems.length > 0 && (
-                <>
-                  {/* 🔴 2026-09-05 (foydalanuvchi fikri): "ADMINISTRATSIYA"
-                      sarlavhasi olib tashlandi. Ro'yxatning o'zi (Mehmonxona
-                      sozlamalari, Obuna va to'lovlar, ...) nima ekanini
-                      aytib turibdi, ustidagi ajratuvchi chiziq esa uni
-                      yuqoridagi modullardan allaqachon ajratadi — yorliq
-                      uchinchi bo'lib takrorlanardi. */}
+              {/* 🔴 2026-09-05 (foydalanuvchi fikri): guruhlar ajratuvchi
+                  chiziq bilan ajratiladi. Chiziq guruhlar ORASIGA qo'yiladi,
+                  har birining ustiga emas — birinchi guruhning ustida
+                  panel sarlavhasining chizig'i allaqachon bor va ikkinchi
+                  chiziq unga yopishib qolardi (aynan shu nuqson
+                  2026-09-05 da bir marta tuzatilgan). */}
+              {visibleAdminGroups.map((group, index) => (
+                <div
+                  key={group.key}
+                  className={
+                    index > 0 ? 'mt-2 border-t border-slate-200 pt-2' : undefined
+                  }
+                >
+                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    {group.label}
+                  </p>
                   <div className="space-y-0.5">
-                    {visibleAdminItems.map((item) => (
+                    {group.items.map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}
@@ -1152,17 +1216,8 @@ export function AppLayout({
                       </NavLink>
                     ))}
                   </div>
-                </>
-              )}
-              {showRolesItem && (
-                <NavLink
-                  to={ROLES_ITEM.to}
-                  onClick={closeDrawer}
-                  className={({ isActive }) => drawerLinkClass(isActive)}
-                >
-                  {ROLES_ITEM.label}
-                </NavLink>
-              )}
+                </div>
+              ))}
             </div>
           )}
 
