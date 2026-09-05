@@ -33,7 +33,7 @@ import {
 import { InsightDismissal } from './entities/insight-dismissal.entity';
 import { PaginationParams } from '../../common/utils/pagination.util';
 
-// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar paneli.
+// "Folio One Intelligence" — qoidaga asoslangan tavsiyalar paneli.
 //
 // NIMA UCHUN LLM EMAS (2026-09-04, foydalanuvchi qarori): bu yerdagi
 // xulosalar moliyaviy qarorlarga ta'sir qiladi, shuning uchun ular

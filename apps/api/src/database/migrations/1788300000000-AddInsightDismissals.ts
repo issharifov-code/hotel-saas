@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// "FolioOne Intelligence" panelida foydalanuvchi yopgan tavsiyalar.
+// "Folio One Intelligence" panelida foydalanuvchi yopgan tavsiyalar.
 //
 // UNIQUE (user_id, property_id, insight_id) — bir foydalanuvchi bir mulkdagi
 // bir tavsiyani faqat bir marta yopib turadi. Qayta yopilganda yangi qator
