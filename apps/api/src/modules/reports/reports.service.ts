@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
   In,
+  LessThan,
   LessThanOrEqual,
   MoreThanOrEqual,
   MoreThan,
@@ -255,6 +256,34 @@ function daysBetween(startIso: string, endIso: string): number {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+// 🔴 2026-09-05 (kod auditi): bandlik 100% dan oshib ketardi.
+//
+// Sabab: bron DAVR ICHIDA check-in qilingan bo'lsa, uning BUTUN turishi
+// (masalan 30 kecha) hisobga qo'shilardi, maxraj esa faqat davr uzunligi
+// (masalan 7 kun) edi. 10 xonali mehmonxonada davr oxirida boshlangan
+// uchta 30 kunlik bron 128.57% beradi.
+//
+// Yechim: bronning turishini davr oynasiga QIRQAMIZ va faqat oyna
+// ichidagi kechalarni sanaymiz. Daromad ham xuddi shu nisbatda bo'linadi
+// — aks holda ADR (daromad/kecha) sun'iy ravishda oshib ketardi va
+// izohda va'da qilingan "RevPAR = ADR x Bandlik%" ayniyati buzilardi.
+//
+// Oyna yarim ochiq: [windowStart, windowEnd) — ya'ni `windowEnd` kunining
+// kechasi hisobga kirmaydi (checkOut kuni uchun to'lov olinmaganidek).
+function nightsInWindow(
+  checkIn: string,
+  checkOut: string,
+  windowStart: string,
+  windowEnd: string,
+): number {
+  const start = checkIn > windowStart ? checkIn : windowStart;
+  const end = checkOut < windowEnd ? checkOut : windowEnd;
+  if (end <= start) return 0;
+  return Math.round(
+    (Date.parse(end) - Date.parse(start)) / 86_400_000,
+  );
 }
 
 // Budjet ustunlari `numeric` — TypeORM ularni matn sifatida qaytaradi, va
@@ -555,8 +584,13 @@ export class ReportsService {
     year: number,
   ): Promise<BudgetPerformanceDto> {
     const yearStart = `${year}-01-01`;
-    // Dekabrning oxirgi kunini ham qamrab olish uchun keyingi yil boshigacha.
-    const nextYearStart = `${year + 1}-01-01`;
+    // 🔴 2026-09-05 (audit): ilgari bu yerda `Between(yearStart,
+    // nextYearStart)` ishlatilardi. SQL `BETWEEN` IKKI TOMONDAN inklyuziv,
+    // ya'ni keyingi yilning 1-yanvari ham tushib qolardi — va pastda oy
+    // `checkIn.slice(5,7)` bilan olingani uchun (yil tekshirilmasdan) u
+    // JORIY yilning yanvariga qo'shilardi. Natijada 2027-01-01 dagi bron
+    // ham 2026-yil yanvarida, ham 2027-yil yanvarida ko'rinardi.
+    const yearEnd = `${year}-12-31`;
 
     const [budgets, totalRooms, bookings] = await Promise.all([
       this.budgetRepo.find({ where: { tenantId, propertyId, year } }),
@@ -565,7 +599,7 @@ export class ReportsService {
         where: {
           tenantId,
           propertyId,
-          checkIn: Between(yearStart, nextYearStart),
+          checkIn: Between(yearStart, yearEnd),
           status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
         },
       }),
@@ -694,11 +728,17 @@ export class ReportsService {
       this.bookingRepo.count({
         where: { tenantId, propertyId, status: BookingStatus.CHECKED_IN },
       }),
+      // 🔴 2026-09-05 (audit): ilgari shart `checkIn >= periodStart` edi,
+      // ya'ni davrdan OLDIN kelib, davr ichida turishda davom etayotgan
+      // mehmon umuman sanalmasdi. Endi shart KESISHUV: turish oynasi bilan
+      // kesishadigan har bir bron olinadi, keyin `nightsInWindow` faqat
+      // oyna ichidagi kechalarni ajratib beradi.
       this.bookingRepo.find({
         where: {
           tenantId,
           propertyId,
-          checkIn: MoreThanOrEqual(periodStart),
+          checkIn: LessThan(today),
+          checkOut: MoreThan(periodStart),
           status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
         },
         select: { checkIn: true, checkOut: true, totalAmount: true },
@@ -707,7 +747,8 @@ export class ReportsService {
         where: {
           tenantId,
           propertyId,
-          checkIn: Between(previousPeriodStart, previousPeriodEnd),
+          checkIn: LessThanOrEqual(previousPeriodEnd),
+          checkOut: MoreThan(previousPeriodStart),
           status: In([BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
         },
         select: { checkIn: true, checkOut: true, totalAmount: true },
@@ -765,10 +806,19 @@ export class ReportsService {
     let roomRevenue = 0;
     let roomNights = 0;
     for (const b of periodBookings) {
-      const nights = daysBetween(b.checkIn, b.checkOut);
-      roomRevenue += Number(b.totalAmount);
-      roomNights += nights;
+      const jamiKecha = daysBetween(b.checkIn, b.checkOut);
+      const oynadagiKecha = nightsInWindow(
+        b.checkIn,
+        b.checkOut,
+        periodStart,
+        today,
+      );
+      if (oynadagiKecha === 0) continue;
+      roomNights += oynadagiKecha;
+      // Daromad kechalar nisbatida bo'linadi (qarang: nightsInWindow izohi).
+      roomRevenue += (Number(b.totalAmount) * oynadagiKecha) / jamiKecha;
     }
+    roomRevenue = round2(roomRevenue);
     const adr = roomNights > 0 ? round2(roomRevenue / roomNights) : 0;
     const revPar =
       totalRooms > 0 ? round2(roomRevenue / (totalRooms * periodDays)) : 0;
@@ -849,10 +899,20 @@ export class ReportsService {
     let prevRoomRevenue = 0;
     let prevRoomNights = 0;
     for (const b of previousPeriodBookings) {
-      const nights = daysBetween(b.checkIn, b.checkOut);
-      prevRoomRevenue += Number(b.totalAmount);
-      prevRoomNights += nights;
+      const jamiKecha = daysBetween(b.checkIn, b.checkOut);
+      const oynadagiKecha = nightsInWindow(
+        b.checkIn,
+        b.checkOut,
+        previousPeriodStart,
+        // Oldingi davr oynasi ham yarim ochiq bo'lishi uchun oxirgi kunning
+        // ertasi olinadi (`previousPeriodEnd` — oxirgi KUN, chegara emas).
+        isoDate(new Date(Date.parse(previousPeriodEnd) + 86_400_000)),
+      );
+      if (oynadagiKecha === 0) continue;
+      prevRoomNights += oynadagiKecha;
+      prevRoomRevenue += (Number(b.totalAmount) * oynadagiKecha) / jamiKecha;
     }
+    prevRoomRevenue = round2(prevRoomRevenue);
     const prevAdr =
       prevRoomNights > 0 ? round2(prevRoomRevenue / prevRoomNights) : 0;
     const prevRevPar =

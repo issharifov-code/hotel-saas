@@ -209,4 +209,31 @@ describe('ReportsService.getBudgetPerformance', () => {
       where: { tenantId: 't1', propertyId: 'p1', year: 2026 },
     });
   });
+
+  // 🔴 2026-09-05 (kod auditi): so'rov `Between(yearStart, nextYearStart)`
+  // edi. SQL BETWEEN ikki tomondan inklyuziv, ya'ni KEYINGI yilning
+  // 1-yanvari ham tushardi — va oy `checkIn.slice(5,7)` bilan olingani
+  // uchun (yil tekshirilmasdan) u JORIY yilning yanvariga qo'shilardi.
+  it("🔴 so'rov chegarasi joriy yil bilan tugaydi (1-yanvar ikki marta sanalmaydi)", async () => {
+    const bookingRepoFind = jest.fn().mockResolvedValue([]);
+    const service = new ReportsService(
+      { count: jest.fn().mockResolvedValue(10) } as never,
+      { find: bookingRepoFind } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      { count: jest.fn().mockResolvedValue(0) } as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+    );
+
+    await service.getBudgetPerformance('t1', 'p1', 2026);
+
+    const where = bookingRepoFind.mock.calls[0][0].where;
+    // TypeORM `Between` chegaralarini `_value` massivida saqlaydi.
+    expect(where.checkIn._value).toEqual(['2026-01-01', '2026-12-31']);
+  });
 });

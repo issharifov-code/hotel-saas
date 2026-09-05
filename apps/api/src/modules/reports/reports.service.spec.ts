@@ -12,6 +12,19 @@ import {
 // hisob-fakturalarni filtrlash, va daromad tendensiyasi/loyalty taqsimotida
 // "bo'sh" qiymatlarni 0 bilan to'ldirish. Haqiqiy DB o'rniga — har bir repo
 // uchun minimal, chaqiruv argumentlariga qarab javob beradigan mock kifoya.
+
+// 🔴 2026-09-05: davr oynasi "bugun"ga nisbatan hisoblanadi va bandlik endi
+// bronning FAQAT oyna ichidagi kechalarini sanaydi. Shu sabab sinov sanalari
+// ham nisbiy bo'lishi shart — qat'iy sanalar vaqt o'tishi bilan oynadan
+// chiqib ketib, sinovni "o'z-o'zidan" buzardi.
+function kunOldin(n: number): string {
+  return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 describe('ReportsService', () => {
   function createQbMock(rows: unknown[]) {
     const qb: Record<string, jest.Mock> = {};
@@ -109,23 +122,29 @@ describe('ReportsService', () => {
           }: {
             select?: Record<string, unknown>;
             relations?: Record<string, unknown>;
-            where?: { checkIn?: { type?: string }; checkOut?: unknown };
+            where?: {
+              checkIn?: { type?: string };
+              checkOut?: { type?: string };
+            };
           }) => {
             if (relations)
               return Promise.resolve(opts.registrationBookings ?? []);
             if (select && 'marketSegment' in select)
               return Promise.resolve(opts.segmentBookings ?? []);
-            // occupancyTrend/adrTrend oynasi (checkIn<=today VA
-            // checkOut>=trendStart) — ikkala checkIn/checkOut cheklovi bilan
-            // yagona so'rov, shu orqali boshqalardan ajratamiz.
-            if (where?.checkOut)
+
+            // 🔴 2026-09-05: uchala so'rov ham endi KESISHUV shartini
+            // ishlatadi (checkIn ... VA checkOut ...), shuning uchun ularni
+            // operator turlari bo'yicha ajratamiz:
+            //   joriy davr    — checkIn <  today            (lessThan)
+            //   oldingi davr  — checkIn <= previousPeriodEnd + checkOut >
+            //   trend oynasi  — checkIn <= today            + checkOut >=
+            if (where?.checkIn?.type === 'lessThan')
+              return Promise.resolve(opts.periodBookings ?? []);
+            if (where?.checkOut?.type === 'moreThanOrEqual')
               return Promise.resolve(
                 opts.trendWindowBookings ?? opts.periodBookings ?? [],
               );
-            // getOverview joriy davr uchun MoreThanOrEqual, oldingi (trend)
-            // davr uchun Between operatoridan foydalanadi — shu orqali
-            // ikkalasini mock'da ajratamiz.
-            if (where?.checkIn?.type === 'between')
+            if (where?.checkIn?.type === 'lessThanOrEqual')
               return Promise.resolve(
                 opts.previousPeriodBookings ?? opts.periodBookings ?? [],
               );
@@ -219,14 +238,15 @@ describe('ReportsService', () => {
     const service = createService({
       totalRooms: 10,
       periodBookings: [
+        // Ikkalasi ham 30 kunlik oyna ICHIDA — 3 kecha va 2 kecha.
         {
-          checkIn: '2026-08-01',
-          checkOut: '2026-08-04',
+          checkIn: kunOldin(10),
+          checkOut: kunOldin(7),
           totalAmount: '300.00',
         },
         {
-          checkIn: '2026-08-05',
-          checkOut: '2026-08-07',
+          checkIn: kunOldin(6),
+          checkOut: kunOldin(4),
           totalAmount: '100.00',
         },
       ],
@@ -284,20 +304,66 @@ describe('ReportsService', () => {
     ]);
   });
 
+  // 🔴 2026-09-05 (kod auditi): bandlik 100% dan oshib ketardi — davr ichida
+  // boshlangan uzoq turish BUTUNICHA sanalardi, maxraj esa faqat davr edi.
+  it("🔴 uzoq turish davr oynasiga qirqiladi — bandlik 100% dan oshmaydi", async () => {
+    // 10 xona, 7 kunlik davr = 70 kecha-xona sig'im.
+    // Davr oxirida boshlangan uchta 30 kunlik bron: ilgari 90 kecha
+    // sanalardi (128.57%), endi faqat oyna ichidagi kechalar.
+    const service = createService({
+      totalRooms: 10,
+      periodBookings: [1, 2, 3].map(() => ({
+        checkIn: kunOldin(1),
+        checkOut: kunOldin(-29), // bugundan 29 kun KEYIN tugaydi
+        totalAmount: '3000.00',
+      })),
+    });
+
+    const result = await service.getOverview('t1', 'p1', 7);
+
+    expect(result.occupancy.occupancyRatePct).toBeLessThanOrEqual(100);
+    // Har bir bron oynada 1 kecha (bugundan 1 kun oldin -> bugun): 3 kecha / 70
+    expect(result.occupancy.occupancyRatePct).toBe(4.29);
+    // Daromad ham shu nisbatda: 3000 * (1/30) = 100 har biri
+    expect(result.adr).toBe(100);
+  });
+
+  it("davrdan OLDIN kelib, davr ichida turgan mehmon ham sanaladi", async () => {
+    // Ilgari so'rov `checkIn >= periodStart` edi — bunday bron umuman
+    // tushmasdi va bandlik kam ko'rsatilardi.
+    const service = createService({
+      totalRooms: 10,
+      periodBookings: [
+        {
+          checkIn: kunOldin(20), // davr (7 kun) boshlanishidan oldin
+          checkOut: kunOldin(3),
+          totalAmount: '1700.00', // 17 kecha
+        },
+      ],
+    });
+
+    const result = await service.getOverview('t1', 'p1', 7);
+
+    // Oyna: [bugun-7, bugun). Bron oynada bugun-7 dan bugun-3 gacha = 4 kecha.
+    expect(result.occupancy.occupancyRatePct).toBe(round2((4 / 70) * 100));
+    expect(result.adr).toBe(100); // 1700/17 = 100 — nisbat saqlanadi
+  });
+
   it('trend: joriy davrni bevosita oldingi davrga solishtirib nisbiy foizni hisoblaydi', async () => {
     const service = createService({
       totalRooms: 10,
       periodBookings: [
         {
-          checkIn: '2026-08-20',
-          checkOut: '2026-08-25',
+          checkIn: kunOldin(10),
+          checkOut: kunOldin(5),
           totalAmount: '500.00',
         }, // 5 kecha, 500
       ],
       previousPeriodBookings: [
+        // Oldingi davr: [bugun-61, bugun-31]
         {
-          checkIn: '2026-07-20',
-          checkOut: '2026-07-24',
+          checkIn: kunOldin(50),
+          checkOut: kunOldin(46),
           totalAmount: '200.00',
         }, // 4 kecha, 200
       ],
