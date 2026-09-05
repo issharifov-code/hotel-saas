@@ -41,6 +41,8 @@ describe('PosOrdersService.buildOrderItems — N+1 tuzatish', () => {
       orderRepo as never,
       orderItemRepo as never,
       menuItemRepo as never,
+      // 2026-09-05 (audit №12): buyurtma valyutasi mulkdan olinadi.
+      { findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }) } as never,
       invoicingService as never,
       accountingService as never,
     );
@@ -165,6 +167,7 @@ describe("PosOrdersService.pay — qulf ostidagi holat tekshiruvi", () => {
       orderRepo as never,
       { create: jest.fn() } as never,
       { find: jest.fn() } as never,
+      { findOne: jest.fn().mockResolvedValue({ id: 'p1', currency: 'UZS' }) } as never,
       invoicingService as never,
       accountingService as never,
     );

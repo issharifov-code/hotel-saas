@@ -19,6 +19,7 @@ import {
 } from './dto/create-pos-order.dto';
 import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
+import { Property } from '../properties/entities/property.entity';
 import { InvoicingService } from '../invoicing/invoicing.service';
 import { AccountingService } from '../accounting/accounting.service';
 
@@ -39,9 +40,24 @@ export class PosOrdersService {
     private readonly orderItemRepo: Repository<PosOrderItem>,
     @InjectRepository(MenuItem)
     private readonly menuItemRepo: Repository<MenuItem>,
+    // 🔴 2026-09-05 (audit №12): buyurtma valyutasi `'UZS'` deb qattiq
+    // yozilgan edi — mulkning o'z valyutasi e'tiborsiz qolardi.
+    @InjectRepository(Property)
+    private readonly propertyRepo: Repository<Property>,
     private readonly invoicingService: InvoicingService,
     private readonly accountingService: AccountingService,
   ) {}
+
+  private async propertyCurrency(
+    tenantId: string,
+    propertyId: string,
+  ): Promise<string> {
+    const property = await this.propertyRepo.findOne({
+      where: { id: propertyId, tenantId },
+      select: { id: true, currency: true },
+    });
+    return property?.currency ?? 'UZS';
+  }
 
   async create(
     tenantId: string,
@@ -61,7 +77,7 @@ export class PosOrdersService {
       tableNumber: dto.tableNumber ?? null,
       guestId: dto.guestId ?? null,
       totalAmount,
-      currency: 'UZS',
+      currency: await this.propertyCurrency(tenantId, propertyId),
       createdByUserId: userId,
       notes: dto.notes ?? null,
       items,

@@ -3,6 +3,7 @@ import { PosOutlet } from './entities/pos-outlet.entity';
 import { MenuItem } from './entities/menu-item.entity';
 import { PosOrder } from './entities/pos-order.entity';
 import { PosOrderItem } from './entities/pos-order-item.entity';
+import { Property } from '../properties/entities/property.entity';
 import { PosOutletsService } from './pos-outlets.service';
 import { MenuItemsService } from './menu-items.service';
 import { PosOrdersService } from './pos-orders.service';
@@ -16,7 +17,8 @@ import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
   imports: [
-    RlsModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem]),
+    // `Property` — buyurtma valyutasi mulkdan olinadi (audit №12).
+    RlsModule.forFeature([PosOutlet, MenuItem, PosOrder, PosOrderItem, Property]),
     RolesModule,
     InvoicingModule,
     AccountingModule,
