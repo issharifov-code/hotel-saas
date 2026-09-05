@@ -314,6 +314,23 @@ describe('AgencyCommissionsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it("🔴 turli valyutadagi komissiyalarni bitta to'lovga qo'shib bo'lmaydi", async () => {
+      // Ilgari 400 USD + 5 000 000 UZS jimgina "5 000 400" bo'lib
+      // qo'shilar va to'lov birinchi qatorning valyutasi bilan
+      // belgilanardi.
+      const { service, accountingService } = createService({
+        commissions: [
+          { id: 'c1', amount: '400.00', currency: 'USD', status: AgencyCommissionStatus.ACCRUED },
+          { id: 'c2', amount: '5000000.00', currency: 'UZS', status: AgencyCommissionStatus.ACCRUED },
+        ],
+      });
+
+      await expect(
+        service.pay('t1', 'p1', 'a1', { method: AgencyPaymentMethod.CASH }, 'u1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+    });
+
     it("to'lanmagan komissiya bo'lmasa xato beradi", async () => {
       const { service } = createService({ commissions: [] });
       await expect(

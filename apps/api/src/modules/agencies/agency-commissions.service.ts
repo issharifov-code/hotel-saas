@@ -300,6 +300,18 @@ export class AgencyCommissionsService {
       );
     }
 
+    // 🔴 2026-09-05 (audit №12): turli valyutadagi komissiyalar jimgina
+    // qo'shilib, bitta to'lov birinchi qatorning valyutasi bilan
+    // belgilanardi (400 USD + 5 000 000 UZS = "5 000 400"). Aralash
+    // to'lovni umuman qilib bo'lmaydi — foydalanuvchi valyuta bo'yicha
+    // alohida to'lashi kerak.
+    const valyutalar = [...new Set(commissions.map((c) => c.currency))];
+    if (valyutalar.length > 1) {
+      throw new BadRequestException(
+        `To'lov bitta valyutada bo'lishi kerak — tanlanganlar orasida: ${valyutalar.join(', ')}`,
+      );
+    }
+
     const total = commissions.reduce((sum, c) => sum + Number(c.amount), 0);
 
     const payment = await this.paymentRepo.save(
