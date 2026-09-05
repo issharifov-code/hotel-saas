@@ -1,5 +1,7 @@
+import { ConflictException } from '@nestjs/common';
 import { InvoicingService } from './invoicing.service';
 import { InvoiceStatus } from './entities/invoice.entity';
+import { InvoiceLineSource } from './entities/invoice-line.entity';
 import { InvoicePaymentMethod } from './entities/invoice-payment.entity';
 
 // recordGatewayPayment — Payments moduli (to'lov shlyuzi adapterlari)
@@ -293,5 +295,99 @@ describe('InvoicingService.createFeeInvoice', () => {
     expect(result).toBe(existing);
     expect(invoiceRepo.save).not.toHaveBeenCalled();
     expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+  });
+});
+
+
+// 🔴 2026-09-05 (kod auditi) — ikkita topilma shu yerda mustahkamlanadi:
+//  1. Bekor qilingan hisob-fakturani QAYTA bekor qilish teskari provodkani
+//     takrorlardi (yagona tekshiruv `PAID` edi, `CANCELLED` esa emas).
+//  2. Jarima qatori `adjustment` turida yozilgani uchun teskari yozuv
+//     `room_revenue` ga tushardi, aslida `cancellation_fee_revenue` bo'lishi
+//     kerak edi — Rooms daromadi kamayib, Miscellaneous Income oshib qolardi.
+describe('InvoicingService.cancel — teskari provodka', () => {
+  function createService(overrides: Record<string, unknown> = {}) {
+    const invoice = {
+      id: 'inv-11111111',
+      guestId: 'guest-1',
+      status: InvoiceStatus.ISSUED,
+      totalAmount: '1000.00',
+      paidAmount: '0.00',
+      lines: [],
+      ...overrides,
+    };
+    const invoiceRepo = {
+      findOne: jest.fn().mockResolvedValue(invoice),
+      save: jest.fn((x: unknown) => Promise.resolve(x)),
+    };
+    const accountingService = {
+      postSimpleEntry: jest.fn().mockResolvedValue(null),
+    };
+    const service = new InvoicingService(
+      invoiceRepo as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      accountingService as never,
+      { awardPointsForPayment: jest.fn() } as never,
+    );
+    return { service, invoiceRepo, accountingService };
+  }
+
+  const line = (source: InvoiceLineSource, amount: string) => ({
+    source,
+    amount,
+  });
+
+  it('allaqachon bekor qilingan hisob-fakturani qayta bekor qilib bo\'lmaydi', async () => {
+    const { service, accountingService } = createService({
+      status: InvoiceStatus.CANCELLED,
+      lines: [line(InvoiceLineSource.ROOM_CHARGE, '1000.00')],
+    });
+
+    await expect(service.cancel('t1', 'p1', 'inv-11111111')).rejects.toThrow(
+      ConflictException,
+    );
+    // Eng muhimi: ikkinchi provodka YOZILMAYDI.
+    expect(accountingService.postSimpleEntry).not.toHaveBeenCalled();
+  });
+
+  it('jarima qatori cancellation_fee_revenue ga qaytariladi, room_revenue ga emas', async () => {
+    const { service, accountingService } = createService({
+      lines: [line(InvoiceLineSource.CANCELLATION_FEE, '800.00')],
+    });
+
+    await service.cancel('t1', 'p1', 'inv-11111111');
+
+    const chaqiriqlar = accountingService.postSimpleEntry.mock.calls.map(
+      (c: [Record<string, unknown>]) => c[0],
+    );
+    const jarima = chaqiriqlar.find(
+      (c) => c.debitSystemKey === 'cancellation_fee_revenue',
+    );
+    expect(jarima).toMatchObject({
+      debitSystemKey: 'cancellation_fee_revenue',
+      creditSystemKey: 'guest_ledger_ar',
+      // `sumLines` son qaytaradi — `postSimpleEntry` uni o'zi yaxlitlaydi.
+      amount: 800,
+    });
+    // Xona daromadi bu holatda umuman tegilmaydi (0 yuboriladi -> yozuv yo'q).
+    const xona = chaqiriqlar.find((c) => c.debitSystemKey === 'room_revenue');
+    expect(xona).toMatchObject({ amount: 0 });
+  });
+
+  it("xona narxi va narx tuzatishi baribir room_revenue ga qaytariladi", async () => {
+    const { service, accountingService } = createService({
+      lines: [
+        line(InvoiceLineSource.ROOM_CHARGE, '1000.00'),
+        line(InvoiceLineSource.ADJUSTMENT, '250.00'),
+      ],
+    });
+
+    await service.cancel('t1', 'p1', 'inv-11111111');
+
+    const xona = accountingService.postSimpleEntry.mock.calls
+      .map((c: [Record<string, unknown>]) => c[0])
+      .find((c) => c.debitSystemKey === 'room_revenue');
+    expect(xona).toMatchObject({ amount: 1250 });
   });
 });

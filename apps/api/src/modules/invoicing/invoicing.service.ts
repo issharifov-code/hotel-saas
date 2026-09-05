@@ -118,7 +118,7 @@ export class InvoicingService {
 
     const feeLine = this.lineRepo.create({
       description,
-      source: InvoiceLineSource.ADJUSTMENT,
+      source: InvoiceLineSource.CANCELLATION_FEE,
       quantity: '1',
       unitPrice: amount,
       amount,
@@ -492,6 +492,17 @@ export class InvoicingService {
         "To'liq to'langan hisob-fakturani bekor qilib bo'lmaydi",
       );
     }
+    // 🔴 2026-09-05 (audit): bu tekshiruv yo'q edi. Bekor qilingan
+    // hisob-fakturada `paidAmount` hamon '0.00' bo'lgani uchun pastdagi
+    // shart yana o'tar va UCHALA teskari provodka QAYTA yozilardi —
+    // ya'ni ikki marta bosish daromad va debitorlikni manfiyga tushirardi.
+    // Har bir yozuv o'zi balanslangani uchun `postJournalEntry` tekshiruvi
+    // buni ushlamasdi va hech qanday signal bo'lmasdi.
+    if (invoice.status === InvoiceStatus.CANCELLED) {
+      throw new ConflictException(
+        'Hisob-faktura allaqachon bekor qilingan',
+      );
+    }
 
     if (Number(invoice.paidAmount) === 0) {
       const roomAmount = this.sumLines(invoice.lines, [
@@ -503,6 +514,11 @@ export class InvoicingService {
       ]);
       const otherAmount = this.sumLines(invoice.lines, [
         InvoiceLineSource.MANUAL,
+      ]);
+      // Jarima ALOHIDA: u `cancellation_fee_revenue` ni kreditlagan,
+      // shuning uchun teskari yozuv ham aynan o'sha hisobga tushishi kerak.
+      const feeAmount = this.sumLines(invoice.lines, [
+        InvoiceLineSource.CANCELLATION_FEE,
       ]);
 
       // Teskari yozuv — asl provodkadagi debet/kredit hisoblari almashtirilgan
@@ -536,6 +552,16 @@ export class InvoicingService {
         debitSystemKey: 'other_operated_revenue',
         creditSystemKey: 'guest_ledger_ar',
         amount: otherAmount,
+      });
+      await this.accountingService.postSimpleEntry({
+        tenantId,
+        propertyId,
+        description: `Hisob-faktura bekor qilindi (jarima) — ${invoice.id.slice(0, 8)}`,
+        sourceModule: 'invoicing',
+        sourceId: invoice.id,
+        debitSystemKey: 'cancellation_fee_revenue',
+        creditSystemKey: 'guest_ledger_ar',
+        amount: feeAmount,
       });
     }
 
