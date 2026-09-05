@@ -31,6 +31,24 @@ export class StockLot {
   @Column({ name: 'unit_cost', type: 'numeric', precision: 14, scale: 4 })
   unitCost: string;
 
+  // 🔴 Partiyaning BOSH KITOBGA hali yozilgan (kreditlanmagan) qiymati
+  // (2026-09-05, kod auditi). `unit_cost` 4 xonali, provodkalar esa 2 xonali
+  // bo'lgani uchun "miqdor × narx" ni har chiqimda qayta yaxlitlash bosh
+  // kitobda tiyin qoldig'i qoldirardi: partiya butunlay tugasa ham
+  // `inventory` hisobida ±0,01 osilib qolardi.
+  //
+  // Endi partiya o'ziga yozilgan qiymatni o'zi bilan olib yuradi va oxirgi
+  // (partiyani tugatuvchi) chiqim AYNAN shu qoldiq bilan kreditlanadi —
+  // yaxlitlash farqi o'sha yerda yopiladi.
+  @Column({
+    name: 'booked_cost_remaining',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    default: 0,
+  })
+  bookedCostRemaining: string;
+
   @Column({ name: 'received_at', type: 'timestamp' })
   receivedAt: Date;
 
