@@ -211,7 +211,7 @@ export class BookingsService {
         dto.currency ?? (await this.propertyCurrency(tenantId, propertyId)),
       notes: dto.notes ?? null,
     });
-    return this.bookingRepo.save(booking);
+    return this.saveWithOverlapGuard(booking);
   }
 
   async listByProperty(
@@ -396,14 +396,11 @@ export class BookingsService {
     // ManyToOne relation borligi sababli, agar entity `room` relation'i bilan
     // yuklangan (findById shuni qiladi) bo'lsa, `save()` eski `room` obyektini
     // ko'rib roomId'ni orqaga qaytarib qo'yishi mumkin.
-    await this.bookingRepo.update(
-      { id: booking.id },
-      {
-        roomId: dto.roomId,
-        totalAmount: newTotal,
-        ratePlanId: nextRatePlan?.id ?? null,
-      },
-    );
+    await this.updateWithOverlapGuard(booking.id, {
+      roomId: dto.roomId,
+      totalAmount: newTotal,
+      ratePlanId: nextRatePlan?.id ?? null,
+    });
 
     if (wasCheckedIn) {
       await this.roomRepo.update(
@@ -491,10 +488,11 @@ export class BookingsService {
     // `update()` ishlatiladi — changeRoom'dagi kabi, entity `room`/`guest`
     // relation'lari bilan yuklangan bo'lsa `save()` kutilmagan qo'shimcha
     // yozuvlarga olib kelishi mumkin (bookings.service.ts'dagi izohga qarang).
-    await this.bookingRepo.update(
-      { id: booking.id },
-      { checkIn: dto.checkIn, checkOut: dto.checkOut, totalAmount: newTotal },
-    );
+    await this.updateWithOverlapGuard(booking.id, {
+      checkIn: dto.checkIn,
+      checkOut: dto.checkOut,
+      totalAmount: newTotal,
+    });
 
     if (booking.status === BookingStatus.CHECKED_IN && Number(diff) !== 0) {
       await this.invoicingService.addAdjustmentLine(
@@ -675,6 +673,62 @@ export class BookingsService {
     }
   }
 
+
+  /**
+   * 🔴 IKKI KARRA BRONDAN HIMOYA — IKKINCHI QATLAM (2026-09-05).
+   *
+   * `assertRoomAvailable` bandlikni SELECT bilan tekshiradi, lekin
+   * SELECT bilan INSERT orasida boshqa so'rov o'sha xonani yozib
+   * ulgurishi mumkin (READ COMMITTED izolyatsiyasi — hech kim
+   * boshqasining kommit qilinmagan yozuvini ko'rmaydi). Integratsion
+   * testda bu ATAYLAB takrorlandi: bir vaqtda 5 ta bir xil so'rovdan
+   * 2 tasi o'tib ketdi.
+   *
+   * Haqiqiy kafolatni baza beradi — `bookings_no_overlap` chekloviI
+   * (migratsiya 1790000000000). Bu yerdagi vazifa faqat shu: baza
+   * xatosini foydalanuvchi tushunadigan xabarga aylantirish, aks
+   * holda mehmonxona xodimi 500 va "Ichki xatolik" ko'rardi.
+   *
+   * NEGA XABAR `assertRoomAvailable` BILAN BIR XIL. Foydalanuvchi
+   * uchun bu bitta holat: xona band. Poyga sodir bo'lgani yoki
+   * bo'lmagani — ichki tafsilot.
+   */
+  private async saveWithOverlapGuard(booking: Booking): Promise<Booking> {
+    try {
+      return await this.bookingRepo.save(booking);
+    } catch (err) {
+      if (isOverlapViolation(err)) {
+        throw new ConflictException(
+          "Xona shu sana oralig'ida band (boshqa bron shu payt yaratildi)",
+        );
+      }
+      throw err;
+    }
+  }
+
+
+  /**
+   * `update()` yo'li uchun o'sha himoya. `changeRoom` va `updateDates`
+   * ataylab `save()` emas, `update()` ishlatadi (entity relation'lari
+   * bilan yuklangani uchun) — lekin ular ham sana/xona o'zgartiradi,
+   * ya'ni `bookings_no_overlap` cheklovini buzishi mumkin.
+   */
+  private async updateWithOverlapGuard(
+    id: string,
+    patch: Parameters<typeof this.bookingRepo.update>[1],
+  ): Promise<void> {
+    try {
+      await this.bookingRepo.update({ id }, patch);
+    } catch (err) {
+      if (isOverlapViolation(err)) {
+        throw new ConflictException(
+          "Xona shu sana oralig'ida band (boshqa bron shu payt yaratildi)",
+        );
+      }
+      throw err;
+    }
+  }
+
   private async findConflictingBooking(
     roomId: string,
     checkIn: string,
@@ -852,7 +906,7 @@ export class BookingsService {
       currency: dto.currency ?? 'UZS',
       notes: dto.notes ?? null,
     });
-    return this.bookingRepo.save(booking);
+    return this.saveWithOverlapGuard(booking);
   }
 
   // Front Desk: veb-saytdan kelgan "pending" bronni ko'rib chiqib tasdiqlaydi
@@ -1038,7 +1092,7 @@ export class BookingsService {
       currency: await this.propertyCurrency(tenantId, propertyId),
       groupId,
     });
-    return this.bookingRepo.save(booking);
+    return this.saveWithOverlapGuard(booking);
   }
 
   // 🔴 2026-09-05 (audit №12): bron valyutasi `'UZS'` deb qattiq
@@ -1139,4 +1193,16 @@ export class BookingsService {
     }
     return (Number(roomType.basePrice) * nights).toFixed(2);
   }
+}
+
+/**
+ * PostgreSQL exclusion constraint buzilganini aniqlaydi.
+ *
+ * Kod `23P01` — `exclusion_violation`. Cheklov nomi ham tekshiriladi:
+ * kelajakda boshqa exclusion cheklovi qo'shilsa, uning xatosi
+ * "xona band" deb noto'g'ri tarjima qilinmasin.
+ */
+function isOverlapViolation(err: unknown): boolean {
+  const e = err as { code?: string; constraint?: string } | null;
+  return e?.code === '23P01' && e?.constraint === 'bookings_no_overlap';
 }
