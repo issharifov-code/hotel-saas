@@ -415,7 +415,7 @@ export interface BudgetDto {
   adr: string | null;
 }
 
-// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar.
+// "Folio One Intelligence" — qoidaga asoslangan tavsiyalar.
 // Har bir tavsiya `detail`da nega chiqqanini aniq raqam bilan tushuntiradi
 // (backend: ReportsService.getInsights izohiga qarang).
 export type InsightSeverity = 'critical' | 'warning' | 'info' | 'positive';

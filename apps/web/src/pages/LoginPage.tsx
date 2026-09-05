@@ -158,7 +158,7 @@ import {
 // kerak bo'lishi mumkin), lekin hozircha hech qayerda ishlatilmaydi.
 //
 // 2026-09-03: foydalanuvchi aniqladi — badge'da faqat F1 belgisi emas, aynan
-// o'zi bergan to'liq logotip (F1 belgisi + ostida "FolioOne" yozuvi bitta
+// o'zi bergan to'liq logotip (F1 belgisi + ostida "Folio One" yozuvi bitta
 // rasmda) ko'rsatilishi kerak edi. Kvadrat oq badge qutisi (h-14 w-14,
 // icon-only) olib tashlandi, o'rniga to'liq lockup rasmi (`folio-one-logo-full.png`,
 // asl fayldan faqat tashqi shaffof bo'shliq kesilgan holda) to'g'ridan-to'g'ri,

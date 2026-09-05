@@ -512,7 +512,7 @@ export function AppLayout({
           36->45.72px. Balandlik `py-` orqali emas, aniq `h-[...]` bilan
           berilgan — shunda ichki elementlar o'zgarsa ham panel balandligi
           siljimaydi. */}
-      <header className="relative z-30 shrink-0 bg-brand-navy text-white flex items-center justify-between pl-3 pr-5 h-[45.72px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
+      <header className="relative z-30 shrink-0 bg-brand-navy-dark text-white flex items-center justify-between pl-3 pr-5 h-[45.72px] shadow-[0_2px_6px_rgba(15,23,42,0.25)]">
         {/* 🔴 Chap tomonning o'lchamlari pastdagi modul paneli bilan
             QAT'IY bog'langan (2026-09-04, foydalanuvchi fikri: "hamburger
             olgan joy pastidagi F1 olgan joy bilan teng bo'lsin, ajratuvchisi
@@ -538,7 +538,37 @@ export function AppLayout({
           >
             {drawerOpen ? <CloseIcon /> : <HamburgerIcon />}
           </button>
-          <span className="ml-1 mr-2.5 h-5 w-px bg-white/25 shrink-0" aria-hidden="true" />
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): mehmonxona logotipi pastdagi
+              "Mijozlar" bilan BIR VERTIKALDA boshlanishi kerak. Pastdagi
+              panelda F1 belgisi 60.96px, keyin gap-1 (4px), keyin birinchi
+              menyu. Bu yerda ham xuddi shunday: hamburger uyasi 60.96px,
+              keyin 4px — ajratuvchi chiziq shu 4px oralig'ining o'rtasiga
+              `absolute` bilan qo'yiladi, ya'ni u joy EGALLAMAYDI va
+              logotipni o'nga surmaydi. Avval `ml-1 mr-2.5` bilan oqim
+              ichida turib, logotipni 10px ga surib yuborardi. */}
+          <span className="relative w-1 shrink-0" aria-hidden="true">
+            <span className="absolute left-1/2 top-1/2 h-5 w-px -translate-x-1/2 -translate-y-1/2 bg-white/25" />
+          </span>
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): "mehmonxona logosi
+              pastdagi Mijozlar bilan bir qatorda boshlansin".
+              Pastdagi navigatsiya panelida birinchi menyu MATNI qayerdan
+              boshlanishini sanaymiz (o'sha faylning nav qismi):
+                px-3        12
+                F1 belgisi  60.96
+                gap-1        4
+                ajratuvchi   1   (w-px)
+                mr-2         8
+                gap-1        4
+                tugma px-4  16
+                            ------
+                jami       105.96px
+              Bu yerda esa hozirgi holat: pl-3 (12) + hamburger uyasi
+              (60.96) + ajratuvchi uyasi (4) = 76.96px. Ya'ni logotipni
+              yana 29px o'ngga surish kerak.
+              Ajratuvchi chiziqning O'ZI 76.96px da qoladi — u pastdagi
+              nav ajratuvchisi bilan bir vertikalda turadi (bu avvalgi
+              qaror, o'zgarmadi). */}
+          <span className="w-[29px] shrink-0" aria-hidden="true" />
           {/* Mehmonxonaning o'z logotipi (2026-09-04, "Mehmonxona
               sozlamalari" sahifasidan yuklanadi). Yuklanmagan bo'lsa —
               avvalgidek nomining bosh harfi bilan piktogramma. Ikkala
@@ -749,7 +779,15 @@ export function AppLayout({
           shaffof overlay (dropdown panelining o'zi undan yuqori z-index'da). */}
       {openGroup && <div className="fixed inset-0 z-10" onClick={closeGroup} aria-hidden="true" />}
 
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      {/* 🔴 2026-09-05 (foydalanuvchi fikri): "scroll qilganda Bosh sahifa
+          ham kirib ketsin, faqat navigatsiya paneli qolsin".
+          Ilgari scroll `<main>` da edi, ya'ni breadcrumb/sarlavha qatori
+          undan TASHQARIDA turib doim ko'rinardi. Endi scroll shu
+          o'rovchiga ko'chdi — sarlavha qatori kontentning bir qismi
+          sifatida yuqoriga kirib ketadi. Tepada faqat oltin chiziq,
+          navy panel va modul navigatsiyasi qoladi (ular bu o'rovchidan
+          tashqarida). Natijada kontentga ~60px joy qo'shildi. */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
         {/* 2026-09 (breadcrumb qo'shildi, foydalanuvchi fikri): sahifa
             sarlavhasi endi qayta text-lg'ga kichraytirildi (avvalgi
             "yakuniy sayqal" bosqichida text-xl'ga oshirilgan edi) — "qayerda
@@ -902,11 +940,22 @@ export function AppLayout({
               </>
             )}
           </div>
+          {/* 🔴 2026-09-05 (foydalanuvchi fikri): Bosh sahifada ham
+              ajratuvchi chiziq. Boshqa sahifalarda chiziq breadcrumb bilan
+              sarlavha ORASIDA turadi (yuqoriga qarang) — Bosh sahifada esa
+              breadcrumb yo'q, shuning uchun u sarlavhadan KEYIN qo'yiladi.
+              Ikkala holatda ham natija bir xil: navigatsiya qatlami
+              kontentdan bitta chiziq bilan ajraladi.
+              `-mx-4 sm:-mx-8` — header padding'ini bekor qilib, chiziqni
+              ekranning chetidan chetiga cho'zadi. */}
+          {isDashboard && (
+            <div className="-mx-4 sm:-mx-8 mt-2 h-px bg-slate-200" aria-hidden="true" />
+          )}
         </header>
         {/* Tepa padding pastnikidan kichik: sarlavha bilan birinchi panel
             orasida endi chiziq yo'q, shuning uchun katta bo'shliq ham
             kerak emas — kontent yuqoriga "ko'tarildi". */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-8 pt-1 pb-6">
+        <main className="flex-1 px-4 sm:px-8 pt-1 pb-6">
           <SampleDataBanner />
           {children}
         </main>

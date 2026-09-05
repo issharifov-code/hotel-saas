@@ -458,7 +458,7 @@ function FrontDeskTab({
   );
 }
 
-// "FolioOne Intelligence" — qoidaga asoslangan tavsiyalar paneli.
+// "Folio One Intelligence" — qoidaga asoslangan tavsiyalar paneli.
 // Har bir tavsiya nega chiqqanini aniq raqam bilan tushuntiradi, shuning
 // uchun menejer uni tekshirib, ishonishi mumkin (backend izohiga qarang).
 const INSIGHT_STYLES: Record<
@@ -580,7 +580,7 @@ function InsightsCard({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-900">FolioOne Intelligence</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Folio One Intelligence</h3>
         <span className="text-xs text-slate-400">
           {active.length > 0 ? `${active.length} ta tavsiya` : ''}
         </span>
