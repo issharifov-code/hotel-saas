@@ -98,8 +98,13 @@ export function StaffPage() {
   const [roleForm, setRoleForm] = useState<RoleDto | 'new' | null>(null);
 
   const canCreate = can('users_roles', 'create');
-  const canEdit = can('users_roles', 'edit') || canCreate;
-  const canSalaryEdit = can('payroll', 'edit') || can('payroll', 'create');
+  // 🔴 2026-09-05 (audit): ilgari `|| canCreate` bor edi — faqat yaratish
+  // huquqiga ega foydalanuvchi rol biriktirish tugmasini ko'rib, bosgach
+  // 403 olardi. Backend `POST /user-roles` aynan `users_roles:edit` talab
+  // qiladi.
+  const canEdit = can('users_roles', 'edit');
+  // Maosh o'zgartirish backend'da `payroll:edit` (users.controller.ts).
+  const canSalaryEdit = can('payroll', 'edit');
 
   const loadAll = async () => {
     setLoading(true);

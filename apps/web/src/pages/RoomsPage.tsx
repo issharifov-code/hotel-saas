@@ -453,13 +453,23 @@ function CreateRatePlanModal({
             ? {
                 cancellationDeadlineDays: Number(cancellationDeadlineDays),
                 cancellationFeeType,
-                cancellationFeeValue: cancellationFeeType === 'first_night' ? nightlyPrice : cancellationFeeValue,
+                // 🔴 2026-09-05 (audit): bo'sh satr yuborilardi va
+                // `@IsOptional() @IsNumberString()` uni RAD ETADI
+                // (`@IsOptional` faqat undefined/null ni o'tkazadi) —
+                // foydalanuvchi narx rejasini umuman saqlay olmasdi.
+                cancellationFeeValue:
+                  cancellationFeeType === 'first_night'
+                    ? nightlyPrice
+                    : cancellationFeeValue || undefined,
               }
             : {}),
           ...(hasNoShowFee
             ? {
                 noShowFeeType,
-                noShowFeeValue: noShowFeeType === 'first_night' ? nightlyPrice : noShowFeeValue,
+                noShowFeeValue:
+                  noShowFeeType === 'first_night'
+                    ? nightlyPrice
+                    : noShowFeeValue || undefined,
               }
             : {}),
         }),
@@ -548,6 +558,7 @@ function CreateRatePlanModal({
                 <div className="col-span-2">
                   <Field label={cancellationFeeType === 'percent_of_total' ? 'Foiz (%)' : "Summa"}>
                     <input
+                      required
                       inputMode="decimal"
                       value={cancellationFeeValue}
                       onChange={(e) => setCancellationFeeValue(e.target.value)}
@@ -587,6 +598,7 @@ function CreateRatePlanModal({
               {noShowFeeType !== 'first_night' && (
                 <Field label={noShowFeeType === 'percent_of_total' ? 'Foiz (%)' : 'Summa'}>
                   <input
+                    required
                     inputMode="decimal"
                     value={noShowFeeValue}
                     onChange={(e) => setNoShowFeeValue(e.target.value)}

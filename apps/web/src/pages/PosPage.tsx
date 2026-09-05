@@ -499,7 +499,13 @@ function PosOrderDetailModal({
         method: 'POST',
         body: JSON.stringify({
           paymentMethod,
-          bookingId: paymentMethod === 'room_account' ? roomAccountBookingId : undefined,
+          // 🔴 2026-09-05 (audit): joylashgan mehmon bo'lmasa bu bo'sh
+          // satr edi va `@IsUUID()` uni rad etardi — foydalanuvchi
+          // o'zbekcha xabar o'rniga inglizcha 400 olardi.
+          bookingId:
+            paymentMethod === 'room_account'
+              ? roomAccountBookingId || undefined
+              : undefined,
         }),
       });
       onChanged();
@@ -581,7 +587,17 @@ function PosOrderDetailModal({
                 <option value="card">Karta</option>
                 <option value="room_account">Xona hisobiga</option>
               </select>
-              <button type="button" disabled={busy} onClick={pay} className="btn-primary shrink-0">
+              {/* Xona hisobiga to'lash uchun joylashgan mehmon SHART —
+                  bo'lmasa tugma bloklanadi (aks holda so'rov 400 bilan
+                  qaytardi). */}
+              <button
+                type="button"
+                disabled={
+                  busy || (paymentMethod === 'room_account' && !roomAccountBookingId)
+                }
+                onClick={pay}
+                className="btn-primary shrink-0"
+              >
                 To'lash
               </button>
             </div>

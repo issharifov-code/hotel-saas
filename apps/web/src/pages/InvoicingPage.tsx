@@ -32,6 +32,10 @@ const SOURCE_LABELS: Record<string, string> = {
   room_charge: 'Xona narxi',
   pos_order: 'POS buyurtma',
   manual: "Qo'lda qo'shilgan",
+  // 2026-09-05: bu ikkalasi backend'da bor edi, lekin yorlig'i yo'q edi —
+  // folioda inglizcha "adjustment" chiqib qolardi.
+  adjustment: 'Narx tuzatishi',
+  cancellation_fee: 'Bekor qilish jarimasi',
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
